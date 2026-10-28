@@ -1144,6 +1144,116 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
 @media (hover: hover) and (min-width: 761px) { .pc-wrap:not(.pinned) .pc-x { display: none; } }
 .directive .glow-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .directive { overflow-x: clip; }
+
+/* =====================================================================================
+   CLARITY PASS — yellow means "do this", colours mean one thing each, fewer capitals,
+   labels you can read, features that announce themselves.
+   ===================================================================================== */
+:root { --dim: #8b8d93; --f-terminid: #ff9a2e; }
+
+/* yellow only for the action: the hero label/verb, the main button, targets on charts.
+   Section labels, bars, selections go neutral. */
+.verdict-card > .label, .fwhy > .label, .sub-label, .it-col > .label, .pm-still > .label, .the-plan > .label, .situation > .label, .longshot .label { color: var(--fg); }
+.pc-sec { color: var(--muted); }
+.bar .fill { background: var(--fg); }
+.objective .bar .fill { background: var(--fc, var(--fg)); }
+.pip.on { background: var(--fc, var(--fg)); border-color: var(--fc, var(--fg)); }
+.pip.need { border-color: var(--fg); }
+.globe.cnt .g-arc { stroke: var(--fc, var(--fg)); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--fc, #fff) 60%, transparent)); }
+.otab[aria-selected="true"] { background: linear-gradient(180deg, #2a2b2e, #1c1d20); border-color: var(--fg); color: var(--fg); box-shadow: none; }
+.otab[aria-selected="true"] .n { color: var(--fg); }
+.otab[aria-selected="true"]::after { background: repeating-linear-gradient(135deg, var(--fg) 0 2px, transparent 2px 5px); }
+.anyof { border-color: var(--line-2); background: rgba(255, 255, 255, .03); } .anyof .ico { color: var(--fg); }
+.it-now { color: var(--fg); } .it-now::after { background: var(--fg); } .it-track::after { border-right-color: var(--fg); }
+.ring-btn .prog { stroke: var(--fg); }
+.pc-list p.tip i { color: var(--fc); }
+.btn:hover, .ghost:hover { border-color: var(--fg); background: rgba(255, 255, 255, .04); }
+.btn.primary:hover { background: #fff36b; border-color: #fff36b; }
+.order-tabs[hidden] { display: none; }
+
+/* fewer capitals: running text, buttons and small notes in normal case */
+.xchip, .ghost, .btn.ghostly, .intel summary, .more-tips summary, .ch-tip b, .ch-h span, .ch-mark span, .ch-gap span, details.cmdintel li .when, .pc-list b, .pc-tabs button, .seg button, .linkbtn { text-transform: none; letter-spacing: .02em; }
+.pc-list b { font-size: 14px; }
+.ch-tip b, .ch-mark span { font-size: 12px; }
+
+/* status = icon + word, not just a colour */
+.stamp { display: inline-flex; align-items: center; gap: 10px; }
+.stamp .ico { width: 20px; height: 20px; flex: none; }
+.stamp .ico path { stroke-width: 2; }
+
+/* hero: the lead sentence that agrees with the forecast */
+.why .lead { display: block; font-weight: 700; margin-bottom: 4px; color: var(--fg); }
+.why .lead.v-nearly_impossible, .why .lead.v-impossible { color: var(--alert-fg); }
+.why .lead.v-hard, .why .lead.v-record { color: var(--warn); }
+.why { font-size: 16px; }
+
+/* the requirement under the headline */
+.req-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; padding: 7px 12px 7px 10px; border: 1px solid color-mix(in srgb, var(--yellow) 60%, transparent); background: rgba(255, 233, 0, .07); font-size: 15px; max-width: 100%; }
+.req-chip .ico { width: 15px; height: 15px; color: var(--yellow); flex: none; }
+.req-chip b { font: 700 12px var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--yellow); }
+.req-chip span { font-weight: 600; color: var(--fg); }
+
+/* players meter caption */
+.dir-meter .cap { font-size: 14px; }
+.dir-meter .q { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 4px; border: 1px solid var(--line-2); border-radius: 50%; font: 700 10px var(--ui); font-style: normal; color: var(--muted); vertical-align: 1px; cursor: help; }
+
+/* planet card trigger: always visible under the globe */
+.globe[data-globe]::after { display: none; }
+.g-cta { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); display: grid; justify-items: center; gap: 1px; white-space: nowrap; padding: 5px 10px; border: 1px solid var(--line-2); background: rgba(16, 17, 20, .85); transition: border-color .2s, color .2s; }
+.g-cta-n { font: 700 13px var(--ui); color: var(--fg); letter-spacing: .02em; }
+.g-cta-n small { color: var(--muted); font: 400 12px var(--mono); }
+.g-cta-t { font: 600 12px var(--ui); color: var(--fc, var(--fg)); }
+.globe[data-globe]:hover .g-cta, .globe[data-globe][aria-expanded="true"] .g-cta { border-color: var(--fc, var(--fg)); }
+.globe.g-new .g-cta { animation: ctaPulse 1.8s ease-in-out 4; }
+@keyframes ctaPulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--fc, #fff) 30%, transparent); } }
+.directive.has-globe { padding-bottom: 34px; }
+@container (max-width: 580px) {
+  .g-cta { top: calc(100% + 4px); padding: 3px 6px; }
+  .g-cta-n { display: none; }
+  .g-cta-t { font-size: 11px; }
+  .directive.has-globe { padding-bottom: 16px; }
+}
+
+/* the card sits beside the globe (placed by script), not over the headline */
+.pc-wrap { position: fixed; top: 90px; left: auto; right: auto; width: 400px; }
+.pc-wrap[data-side="left"].open .pcard { animation-name: pcInL; }
+@keyframes pcInL { from { opacity: 0; transform: translateX(-10px); } }
+@media (max-width: 760px) { .pc-wrap { position: fixed; left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto !important; } }
+
+/* header buttons say what they do */
+.hb, .ring-btn { width: auto; gap: 8px; }
+.hb { display: inline-flex; align-items: center; }
+.ring-btn { padding: 0 12px 0 38px; display: inline-flex; align-items: center; }
+.ring-btn svg { left: 4px; inset-inline-end: auto; }
+.ring-btn .ico { position: absolute; left: 11px; top: 11px; }
+.hb-l { font: 600 13px var(--ui); letter-spacing: .04em; text-transform: none; }
+.hb .q { font-weight: 700; }
+@media (max-width: 900px) {
+  .hb-l { display: none; }
+  .ring-btn { width: 36px; padding: 0; display: inline-grid; }
+  .ring-btn svg { left: 3px; }
+}
+
+/* phones: the headline gives room to verdict, time and the button */
+@media (max-width: 640px) {
+  .directive .target { font-size: clamp(30px, 10vw, 44px); }
+  .directive .kicker { font-size: 13px; }
+  .directive { gap: 10px 12px; }
+  .why { font-size: 15px; }
+  .req-chip { font-size: 14px; margin-top: 8px; }
+}
+
+.wm-x { font: 700 13px var(--ui); letter-spacing: .02em; }
+
+.g-cta-s { display: none; font: 600 11px var(--ui); color: var(--fc, var(--fg)); }
+@container (max-width: 580px) {
+  .g-cta { left: auto; right: 6px; transform: none; }
+  .g-cta-t { display: none; } .g-cta-s { display: block; }
+  .globe { margin-bottom: 24px; }
+}
+
+.dir-meter button.q { padding: 0; background: transparent; }
+.otab .idx { display: none; } .otab { padding-right: 14px; }
 </style>
 </head>
 <body>
@@ -1169,10 +1279,12 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
         <button type="button" class="icon-btn ring-btn" id="refresh">
           <svg viewBox="0 0 28 28" aria-hidden="true"><circle class="track" cx="14" cy="14" r="12"/><circle class="prog" id="ring" cx="14" cy="14" r="12"/></svg>
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.1 5.6A4.6 4.6 0 1 0 12.6 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12.6 2.9v2.9H9.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="hb-l" id="l-refresh"></span>
         </button>
-        <button type="button" class="icon-btn" id="open-info"><span aria-hidden="true">?</span></button>
-        <button type="button" class="icon-btn" id="open-settings">
+        <button type="button" class="icon-btn hb" id="open-info"><span class="q" aria-hidden="true">?</span><span class="hb-l" id="l-info"></span></button>
+        <button type="button" class="icon-btn hb" id="open-settings">
           <svg class="ico" style="width:16px;height:16px" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm6 3.5V7.3l-1.6-.4-.5-1.2.9-1.4-1-1-1.4.9-1.2-.5L8.7 2H7.3l-.4 1.6-1.2.5-1.4-.9-1 1 .9 1.4-.5 1.2L2 7.3v1.4l1.6.4.5 1.2-.9 1.4 1 1 1.4-.9 1.2.5.4 1.6h1.4l.4-1.6 1.2-.5 1.4.9 1-1-.9-1.4.5-1.2Z" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span class="hb-l" id="l-settings"></span>
         </button>
       </div>
     </div>
@@ -1191,7 +1303,6 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
         <div class="sk" style="height:120px"></div>
       </div>
     </main>
-    <div class="keyhints" id="keyhints"></div>
     <footer id="footer"></footer>
   </div>
 </div>
@@ -2278,10 +2389,12 @@ const TEXT = {
   xNoneU: 'The orders that can be measured don\'t look winnable with today\'s players: together they\'d need {total} of everyone online.',
   xUnknown: 'Orders marked ? are still having their pace measured.',
   inSector: 'in the {s} sector', inASector: 'in one sector',
-  newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'Order of the day updated: {x}',
+  newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'New advice: {x}',
   order: 'Order {n}', noOrders: 'No active Major Order right now. Check back later, Helldiver.',
   firstLoad: 'Reading the Helldivers 2 API…',
-  dirLabel: 'Order of the day',
+  dirLabel: 'What to do now',
+  lead: { hard: 'Tough but doable: it needs more of us. ', record: 'It needs record numbers. ', nearly_impossible: 'A long shot: only a big surge of players can still win this. If you play for it, play here. ' },
+  req: 'Required', reqItem: 'only kills with the {item} count',
   d: {
     liberate: { k: 'Everyone to', why: {
       win: 'If we stay focused there, it falls by {when}. Then we move to the next one.',
@@ -2294,7 +2407,7 @@ const TEXT = {
       partial: 'The Major Order can no longer be fully won, but {planet} can still fall. Let\'s focus there.' },
       region: ' Start with the {region} region: one region at a time.' },
     defend: { k: 'Defend', why: 'We have until {when} to win this defense. If the planet falls, the Major Order is lost.' },
-    front: { k: 'Move to the', target: '{f} front', why: '{f} {what} are behind: at this pace we\'ll only reach {proj} of the goal before time runs out.', whyItem: ' Only kills with the {item} count.', whyFrom: ' {from} {what} are already on track, so players there can switch.', whyIdle: ' Anyone on the {from} front isn\'t helping this order right now.', whyIdleN: ' Anyone on the {from} fronts isn\'t helping this order right now.' },
+    front: { k: 'Move to the', target: '{f} front', why: '{f} {what} are the furthest behind: at this pace we reach {proj} of the goal by the deadline.', whyItem: ' Only kills with the {item} count.', whyFrom: ' {from} {what} are already on track, so players there can switch.', whyIdle: ' Anyone on the {from} front isn\'t helping this order right now.', whyIdleN: ' Anyone on the {from} fronts isn\'t helping this order right now.' },
     weapon: { k: 'Use the', why: 'Only kills with this weapon count, and at this pace we\'ll only reach {proj} of the goal before time runs out.' },
     kill: { k: 'Kill', why: 'At this pace we\'ll only reach {proj} of the goal before time runs out: this front needs more players.' },
     extract: { k: 'Extract', why: 'At this pace we\'ll only reach {proj} of the goal before time runs out: we need more successful extractions.' },
@@ -2312,13 +2425,12 @@ const TEXT = {
     ended: { k: 'Major Order', target: 'Time\'s up', why: 'The deadline has passed. Waiting for new orders from Super Earth High Command.' },
     done: { k: 'Major Order', target: 'Complete', why: 'Objective reached. Great work, Helldivers.' },
   },
-  meterNow: '{n} Helldivers {where} now', meterNeed: 'about {n} needed', meterEnough: 'That\'s enough: hold there.',
-  meterAll: 'about {n} needed: {x} times everyone online', meterWeapon: ' at today\'s weapon use', onPlanet: 'on {p}', onFront: 'on the {f} front',
+  meterNow: '{n} Helldivers {where}', meterNeed: 'about {n} needed', meterFocus: 'goal: all {n} on this order here', meterEnough: 'That\'s enough: hold there.',
+  meterAll: 'about {n} needed: {x} times everyone online', meterWeapon: ' at today\'s weapon use', meterWeaponTip: 'Assuming players use the required weapon as much as they do today.', onPlanet: 'on {p}', onFront: 'on the {f} front',
   meterProj: 'At this pace: {p} by the deadline',
   crowd: ['roughly the players already there', 'about one and a half times the players there now', 'about twice the players there now', 'about three times the players there now', 'far more players than are online right now'],
   why: 'Why and how', seePlan: 'See the plan', seeWhy: 'See what happened', simulate: 'Simulate', close: 'Close',
-  hint: 'New here? The big box is the one thing everyone should do right now. Open the Plan for the reasons and the other moves.',
-  simBox: 'What if…? Try other player counts', bigPicture: 'The big picture', online: 'online', fineN: 'Already on track ({n})',
+    simBox: 'What if…? Try other player counts', bigPicture: 'The big picture', online: 'online', fineN: 'Already on track ({n})',
   pm: {
     title: 'Nothing left to win here', sub: 'No plan closes this gap with the players we have. Here is how it got here.',
     lostTitle: 'This order is lost', lostSub: 'Time ran out before the objectives were done. Here is how it went.',
@@ -2338,8 +2450,8 @@ const TEXT = {
     stillLost: 'The medals for this order are gone. The next Major Order usually arrives within hours.',
   },
   why: { title: 'Why', ok: 'on pace', done: '{k} of {n} objectives already done',
-    pace: '<b>{have}/h</b> {basis} · needs <b>{need}/h</b>', paceRec: '<b>{have}/h</b> {basis}, <b>{rec}/h</b> in the last hour · needs <b>{need}/h</b>',
-    basis: { start: 'on average', day: 'over the last 24 h', recent: 'in the last hour' },
+    pace: 'We make <b>{have}</b> an hour ({basis}). We need <b>{need}</b>.', paceRec: 'We make <b>{have}</b> an hour ({basis}), <b>{rec}</b> in the last hour. We need <b>{need}</b>.', slow: '{x}× too slow',
+    basis: { start: 'average', day: 'last 24 h', recent: 'last hour' },
     players: '<b>{have}</b> of all players are there now · it needs <b>{need}</b>', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on the planets' },
   pc: {
     open: 'Planet briefing: conditions, enemies and what to bring', close: 'Close', held: '{f} controlled', ours: 'Super Earth controlled',
@@ -2350,7 +2462,7 @@ const TEXT = {
     foot: 'Conditions and enemies as the game describes them. The advice is ours; numbers from the Helldivers Wiki. Click the planet to keep this open.',
   },
   it: {
-    title: 'Command intel', none: 'Nothing new in the last 48 hours.', n1: '1 event', n: '{n} events', nActive: '{n} effects active', nNews: '{n} news',
+    title: 'Command log · last 48 hours', none: 'Nothing new in the last 48 hours.', n1: '1 event', n: '{n} events', nActive: '{n} effects active', nNews: '{n} news',
     cmd: 'Command & battlefield', activeNow: 'Active right now', quiet: 'All quiet: no Command action on this order\'s planets in the last 48 hours.',
     noNews: 'No news from Super Earth in the last 48 hours.', read: 'Read all', why: 'Why we think so', details: 'Details',
     won: '{n} missions won', sinceLaunch: 'since launch', afterSo: 'right after: {title}', afterSo2: 'after: {title}', hold: 'hold until {when}', lineAria: 'Events of the last 48 hours',
@@ -2376,7 +2488,7 @@ const TEXT = {
     progAria: 'Progress of this objective over time', hourAria: 'Progress per hour', libAria: 'Liberation of each planet over time',
   },
   in: {
-    label: 'Intel',
+    label: 'Command log',
     jump: '<b>{planet}</b> jumped {pct} in {dur}, far more than its {players} Helldivers could do. Most likely Super Earth Command stepped in. Forecasts already start from the new figure.',
     jumpDef: 'The defense of <b>{planet}</b> jumped {pct} in {dur}, far more than its {players} Helldivers could do. Most likely Super Earth Command stepped in.',
     setback: '<b>{planet}</b> lost {pct} in {dur}, much more than enemy resistance explains. Most likely a scripted enemy push. Forecasts already start from the new figure.',
@@ -2404,8 +2516,8 @@ const TEXT = {
     recorded: 'The war is recorded every {n} minutes since {when}, even while nobody has this page open, and checked live while it is.',
     noRecord: 'The war record can\'t be reached right now: only what this page sees while it\'s open is checked.',
   },
-  xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy order', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
-  gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
+  xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy for Discord', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
+  gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gProgW: '{what} done', gCta: 'Conditions & loadout', gCtaS: 'Planet', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
   intel: 'Details', iHp: 'Enemy HP', iRegen: 'Regen', iNet: 'Net progress', iBe: 'Share needed to match regen', iRegions: 'Region HP', iQuickest: 'Quickest to take', iFront: 'Helldivers on that front', iAttacks: 'Attacks running',
   lv: { critical: 'Critical', high: 'High', helps: 'Helps', tip: 'Tip', long: 'Long shot' },
   moreTips: 'More tips ({n})', planBlock: 'The plan', planBlockPartial: 'The plan for the planets we can take', planBlockIf: 'The plan, if enough players join',
@@ -2447,9 +2559,9 @@ const TEXT = {
   m: { done: 'Objective reached.', ontrack: 'At the current pace we make it.', effort: 'Winnable, but it needs a push.', focus: 'Winnable if we focus.', hard: 'Very hard: it needs far more players.', record: 'It needs a record turnout.', nearly_impossible: 'It would take almost every player online.', impossible: 'Not winnable even with every player online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace.' },
   timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', medals: '{n} medals', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
-  prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
+  help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
-  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'History', tIntel: 'Intel',
+  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
     defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
     cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',
@@ -2530,18 +2642,18 @@ const TEXT = {
 const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>regen</b>. If the damage it takes is lower than its regen, progress is zero, even with thousands of players on it.</p>
 <p>How much each player is worth changes all the time: the game weighs every mission by the war's <b>impact multiplier</b>, which drops when more people are playing. The page reads it live from the API, so the numbers follow the current Major Order and the current playerbase, not a fixed reference. The damage constant that turns players into HP is measured by the page itself on the planets being fought over, and saved for your next visit.</p>
 <dl>
-<dt>Intel</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open, so this covers everything since the start of the running orders (from 28 October 2026 on).</dd>
-<dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
+<dt>Command log</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open, so this covers everything since the start of the running orders (from 28 October 2026 on).</dd>
+<dt>What to do now</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
 <dt>Forecast</dt><dd>The bars under the stamp show why: what we do against what each objective needs, and how many times faster it would have to go. How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
-<dt>History</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, and the pace hour by hour. Hover or tap a chart to read any moment, tap the legend to hide a line.</dd>
+<dt>Progress</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, and the pace hour by hour. Hover or tap a chart to read any moment, tap the legend to hide a line.</dd>
 <dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
 <dt>Kills, samples, operations</dt><dd>The page compares the pace needed with the pace of the last 24 hours (a full day and night, recorded by the site), or the average since the order started until a day has been recorded, and shows the last hour too.</dd>
 <dt>Option orders</dt><dd>Some orders say Option 1, Option 2: any one of them wins. The forecast and the plan then follow the most winnable option.</dd>
 <dt>All active orders</dt><dd>When more than one order is running, the bar above shows what share of everyone online each one needs, counting players who help two orders at once (killing bots on a bot planet counts for both), and which order is the best bet if there aren't enough players for all of them.</dd>
 <dt>Regions</dt><dd>Planets with regions are taken one region at a time, quickest first. While regions are being captured, the planet's own regen keeps eating into the damage already done, so splitting players across regions slows everything down.</dd>
 <dt>New orders</dt><dd>The page checks the API every minute. When Super Earth issues a new Major Order, or changes the current one, everything on the page is worked out again from the new objectives.</dd>
-<dt>Copy order</dt><dd>Copies the order of the day as text ready to paste on Discord, Reddit or in chat.</dd>
-<dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
+<dt>Copy for Discord</dt><dd>Copies the order of the day as text ready to paste on Discord, Reddit or in chat.</dd>
+<dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> to <kbd>4</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
 </dl>
 <p>Limits: the exact effect of the DSS and Heavy Ordnance isn't public, the region capture bonus and how planet regen works against it are estimated, weapon-only kill counts can't be turned into a number of players, and the Game Master can change regen at any time.</p>`;
 
@@ -3242,6 +3354,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   function renderOrderTabs() {
     const rs = last.results;
     if (!rs.length) { $('order-tabs').innerHTML = ''; return; }
+    $('order-tabs').hidden = rs.length < 2;
     if (!rs.some(x => String(x.a.id) === String(ui.order))) ui.order = String(rs[0].a.id);
     fresh.delete(String(ui.order));
     // forget the tabs of orders that are gone
@@ -3262,10 +3375,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   function directiveParts(res) {
     const d = res.directive || { kind: 'steady' };
     const D = t('d');
-    let kicker = '', target = '', why = '', fac = null, meter = '', ring = null, planet = null, cap = '';
+    let kicker = '', target = '', why = '', fac = null, meter = '', ring = null, planet = null, cap = '', req = '';
     const projTxt = d.proj != null ? pct(d.proj) : '—';
     // players there now vs players needed; `where` says where ("on Fury", "on the Terminid front")
-    const meterPips = (now, need, where, weaponUse = false) => {
+    const meterPips = (now, need, where, weaponUse = false, needKey = null) => {
       if (need == null || !isFinite(need)) return '';
       const N = res.model.N || 0;
       const ok = now >= need * 0.98, tooMany = N && need > N;
@@ -3276,8 +3389,9 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const right = (n) => ok ? t('meterEnough')
         : fill(t(tooMany ? 'meterAll' : 'meterNeed'), { n, x: times }) + (weaponUse ? t('meterWeapon') : '');
       cap = plainCap(`${left(people(now))} · ${right(people(need))}`);
-      return `<div class="dir-meter"><div class="pips" aria-hidden="true">${pips}</div>
-        <div class="cap"><span>${left(`<b>${people(now)}</b>`)}</span><span>${right(`<b>${people(need)}</b>`)}</span></div></div>`;
+      const rightNoW = (n) => ok ? t('meterEnough') : fill(t(needKey && !tooMany ? needKey : tooMany ? 'meterAll' : 'meterNeed'), { n, x: times });
+      return `<div class="dir-meter" ${weaponUse ? `title="${esc(t('meterWeaponTip'))}"` : ''}><div class="pips" aria-hidden="true">${pips}</div>
+        <div class="cap"><span>${left(`<b>${people(now)}</b>`)}</span><span>${rightNoW(`<b>${people(need)}</b>`)}${weaponUse && !ok ? ` <button type="button" class="q" data-tipq="${esc(t('meterWeaponTip'))}" aria-label="${esc(t('meterWeaponTip'))}">?</button>` : ''}</span></div></div>`;
     };
     const meterProj = (r) => {
       const tk = r.task, frac = tk.goal ? Math.min(1, tk.progress / tk.goal) : 0;
@@ -3288,7 +3402,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
           ${pf != null && pf > frac ? `<div class="proj" style="left:${frac * 100}%;width:${(pf - frac) * 100}%"></div>` : ''}${barFill(`dir:${res.id}`, frac)}<div class="goal"></div></div>
         <div class="cap"><span>${fill(t('s.progress'), { p: `<b>${pct(frac)}</b>` })}</span><span>${right}</span></div></div>`;
     };
-    const taskRing = (r) => r && r.task && r.task.goal ? { frac: Math.min(1, r.task.progress / r.task.goal), label: t('gProg'), tone: 'cnt' } : null;
+    const taskRing = (r) => r && r.task && r.task.goal ? { frac: Math.min(1, r.task.progress / r.task.goal), label: t('what')[r.task.type] ? fill(t('gProgW'), { what: t('what')[r.task.type] }) : t('gProg'), tone: 'cnt' } : null;
     const libRing = (p) => p && p.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - p.health / p.maxHealth)), label: t('gLib'), tone: 'lib' } : null;
     switch (d.kind) {
       case 'liberate': {
@@ -3300,7 +3414,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         if (v === 'n') v = d.verdict === 'impossible' ? 'nImp' : d.left === 1 ? 'n1' : 'n';
         why = fill(D.liberate.why[v] || D.liberate.why.more, { when: d.hours != null ? clock(d.hours) : '', crowd: crowdText(d.need, d.now), planet: planetName(d.planet), left: fmt(d.left) })
           + (d.region ? fill(D.liberate.region, { region: esc(d.region) }) : '');
-        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) })); ring = libRing(d.planet);
+        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : null); ring = libRing(d.planet);
         break;
       }
       case 'defend': {
@@ -3314,9 +3428,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         const ahead = d.aheadFrom || [], idle = d.idleFrom || [];
         const tt = d.task ? d.task.task.type : 3;
         why = fill(D.front.why, { f: facName(d.faction), what: t('what')[tt] || t('what')[0], proj: projTxt })
-          + (d.task && tt === 3 && d.task.task.itemId ? fill(D.front.whyItem, { item: esc(itemName(d.task.task.itemId)) }) : '')
-          + (ahead.length ? fill(D.front.whyFrom, { from: listJoin(ahead.map(facName)), what: counterNoun(res) }) : '')
-          + (idle.length ? fill(idle.length > 1 ? D.front.whyIdleN : D.front.whyIdle, { from: listJoin(idle.map(facName)) }) : '');
+          + (ahead.length ? fill(D.front.whyFrom, { from: listJoin(ahead.map(facName)), what: counterNoun(res) }) : '');
+        if (d.task && tt === 3 && d.task.task.itemId) req = itemName(d.task.task.itemId);
         meter = meterPips(d.now, d.need, fill(t('onFront'), { f: facName(d.faction) }), !!(d.task && tt === 3 && d.task.task.itemId));
         ring = taskRing(d.task); break;
       }
@@ -3338,6 +3451,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
           10: [D.donate, () => tk.itemId ? itemName(tk.itemId) : t('tgtResources')],
         }[tk.type] || [D.complete, () => t('tgtMissions')];
         kicker = C[0].k; target = C[1](); why = fill(C[0].why, { proj: projTxt });
+        if (tk.type === 3 && tk.itemId) req = itemName(tk.itemId);
         if (d.measuring) why = D.measuring;
         meter = meterProj(d.task); ring = taskRing(d.task); break;
       }
@@ -3359,7 +3473,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         kicker = D.steady.k; target = D.steady.target; why = D.steady.why;
     }
     const title = ['steady', 'lost'].includes(d.kind) ? target : d.kind === 'ended' ? `${kicker}: ${target}` : `${kicker} ${target}`;
-    return { d, kicker, target, why, fac, meter, ring, planet, cap, title };
+    // the hero must agree with the forecast: a hard or hopeless order says so before telling you where to go
+    const leadOk = !res.ended && !d.measuring && (['front', 'counter', 'weapon', 'defend'].includes(d.kind) || (d.kind === 'liberate' && !['nImp', 'partial'].includes(d.variant) && d.verdict !== 'impossible'));
+    const lead = leadOk ? (t('lead')[res.verdict] || '') : '';
+    return { d, kicker, target, why, fac, meter, ring, planet, cap, title, req, lead };
   }
 
   // a planet in the faction's colour, with the objective's progress as an orbit ring
@@ -3376,7 +3493,11 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const id = 'gl' + String(res.id).replace(/[^\w-]/g, '');
     const seed = p.planet ? Number(p.planet.index) * 37 + 11 : String(p.fac || 'x').length * 131;
     const dss = !!(p.planet && last && last.dssIdx === p.planet.index);
-    return `<div class="globe ${r.tone}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${esc(t('pc.open'))}" data-globe>
+    // the planet card has to announce itself: a visible label under the globe, pulsing until first opened
+    const cp = cardPlanets({ res });
+    const cta = cp ? `<span class="g-cta"><span class="g-cta-n">${planetName(cp.planet)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span><span class="g-cta-t">${esc(t('gCta'))} ›</span><span class="g-cta-s">${esc(t('gCtaS'))} ›</span></span>` : '';
+    const fresh = cp && !store.get('pcSeen', false);
+    return `<div class="globe ${r.tone} ${fresh ? 'g-new' : ''}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${esc(t('pc.open'))}" data-globe>
       <svg viewBox="0 0 240 240" focusable="false">
         <defs>
           <radialGradient id="${id}b" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient>
@@ -3394,6 +3515,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         ${dss ? `<g class="g-sat ${last.hod ? 'hod' : ''}"><path d="M120 6.5l6.5 6.5-6.5 6.5-6.5-6.5z"/></g>` : ''}
       </svg>
       <div class="g-val"><b>${pct(r.frac)}</b><span>${esc(r.label)}</span>${dss ? `<i>${esc(last.hod ? t('gDssHod') : t('gDss'))}</i>` : ''}</div>
+      ${cta}
     </div>`;
   }
 
@@ -3508,9 +3630,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       <div class="dir-title">
         <div class="kicker">${esc(p.kicker)}</div>
         <h2 class="target ${long ? 'long' : ''}" id="dir-${esc(res.id)}" data-decrypt="${esc(p.target)}">${esc(p.target)}</h2>
+        ${p.req ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
       </div>
       ${globe}${globe ? '<div class="pc-wrap" hidden></div>' : ''}
-      <p class="why">${p.why}</p>
+      <p class="why">${p.lead ? `<b class="lead v-${esc(res.verdict)}">${esc(p.lead)}</b>` : ''}${p.why}</p>
       ${p.meter}
       <div class="dir-actions">
         <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
@@ -3549,7 +3672,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const ok = ratio >= 1;
       const fillW = Math.max(2, Math.min(100, ratio * 100)), markW = mark != null && need > 0 ? Math.min(100, (mark / need) * 100) : null;
       meters.push({ sev: ratio, html: `<div class="why-m ${ok ? 'ok' : ratio < 0.5 ? 'bad' : 'warn'}">
-        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${ok ? esc(t('why.ok')) : '×' + fmt(1 / Math.max(ratio, 0.01), 1, 1)}</span></div>
+        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${ok ? esc(t('why.ok')) : esc(fill(t('why.slow'), { x: fmt(1 / Math.max(ratio, 0.01), 1, 1) }))}</span></div>
         <div class="wm-bar" role="img" aria-label="${esc(plain(sub))}"><div class="fill" data-key="why:${esc(key)}" data-w="${fillW}"></div>${markW != null ? `<i class="wm-mark" style="left:${markW}%"></i>` : ''}</div>
         <div class="wm-sub">${sub}</div></div>` });
     };
@@ -3586,7 +3709,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     return `<aside class="area-rail">
       <section class="panel br rail-card verdict-card ${alert ? 'alert' : ''}">
         <span class="label">${t('forecast')}</span>
-        <div class="stamp v-${v}" data-stamp="${esc(res.id)}:${v}">${esc(t('v.' + v))}</div>
+        <div class="stamp v-${v}" data-stamp="${esc(res.id)}:${v}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></div>
         <p class="meaning">${esc(t('m.' + v))}</p>
         ${whyHTML(res)}
         <div class="timer ${v === 'done' || res.ended ? 'finished' : ''}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">
@@ -4391,16 +4514,12 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : objectivesHTML(res);
     const ic = intelCount(entry);
     const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
-    const hint = store.get('hintSeen', false) ? '' : `<div class="hint" role="note">${ICON.target}<p>${t('hint')}</p><button type="button" class="icon-btn" data-hint-close aria-label="${esc(t('close'))}">✕</button></div>`;
-    return `<div class="order ${hint ? 'has-hint' : ''}" data-order="${esc(a.id)}">
-      ${hint}
+    return `<div class="order" data-order="${esc(a.id)}">
       ${directiveHTML(res)}
       ${railHTML(res, a)}
       <div class="area-tabs" id="tabs-${esc(a.id)}">
         <div class="tabbar">
-          <button type="button" class="keycap" data-cycle="-1" aria-label="${esc(t('prevTab'))}" tabindex="-1">Q</button>
-          <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}<span class="idx" aria-hidden="true">${i + 1}</span></button>`).join('')}</div>
-          <button type="button" class="keycap" data-cycle="1" aria-label="${esc(t('nextTab'))}" tabindex="-1">E</button>
+          <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div>
         </div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}">${panel}</div>
       </div>
@@ -4751,10 +4870,33 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const cp = cardPlanets(entry); if (!cp) return;
     wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list);
     wrap.hidden = false; wrap.classList.add('open');
+    if (!store.get('pcSeen', false)) { store.set('pcSeen', true); document.querySelector('[data-globe]')?.classList.remove('g-new'); }
+    placeCard();
     if (pin) ui.pcPinned = true;
     wrap.classList.toggle('pinned', !!ui.pcPinned);
     const g = document.querySelector('[data-globe]'); if (g) g.setAttribute('aria-expanded', 'true');
   }
+  // desktop: beside the globe, over the side column when it fits there, never over the headline;
+  // phones get a bottom sheet from the stylesheet
+  function placeCard() {
+    const wrap = document.querySelector('.directive .pc-wrap.open'), g = document.querySelector('[data-globe]');
+    if (!wrap || !g) return;
+    if (window.innerWidth <= 760) { wrap.style.left = wrap.style.top = ''; wrap.removeAttribute('data-side'); return; }
+    const r = g.getBoundingClientRect(), gap = 14, vw = window.innerWidth, vh = window.innerHeight;
+    const roomR = vw - r.right - gap - 16;
+    let W = Math.min(400, vw - 32), left, side;
+    if (roomR >= 320) { W = Math.min(400, roomR); left = r.right + gap; side = 'right'; }
+    else if (r.left - gap - 16 >= W) { left = r.left - gap - W; side = 'left'; }
+    else { left = Math.max(16, Math.min(vw - W - 16, r.left + r.width / 2 - W / 2)); side = 'below'; }
+    const h = wrap.offsetHeight || 420;
+    let top = side === 'below' ? r.bottom + gap : r.top - 10;
+    top = Math.max(76, Math.min(vh - h - 12, top));
+    wrap.style.width = W + 'px'; wrap.style.left = Math.round(left) + 'px'; wrap.style.top = Math.round(top) + 'px'; wrap.dataset.side = side;
+  }
+  let placeRaf = 0;
+  const placeSoon = () => { if (placeRaf) return; placeRaf = requestAnimationFrame(() => { placeRaf = 0; placeCard(); }); };
+  window.addEventListener('scroll', placeSoon, { passive: true });
+  window.addEventListener('resize', placeSoon);
   function closeCard(force) {
     if (ui.pcPinned && !force) return;
     ui.pcPinned = false;
@@ -4774,6 +4916,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const g = e.target.closest('[data-globe]');
     if (g) { if (ui.pcPinned) closeCard(true); else openCard(true); return; }
     if (e.target.closest('[data-pcclose]')) { closeCard(true); return; }
+    const tq = e.target.closest('[data-tipq]'); if (tq) { toast(tq.dataset.tipq); return; }
     const tab = e.target.closest('[data-pcplanet]');
     if (tab) { ui.pcPlanet = tab.dataset.pcplanet; openCard(ui.pcPinned); return; }
     if (ui.pcPinned && !e.target.closest('.pc-wrap')) closeCard(true);
@@ -4823,8 +4966,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     $('s-motion').options[1].textContent = t('mReduced');
     $('explain').innerHTML = EXPLAIN;
     $('footer').textContent = t('footer');
-    $('keyhints').innerHTML = [['Q', 'E', t('kh.tabs')], ['1', '4', t('kh.jump')], ['R', null, t('kh.refresh')], ['?', null, t('kh.guide')]]
-      .map(([a, b, l]) => `<span><kbd>${a}</kbd>${b ? `<kbd>${b}</kbd>` : ''}${esc(l)}</span>`).join('');
+    for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) el.textContent = t(k); }
     $('boot-skip').textContent = t('skip');
     const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
   }
