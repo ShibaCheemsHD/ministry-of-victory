@@ -773,7 +773,9 @@ const ENGINE = (() => {
 
   // Defaults measured on "Honour the Fallen" (Oct 2026): 100% of the playerbase
   // deals ~90k HP/h to one planet, DSS adds ~10%, HOD measured ~1.3x.
-  const DEFAULTS = { capacity: 90000, dssBonus: 0.10, hodMult: 1.3, recordShare: 0.77 };
+  // capacity: HP/h at a 50% share, 2026 median of the war archive. dssBonus: 0, the archive shows no
+  // extra damage on the DSS planet (0.98-0.99x per share in 2024, 2025 and 2026).
+  const DEFAULTS = { capacity: 100000, dssBonus: 0, hodMult: 1.3, recordShare: 0.77 };
 
   function parseTask(task, progress) {
     const v = {};
@@ -788,6 +790,14 @@ const ENGINE = (() => {
     else if (v[11] === 2) out.sectorIndex = v[12];
     return out;
   }
+
+  // Damage vs share of players on a planet. Hour-by-hour averages in the war archive (Sept 2025 -
+  // Oct 2026) hint at share^0.91, but replaying 51 real liberations predicted fall times better
+  // with a straight line (median miss 1.3h vs 1.7h on a 12h horizon), so the curve stays linear.
+  // C is the playerbase capacity measured at a 50% share (HP per hour), the typical MO focus.
+  const SHARE_EXP = 1.0, SHARE_REF = 0.5;
+  const dmg = (share, C) => share > 0 ? C * SHARE_REF * Math.pow(share / SHARE_REF, SHARE_EXP) : 0;
+  const shareFor = (gross, C) => gross > 0 ? SHARE_REF * Math.pow(gross / (C * SHARE_REF), 1 / SHARE_EXP) : 0;
 
   const isEnemy = (p) => p && p.currentOwner && p.currentOwner !== 'Humans';
 
@@ -837,7 +847,7 @@ const ENGINE = (() => {
   // on any progress already made. Returns {total, order, segs:[{i,start,end}]}.
   function sequentialPlan(works, share, C, dssBonus, hod) {
     let best = { total: Infinity, order: null, segs: [] };
-    const g = (m) => share * C * (1 + dssBonus) * m;
+    const g = (m) => dmg(share, C) * (1 + dssBonus) * m;
     for (const ord of permutations(works.map((_, i) => i))) {
       let t = 0, ok = true;
       const segs = [];
@@ -917,7 +927,7 @@ const ENGINE = (() => {
   }
 
   function parallelShare(works, H, C) {
-    return works.reduce((a, pw) => a + (pw.work / H + pw.regen) / C, 0);
+    return works.reduce((a, pw) => a + shareFor(pw.work / H + pw.regen, C), 0);
   }
 
   // Observed net HP/h on a planet from stored samples (last 90 min, >= 15 min span).
@@ -953,7 +963,8 @@ const ENGINE = (() => {
         if (Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
         const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1);
         g += (a.h - b.h) + (p.regenPerSecond || 0) * dt;
-        w += a.p * s0.imp * mult * dt;
+        const corr = s0.N ? Math.pow((a.p / s0.N) / SHARE_REF, SHARE_EXP - 1) : 1;
+        w += a.p * s0.imp * mult * corr * dt;
         sp += dt;
       }
       if (sp > 0 && w > 0) { G += g; W += w; span += sp; per.push({ idx: Number(idx), K: g / w, hours: sp / 3600 }); }
@@ -1025,13 +1036,13 @@ const ENGINE = (() => {
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
           const obs = observedNet(samples, p.index, now);
-          const modelNet = share * C * mult - pw.activeRegen;
+          const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
           const eta = net > 0 ? pw.work / net : Infinity;
           Object.assign(r, {
             pw, share, onDss, mult, observed: obs, modelNet, net, eta,
-            breakEven: pw.regen / (C * (1 + settings.dssBonus)),
-            aloneShare: (pw.work / Math.max(H, 0.01) + pw.regen) / (C * (1 + settings.dssBonus)),
+            breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C),
+            aloneShare: shareFor((pw.work / Math.max(H, 0.01) + pw.regen) / (1 + settings.dssBonus), C),
           });
           libTargets.push(r);
         }
@@ -1043,11 +1054,11 @@ const ENGINE = (() => {
           const obs = observedNet(samples, p.index, now);
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-          const modelNet = share * C * mult - pw.activeRegen;
+          const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
           Object.assign(r, { pw, share, onDss, mult, observed: obs, modelNet, net, eta: net > 0 ? pw.work / net : Infinity, holdLost: true,
-            breakEven: pw.regen / (C * (1 + settings.dssBonus)),
-            aloneShare: (pw.work / Math.max(H, 0.01) + pw.regen) / (C * (1 + settings.dssBonus)) });
+            breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C),
+            aloneShare: shareFor((pw.work / Math.max(H, 0.01) + pw.regen) / (1 + settings.dssBonus), C) });
           libTargets.push(r);
         } else if (p.event) {
           r.defense = defenseInfo(p, ctx, H);
@@ -1262,10 +1273,10 @@ const ENGINE = (() => {
         if (planSegs.length > 1) {
           recs.push({ kind: 'libOrder', prio: 3, partial: !fullPossible, segs: planSegs.map(s => ({ planet: s.target.planet, start: s.start, end: s.end })), H });
         }
-        if (dssIdx !== focus.planet.index) {
+        if (dssIdx !== focus.planet.index && settings.dssBonus > 0) {
           recs.push({ kind: 'libDss', prio: 4, planet: focus.planet, from: dssIdx != null ? planets[dssIdx] : null });
         }
-        const reg = regionAdvice(focus, focusShare * C * (1 + settings.dssBonus));
+        const reg = regionAdvice(focus, dmg(focusShare, C) * (1 + settings.dssBonus));
         if (reg) recs.push({ kind: 'libRegion', prio: 2.6, planet: focus.planet, ...reg });
         // Wasted effort: players on targets other than the focus that can't beat regen
         for (const r of lib.targets) {
@@ -1401,7 +1412,7 @@ const ENGINE = (() => {
     const focusT = focusRec ? targetOf(focusRec.planet) : null;
     const etaWith = (t, extraShare) => {
       if (!t) return null;
-      const net = t.net + extraShare * C * t.mult;
+      const net = t.net + (dmg(t.share + extraShare, C) - dmg(t.share, C)) * t.mult;
       return net > 0 ? t.pw.work / net : Infinity;
     };
     const out = [];
@@ -1425,7 +1436,7 @@ const ENGINE = (() => {
         case 'libDecay': m.level = 'high'; m.effect = { kind: 'decay', perHour: r.regen / (r.planet.maxHealth || 1) }; break;
         case 'libDss': {
           const t = focusT, share = focusRec ? focusRec.share : 0;
-          const a = t ? hoursFor(t.pw, share * C) : Infinity, b = t ? hoursFor(t.pw, share * C * (1 + settings.dssBonus)) : Infinity;
+          const a = t ? hoursFor(t.pw, dmg(share, C)) : Infinity, b = t ? hoursFor(t.pw, dmg(share, C) * (1 + settings.dssBonus)) : Infinity;
           m.level = 'helps'; m.effect = isFinite(a) && isFinite(b) && a - b > 0.25 ? { kind: 'saves', hours: a - b, planet: r.planet } : null;
           break;
         }
@@ -1496,8 +1507,8 @@ const ENGINE = (() => {
     const share = N ? (p.statistics?.playerCount || 0) / N : 0;
     const onDss = dssIdx === p.index;
     const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-    const rate = share * C * mult;
-    const need = e.health / hEvent / (C * (1 + settings.dssBonus));
+    const rate = dmg(share, C) * mult;
+    const need = shareFor(e.health / hEvent / (1 + settings.dssBonus), C);
     const eta = rate > 0 ? e.health / rate : Infinity;
     const outlastsMO = hEvent > H; // the attack ends after the MO: planet is still ours at MO end
     let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.5 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
@@ -1577,12 +1588,12 @@ const ENGINE = (() => {
       const share = N ? (p.statistics?.playerCount || 0) / N : 0;
       const onDss = dssIdx === p.index;
       const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-      const net = share * C * mult - pw.activeRegen;
+      const net = dmg(share, C) * mult - pw.activeRegen;
       return { planet: p, pw, share, onDss, net, observed: null, eta: net > 0 ? pw.work / net : Infinity,
-        breakEven: pw.regen / (C * (1 + settings.dssBonus)) };
+        breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C) };
     });
     if (!pool.length) return { left, pool, verdict: 'unknown' };
-    const ease = (x) => { const h = hoursFor(x.pw, 0.5 * C * (1 + settings.dssBonus)); return isFinite(h) ? h : 1e9; };
+    const ease = (x) => { const h = hoursFor(x.pw, dmg(0.5, C) * (1 + settings.dssBonus)); return isFinite(h) ? h : 1e9; };
     const rank = [...pool].sort((a, b) => ease(a) - ease(b));
     const pick = rank.slice(0, left);
     const natural = pool.filter(x => x.eta <= H).length;
@@ -1600,7 +1611,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { calibrateK, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { dmg, shareFor, calibrateK, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
@@ -1758,7 +1769,7 @@ const TEXT = {
   },
   deepBasis: 'Based on {c} HP per hour with every player on one planet ({src}).',
   capMeasured: 'measured now', capDefault: 'October 2026 reference', capManual: 'set manually',
-  deepBasisLive: 'Right now each Helldiver on a planet deals about {per} HP per hour, so everyone together on one planet would deal {c} HP per hour. Worked out from the live impact multiplier ({imp}) and a damage constant {src}.',
+  deepBasisLive: 'Right now each Helldiver on a planet deals about {per} HP per hour, so everyone together on one planet would deal {c} HP per hour. Worked out from the live impact multiplier ({imp}) and a damage constant {src}. Replayed on 51 real liberations from the past year, the forecast fall time was within 10% for half of them and within 25% for two thirds; the big misses were planets that fell sooner than forecast (events, Super Earth help).',
   kMeasured: 'measured on the planets being fought over right now', kRecent: 'measured on your last visit', kDefault: 'measured on 28 October 2026',
   gaugeTitle: 'Share of the playerbase', gNow: 'Now on MO planets', gNeed: 'Needed (one planet at a time)', gRecord: 'All-time record', gFull: '100% = everyone',
   fNow: 'Now on MO planets', fNeed: 'Needed, one planet at a time', fPar: 'Needed, all at once', fAtNow: 'Current share, well coordinated', of: 'of', never: 'never',
@@ -1812,7 +1823,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   const REFRESH_MS = 60000;
   // damage constant K (HP per second per player per unit of impact multiplier): reference value measured
   // live on 28 Oct 2026; plausible range used to reject bad measurements
-  const K_REF = 0.025, K_MIN = 0.005, K_MAX = 0.2;
+  const K_REF = 0.027, K_MIN = 0.005, K_MAX = 0.2;
   const KEEP_MS = 48 * 3600e3;
   const RING = 75.4;
 
