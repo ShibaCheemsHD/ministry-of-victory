@@ -2648,7 +2648,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const ticks = []; const d = new Date(from); d.setMinutes(0, 0, 0); d.setHours(Math.ceil(d.getHours() / 12) * 12);
     for (; d.getTime() < now; d.setHours(d.getHours() + 12)) ticks.push(d.getTime());
     const timeline = `<div class="it-line" role="img" aria-label="${esc(t('it.lineAria'))}">
-      <div class="it-track">${ticks.map(tt => `<span class="it-tick" style="left:${posX(tt)}%"><i></i>${esc(new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: 'numeric' }))}</span>`).join('')}
+      <div class="it-track">${ticks.map(tt => `<span class="it-tick" style="left:${posX(tt)}%"><i></i>${esc(new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', ''))}</span>`).join('')}
         ${events.map((x, i) => `<button type="button" class="it-dot lv-${levelOf(x)}" style="left:${posX(x.t)}%" data-ifocus="it-${i}" title="${esc(plain(x.kind === 'news' ? x.title : alertText(x, true, rel)))}">${ICON[KIND_ICON[x.kind]] || ''}</button>`).join('')}
         <span class="it-now" style="left:100%">${esc(t('h.now'))}</span></div></div>`;
     const card = (x, i) => {
