@@ -932,6 +932,36 @@ const ENGINE = (() => {
   }
 
   // Live calibration of capacity C from samples of planets under liberation.
+  // Damage constant K, measured live: the game weighs every player by the war's impact multiplier,
+  // so on a planet  gross HP/s = players x impactMultiplier x K  (x DSS / HOD boosts).
+  // K is fitted on planets being liberated (no regions, no defense event, not at full health):
+  // gross = HP actually lost + regen that had to be beaten.
+  function calibrateK(samples, planetsNow, now, dssBonus, hodMult) {
+    let G = 0, W = 0, span = 0;
+    const per = [];
+    for (const [idx, p] of Object.entries(planetsNow)) {
+      if (!isEnemy(p) || p.event) continue;
+      // planets with open regions are left out: part of the damage goes to the regions, not the planet
+      if ((p.regions || []).some(r => r && r.isAvailable && (r.health || 0) > 0)) continue;
+      const pts = samples.filter(s => s.imp && s.planets && s.planets[idx] && now - s.t <= 3 * 3600e3);
+      let g = 0, w = 0, sp = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const s0 = pts[i - 1], s1 = pts[i];
+        const a = s0.planets[idx], b = s1.planets[idx];
+        const dt = (s1.t - s0.t) / 1000;
+        if (dt <= 0 || dt > 1800) continue;
+        if (Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
+        const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1);
+        g += (a.h - b.h) + (p.regenPerSecond || 0) * dt;
+        w += a.p * s0.imp * mult * dt;
+        sp += dt;
+      }
+      if (sp > 0 && w > 0) { G += g; W += w; span += sp; per.push({ idx: Number(idx), K: g / w, hours: sp / 3600 }); }
+    }
+    if (span < 900 || W <= 0 || G <= 0) return null;
+    return { K: G / W, hours: span / 3600, per };
+  }
+
   function calibrate(samples, planetsNow, now, dssBonus, hodMult) {
     let G = 0, W = 0, span = 0;
     for (const [idx, p] of Object.entries(planetsNow)) {
@@ -1570,7 +1600,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { calibrateK, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
@@ -1728,6 +1758,8 @@ const TEXT = {
   },
   deepBasis: 'Based on {c} HP per hour with every player on one planet ({src}).',
   capMeasured: 'measured now', capDefault: 'October 2026 reference', capManual: 'set manually',
+  deepBasisLive: 'Right now each Helldiver on a planet deals about {per} HP per hour, so everyone together on one planet would deal {c} HP per hour. Worked out from the live impact multiplier ({imp}) and a damage constant {src}.',
+  kMeasured: 'measured on the planets being fought over right now', kRecent: 'measured on your last visit', kDefault: 'measured on 28 October 2026',
   gaugeTitle: 'Share of the playerbase', gNow: 'Now on MO planets', gNeed: 'Needed (one planet at a time)', gRecord: 'All-time record', gFull: '100% = everyone',
   fNow: 'Now on MO planets', fNeed: 'Needed, one planet at a time', fPar: 'Needed, all at once', fAtNow: 'Current share, well coordinated', of: 'of', never: 'never',
   th: { planet: 'Planet', hp: 'Enemy HP', regen: 'Regen/h', divers: 'Helldivers', be: 'Break-even', net: 'Net/h', eta: 'Est. finish' },
@@ -1752,7 +1784,7 @@ const TEXT = {
 };
 
 const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>regen</b>. If the damage it takes is lower than its regen, progress is zero, even with thousands of players on it.</p>
-<p>Damage doesn't depend on how many players there are in absolute terms, but on their <b>share</b> of the total: each mission is worth less when more is being played across the galaxy. With every player on one planet you deal about 90,000 HP per hour (measured on Honour the Fallen, October 2026). The page recalculates this from live data as soon as it has enough.</p>
+<p>How much each player is worth changes all the time: the game weighs every mission by the war's <b>impact multiplier</b>, which drops when more people are playing. The page reads it live from the API, so the numbers follow the current Major Order and the current playerbase, not a fixed reference. The damage constant that turns players into HP is measured by the page itself on the planets being fought over, and saved for your next visit.</p>
 <dl>
 <dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Strategy tab.</dd>
 <dt>Forecast</dt><dd>How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
@@ -1778,6 +1810,9 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     strats: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/lists.py',
   };
   const REFRESH_MS = 60000;
+  // damage constant K (HP per second per player per unit of impact multiplier): reference value measured
+  // live on 28 Oct 2026; plausible range used to reject bad measurements
+  const K_REF = 0.025, K_MIN = 0.005, K_MAX = 0.2;
   const KEEP_MS = 48 * 3600e3;
   const RING = 75.4;
 
@@ -1963,7 +1998,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         return warStart ? warStart + r.startTime * 1000 : null;
       };
 
-      const sample = { t: now, N, dss: dssIdx, hod: !!hod, planets: {}, prog: {} };
+      const imp = Number(war?.impactMultiplier) || null;
+      const sample = { t: now, N, imp, dss: dssIdx, hod: !!hod, planets: {}, prog: {} };
       for (const [i, p] of Object.entries(planets)) sample.planets[i] = { h: p.event ? p.event.health : p.health, p: p.statistics?.playerCount || 0 };
       for (const a of assignments || []) sample.prog[orderKey(a)] = a.progress;
       samples = samples.filter(s => now - s.t < KEEP_MS);
@@ -1971,10 +2007,19 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       if (samples.length > 3000) samples = samples.slice(-3000);
       store.set('samples', samples);
 
-      const calib = ENGINE.calibrate(samples, planets, now, settings.dssBonus, settings.hodMult);
-      let C, capSrc;
+      // Capacity = HP per hour that 100% of the players would deal on one planet, worked out live:
+      // C = K x impactMultiplier x players online x 3600. K is measured from this browser's own samples,
+      // else the last value it measured (up to a week old), else the reference.
+      const calib = ENGINE.calibrateK(samples, planets, now, settings.dssBonus, settings.hodMult);
+      let C, capSrc, K = null;
+      if (calib && calib.K > K_MIN && calib.K < K_MAX) { K = calib.K; capSrc = 'kMeasured'; store.set('kcal', { K, t: now, hours: calib.hours }); }
+      else {
+        const saved = store.get('kcal', null);
+        if (saved && now - saved.t < 7 * 24 * 3600e3 && saved.K > K_MIN && saved.K < K_MAX) { K = saved.K; capSrc = 'kRecent'; }
+        else { K = K_REF; capSrc = 'kDefault'; }
+      }
       if (settings.capMode === 'manual') { C = settings.capacity; capSrc = 'capManual'; }
-      else if (calib && calib.capacity > 30000 && calib.capacity < 250000) { C = calib.capacity; capSrc = 'capMeasured'; }
+      else if (imp && N) C = K * imp * N * 3600;
       else { C = ENGINE.DEFAULTS.capacity; capSrc = 'capDefault'; }
 
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };
@@ -1988,7 +2033,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       }
       newOnes.forEach(x => known.add(String(x.a.id)));
       store.set('known', [...known].slice(-50));
-      last = { N, planets, dssIdx, hod, C, capSrc, calib, results, now, sectorName };
+      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName };
       lastOk = now;
       if (dragging) pendingRender = true; else render();
       if (unknownNames(results)) loadNames(true).then(() => { if (last && !dragging) render(); });
@@ -2679,7 +2724,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const planetRows = res.tasks.filter(r => r.pw || ((r.task.type === 11 || r.task.type === 13) && !r.defense));
     const dssP = last.dssIdx != null ? last.planets[last.dssIdx] : null;
     const boosts = `<div class="kv boosts">${kv(t('dss'), dssP ? planetName(dssP) : t('none'))}${kv(t('hod'), last.hod ? `×${fmt(settings.hodMult, 2)} · ${t('active')} ${new Date(last.hod.expire).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })}` : t('inactive'))}</div>`;
-    return `${boosts}<p class="note">${fill(t('deepBasis'), { c: big(last.C), src: t(last.capSrc) })}</p>
+    const basis = last.imp && last.K && last.capSrc !== 'capManual' && last.capSrc !== 'capDefault'
+      ? fill(t('deepBasisLive'), { per: fmt(last.K * last.imp * 3600, 1), c: big(last.C), imp: fmt(last.imp, 4), src: t(last.capSrc) })
+      : fill(t('deepBasis'), { c: big(last.C), src: t(last.capSrc) });
+    return `${boosts}<p class="note">${basis}</p>
       ${lib ? `<div class="panel dblock">${gaugeHTML(lib, res.id)}<div class="facts" style="margin-top:8px">
           <div class="fact"><span class="label">${t('fNow')}</span><div class="big">${pct(lib.currentShare)}</div></div>
           <div class="fact key"><span class="label">${t('fNeed')}</span><div class="big">${isFinite(lib.seqNeed) ? pct(lib.seqNeed) : '>500%'}</div></div>
