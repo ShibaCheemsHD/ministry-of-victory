@@ -1031,39 +1031,77 @@ const ENGINE = (() => {
   }
   const regenAt = (rs, t) => { let v = rs[0][1]; for (const [ti, ri] of rs) if (ti <= t) v = ri; return v; };
 
-  // Compares what happened to each planet over the last 20-90 minutes with what its Helldivers could do.
-  // A gap larger than 8% of the planet's HP (never seen from players alone in hour-long stretches of the
-  // 2026 war archive: 13 of 17,000) is reported as a jump forward or a setback.
+  // Compares what happened to a planet over a stretch of 20-90 minutes with what its Helldivers could do.
+  // A gap larger than 8% of the planet's HP (13 of 17,000 hour-long stretches of the 2026 war archive)
+  // is reported as a jump forward or a setback. pts: [{t, h, p, r (HP/s), N, imp, dss, hod}], oldest first.
+  function judgeStretch(pts, idx, m, attack, { K = K_TYPICAL, hodMult = 1, C: Cfb, maxGap = 10 / 60 } = {}) {
+    if (pts.length < 2 || !m) return null;
+    const span = pts[pts.length - 1].t - pts[0].t;
+    if (span < 20 * 60e3) return null;
+    let exp = 0, bigStep = -1, at = pts[pts.length - 1].t;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const dt = (b.t - a.t) / 3.6e6;
+      if (dt > maxGap) return null;   // a hole in the record
+      const C = a.imp && a.N ? K * a.imp * a.N * 3600 : Cfb;
+      const mult = a.dss == idx && a.hod ? hodMult : 1;
+      const gross = a.N && C ? dmg(a.p / a.N, C) * mult : 0;
+      exp += (gross - (a.r || 0) * 3600) * dt;
+      const step = Math.abs(a.h - b.h);
+      if (step > bigStep) { bigStep = step; at = b.t; }
+    }
+    const obs = pts[0].h - pts[pts.length - 1].h, players = pts[pts.length - 1].p;
+    const base = { idx: Number(idx), t: at, mins: span / 60e3, pct: Math.abs(obs) / m, players, attack: !!attack };
+    if (obs - exp > 0.08 * m && obs > 3 * Math.max(exp, 0.01 * m)) return { kind: 'jump', ...base };
+    // from nearly taken to full health is a planet changing hands and starting over, not a setback
+    const reset = pts[0].h < 0.02 * m && pts[pts.length - 1].h > 0.98 * m;
+    if (!reset && exp - obs > 0.08 * m && obs < -0.03 * m) return { kind: 'setback', ...base };
+    return null;
+  }
+  // live check over this browser's own samples
   function detectJumps(samples, meta, ctx) {
-    const { now, K = K_TYPICAL, hodMult = 1, C: Cnow } = ctx;
+    const { now } = ctx;
     const found = [];
     for (const [idx, mt] of Object.entries(meta || {})) {
       if (!mt.m || now - mt.seen > 5 * 60e3) continue;
       const from = Math.max(mt.since, now - 90 * 60e3);
-      const pts = samples.filter(s => s.t >= from && s.planets && s.planets[idx]);
-      if (pts.length < 2) continue;
-      const span = pts[pts.length - 1].t - pts[0].t;
-      if (span < 20 * 60e3) continue;
-      let exp = 0, gap = 0, bigStep = 0, at = pts[pts.length - 1].t;
-      for (let i = 1; i < pts.length; i++) {
-        const s0 = pts[i - 1], s1 = pts[i], a = s0.planets[idx], b = s1.planets[idx];
-        const dt = (s1.t - s0.t) / 3.6e6;
-        gap = Math.max(gap, dt);
-        const C = s0.imp && s0.N ? K * s0.imp * s0.N * 3600 : Cnow;
-        const mult = s0.dss == idx && s0.hod ? hodMult : 1;
-        const gross = s0.N ? dmg(a.p / s0.N, C) * mult : 0;
-        exp += (gross - regenAt(mt.r, s0.t) * 3600) * dt;
-        const step = Math.abs(a.h - b.h);
-        if (step > bigStep) { bigStep = step; at = s1.t; }
-      }
-      if (gap > 10 / 60) continue;   // the page wasn't open the whole time
-      const h0 = pts[0].planets[idx].h, h1 = pts[pts.length - 1].planets[idx].h;
-      const obs = h0 - h1, players = pts[pts.length - 1].planets[idx].p;
-      const base = { idx: Number(idx), t: at, mins: span / 60e3, pct: Math.abs(obs) / mt.m, players, attack: !!mt.e };
-      if (obs - exp > 0.08 * mt.m && obs > 3 * Math.max(exp, 0.01 * mt.m)) found.push({ kind: 'jump', ...base });
-      else if (exp - obs > 0.08 * mt.m && obs < -0.03 * mt.m) found.push({ kind: 'setback', ...base });
+      const pts = samples.filter(s => s.t >= from && s.planets && s.planets[idx])
+        .map(s => ({ t: s.t, h: s.planets[idx].h, p: s.planets[idx].p, r: regenAt(mt.r, s.t), N: s.N, imp: s.imp, dss: s.dss, hod: s.hod }));
+      const hit = judgeStretch(pts, idx, mt.m, mt.e, ctx);
+      if (hit) found.push(hit);
     }
     return found;
+  }
+  // Whole recorded history (the site's recorder, every ~10 minutes): the same checks for every planet
+  // at every point in time. Record: [{t, N, imp, dss, hod, pl: {idx: [h, p, regen/s, maxHP, eventId, openRegions, owner, eventEnd]}}]
+  function scanHistory(record, ctx = {}) {
+    const out = [];
+    const add = (a) => {
+      const same = out.find(x => x.kind === a.kind && x.idx === a.idx && Math.abs(x.t - a.t) < 3 * 3.6e6);
+      if (!same) out.push(a); else if ((a.pct || 0) > (same.pct || 0)) Object.assign(same, a);
+    };
+    const opts = { maxGap: 35 / 60, ...ctx };
+    const idxs = new Set(); for (const s of record) for (const k of Object.keys(s.pl || {})) idxs.add(k);
+    for (const idx of idxs) {
+      let f = null, seg = [], lastT = 0;
+      for (const s of record) {
+        const v = s.pl && s.pl[idx];
+        if (!v) { f = null; seg = []; continue; }
+        const [h, p, r, m, e, g, o, end] = v;
+        if (f && s.t - lastT <= 3 * 3.6e6) {
+          if (e && f.e !== e && f.o === o) add({ kind: 'attack', idx: Number(idx), t: s.t, end: end || null, faction: ctx.factionOf ? ctx.factionOf(idx, s) : null });
+          if (f.e === e && f.o === o && f.g === g && m > 0 && Math.abs(r - f.r) > Math.max(0.2 * Math.abs(f.r), 0.2))
+            add({ kind: 'regen', idx: Number(idx), t: s.t, after: lastT, from: f.r * 3600 / m, to: r * 3600 / m });
+        }
+        if (!f || f.m !== m || f.e !== e || f.o !== o || f.g !== g || s.t - lastT > opts.maxGap * 3.6e6) seg = [];
+        f = { m, e, o, g, r }; lastT = s.t;
+        seg.push({ t: s.t, h, p, r: e ? 0 : r, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod });
+        while (seg.length && s.t - seg[0].t > 90 * 60e3) seg.shift();
+        const hit = judgeStretch(seg, idx, m, e, opts);
+        if (hit) add(hit);
+      }
+    }
+    return out.sort((a, b) => a.t - b.t);
   }
 
   function calibrate(samples, planetsNow, now, dssBonus, hodMult) {
@@ -1704,7 +1742,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
@@ -1780,7 +1818,9 @@ const TEXT = {
       regenUp: 'Stronger enemy resistance on {planet}', regenDown: 'Weaker enemy resistance on {planet}', attack: 'New {faction} attack on {planet}',
       edited: 'Objectives changed by Command', news: 'Super Earth news: {title}' },
     more: '+{n} more', ago: '{d} ago', news: 'Super Earth news',
-    note: 'Spotted by comparing what the Helldivers on each planet can do with what actually happened: a gap this big showed up in fewer than 1 in 1,000 hours of the 2026 war archive. It only works while this page is open, so a first visit shows just the news.',
+    note: 'Spotted by comparing what the Helldivers on each planet can do with what actually happened: a gap this big showed up in fewer than 1 in 1,000 hours of the 2026 war archive.',
+    recorded: 'The war is recorded every {n} minutes since {when}, even while nobody has this page open, and checked live while it is.',
+    noRecord: 'The war record can\'t be reached right now: only what this page sees while it\'s open is checked.',
   },
   xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy order', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
   gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
@@ -1905,7 +1945,7 @@ const TEXT = {
 const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>regen</b>. If the damage it takes is lower than its regen, progress is zero, even with thousands of players on it.</p>
 <p>How much each player is worth changes all the time: the game weighs every mission by the war's <b>impact multiplier</b>, which drops when more people are playing. The page reads it live from the API, so the numbers follow the current Major Order and the current playerbase, not a fixed reference. The damage constant that turns players into HP is measured by the page itself on the planets being fought over, and saved for your next visit.</p>
 <dl>
-<dt>Intel</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. Jumps are only spotted while the page is open.</dd>
+<dt>Intel</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open, so this covers everything since the start of the running orders (from 28 October 2026 on).</dd>
 <dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
 <dt>Forecast</dt><dd>How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
 <dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
@@ -2098,12 +2138,39 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       if (same) { if ((f.pct || 0) > (same.pct || 0)) Object.assign(same, f, { id: same.id }); continue; }
       const a = { ...f, id: `${f.kind}:${f.idx ?? f.order}:${f.t}`, fresh: live };
       alerts.push(a);
-      if (live && f.kind !== 'regen') pendingToast.push(a);
+      if (live && f.kind !== 'regen' && now - f.t < 20 * 60e3) pendingToast.push(a);
     }
     alerts = alerts.slice(-40);
     store.set('alerts', alerts.map(({ fresh: _f, ...x }) => x));
   }
   const pendingToast = [];
+  // the site's recorder (GitHub Actions, every ~10 minutes) keeps the war history since the start of
+  // the running orders and scans it, so even a first visit sees what happened while nobody was watching
+  const RECORD = 'https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/';
+  let record = store.get('record', null);   // { t, since, every, alerts }
+  let recordSamples = [], recordFetched = 0;
+  async function loadRecord(now) {
+    if (now - recordFetched < 5 * 60e3) return false;
+    recordFetched = now;
+    try {
+      const [intel, recent] = await Promise.all(['intel.json', 'recent.json'].map(f =>
+        fetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
+      if (intel && Array.isArray(intel.alerts)) {
+        record = { t: intel.updated, since: intel.since, every: intel.every || 10, alerts: intel.alerts };
+        store.set('record', record);
+      }
+      if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
+        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1] }])), prog: x.prog || {} }));
+      return true;
+    } catch { return false; }
+  }
+  // the recorder's snapshots fill the holes in this browser's own history
+  function mergeRecord(list) {
+    if (!recordSamples.length) return list;
+    const mine = list.filter(x => !x.rec);
+    const add = recordSamples.filter(r => !mine.some(x => Math.abs(x.t - r.t) < 90e3));
+    return [...mine, ...add].sort((a, b) => a.t - b.t);
+  }
   async function loadNews(now) {
     if (now - news.t < 15 * 60e3) return;
     try {
@@ -2151,7 +2218,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   const PRIO = { setback: 0, jump: 1, attack: 2, edited: 3, regen: 4 };
   function alertText(x, short) {
     const p = last.planets[x.idx];
-    const planet = p ? planetName(p) : esc('#' + x.idx);
+    const planet = p ? planetName(p) : esc(x.name || '#' + x.idx);
     const k = x.kind === 'regen' ? (x.to > x.from ? 'regenUp' : 'regenDown') : x.kind === 'jump' && x.attack ? 'jumpDef' : x.kind;
     const params = { planet, pct: pct(x.pct, 0), dur: dur((x.mins || 0) / 60), players: people(x.players || 0),
       from: pct(x.from, 1), to: pct(x.to, 1), faction: facName(x.faction), when: x.end ? clock((x.end - last.now) / 3.6e6) : '—' };
@@ -2172,7 +2239,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const nl = ns.map(d => `<li class="k-news ${d.hit ? 'hit' : ''}"><span class="when">${esc(t('in.news'))} · ${esc(ago(d.t))}</span><p><b>${esc(d.title)}</b> ${clean(d.body).slice(0, 320)}</p></li>`).join('');
     box.innerHTML = `<details class="cmdintel v-${level}" data-intelstrip ${ui.intelStripOpen ? 'open' : ''}>
       <summary><span class="label">${t('in.label')}</span><span class="xs">${short}</span>${more}${ICON.chev}</summary>
-      <ul>${li}${nl}</ul><p class="note">${esc(t('in.note'))}</p></details>`;
+      <ul>${li}${nl}</ul><p class="note">${esc(t('in.note'))} ${esc(record && record.since ? fill(t('in.recorded'), { n: record.every || 10, when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('in.noRecord'))}</p></details>`;
   }
 
   async function refresh() {
@@ -2181,6 +2248,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     $('refresh').classList.add('busy');
     const errors = [];
     try {
+      const recP = loadRecord(Date.now());
       const [war, assignments, campaigns, stations] = await Promise.all([
         getJSON('/api/v1/war'),
         getJSON('/api/v1/assignments'),
@@ -2257,7 +2325,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const sample = { t: now, N, imp, dss: dssIdx, hod: !!hod, planets: {}, prog: {} };
       for (const [i, p] of Object.entries(planets)) sample.planets[i] = { h: p.event ? p.event.health : p.health, p: p.statistics?.playerCount || 0 };
       for (const a of assignments || []) sample.prog[orderKey(a)] = a.progress;
-      samples = samples.filter(s => now - s.t < KEEP_MS);
+      await recP;
+      samples = mergeRecord(samples.filter(s => now - s.t < KEEP_MS));
       if (!samples.length || now - samples[samples.length - 1].t > 30e3) samples.push(sample);
       if (samples.length > 3000) samples = samples.slice(-3000);
       store.set('samples', samples);
@@ -2288,6 +2357,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         okeys[id] = key;
       }
       store.set('okeys', okeys);
+      if (record) found.push(...record.alerts.filter(a => a && a.kind && now - a.t < ALERT_KEEP));
       addAlerts(found, now, !!last);
 
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };
