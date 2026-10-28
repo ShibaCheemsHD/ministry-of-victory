@@ -21,6 +21,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // the API allows 5 requests per 10 s per address: one every 2.3 s, and wait out a refusal
 let lastReq = 0;
+const seen = [];
 async function get(p) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const wait = lastReq + 2300 - Date.now();
@@ -29,15 +30,16 @@ async function get(p) {
     const url = `${API}${p}${p.includes('?') ? '&' : '?'}culture=en-US`;
     try {
       const r = await fetch(url, { headers: { 'Accept-Language': 'en-US', 'X-Super-Client': CLIENT, 'X-Super-Contact': CONTACT } });
-      if (r.status === 429 || r.status >= 500) { await sleep(11000); continue; }
+      if (r.status === 429 || r.status >= 500) { seen.push(r.status + ' ' + (r.headers.get('server') || '') + ' ' + (await r.text()).slice(0, 120).replace(/\s+/g, ' ')); await sleep(11000); continue; }
       if (!r.ok) throw new Error(`HTTP ${r.status} ${p}`);
       return await r.json();
     } catch (e) {
-      if (attempt === 4) throw e;
+      seen.push(String(e && e.cause ? e.message + ' / ' + e.cause : e));
+      if (attempt === 4) throw new Error(p + ': ' + seen.join(' | '));
       await sleep(5000);
     }
   }
-  throw new Error('gave up on ' + p);
+  throw new Error('gave up on ' + p + ': ' + seen.join(' | '));
 }
 
 // same order key as the page: id + a hash of the task list, so an edited order starts a new history
