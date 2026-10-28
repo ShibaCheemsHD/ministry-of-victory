@@ -669,7 +669,28 @@ details.cross .xchips { padding: 0 14px 12px; }
   .hint p { font-size: 13px; }
 }
 
-#errors:empty, #cross:empty { display: none; }
+#errors:empty, #cross:empty, #intel:empty { display: none; }
+
+.shell > * { min-width: 0; }
+/* intel strip: interventions and Super Earth news, one line until opened */
+details.cmdintel { display: block; min-width: 0; border: 1px solid var(--line); border-left: 3px solid var(--info); background: var(--panel); }
+details.cmdintel.v-warn { border-left-color: var(--warn); }
+details.cmdintel.v-bad { border-left-color: var(--bad); }
+details.cmdintel summary { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; }
+details.cmdintel summary::-webkit-details-marker { display: none; }
+details.cmdintel summary .xs { flex: 1; min-width: 0; font-size: 14px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+details.cmdintel summary .more { font-size: 13px; color: var(--muted); white-space: nowrap; }
+details.cmdintel summary .ico { flex: none; transition: transform .2s var(--ease); color: var(--muted); }
+details.cmdintel[open] summary .ico { transform: rotate(180deg); }
+details.cmdintel ul { list-style: none; margin: 0; padding: 0 14px 4px; display: grid; gap: 10px; }
+details.cmdintel li { padding-left: 10px; border-left: 2px solid var(--line); }
+details.cmdintel li.k-jump, details.cmdintel li.k-regen, details.cmdintel li.k-edited { border-left-color: var(--warn); }
+details.cmdintel li.k-setback, details.cmdintel li.k-attack { border-left-color: var(--bad); }
+details.cmdintel li.k-news.hit { border-left-color: var(--info); }
+details.cmdintel li .when { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+details.cmdintel li p { font-size: 14px; margin: 0; }
+@media (max-width: 640px) { details.cmdintel summary { align-items: flex-start; } details.cmdintel summary .xs { white-space: normal; } }
+details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--muted); margin: 0; }
 .m-only { display: none; }
 @media (max-width: 640px) {
   .hud-in { flex-wrap: nowrap; gap: 10px; }
@@ -723,6 +744,7 @@ details.cross .xchips { padding: 0 14px 12px; }
   <div class="shell">
     <nav class="order-tabs" id="order-tabs" role="tablist"></nav>
     <div id="cross"></div>
+    <div id="intel"></div>
     <div id="errors"></div>
     <main id="view">
       <div class="skeleton" id="skeleton">
@@ -961,6 +983,8 @@ const ENGINE = (() => {
         const dt = (s1.t - s0.t) / 1000;
         if (dt <= 0 || dt > 1800) continue;
         if (Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
+        // a drop far beyond what the players there could deal is an intervention, not damage
+        if (a.h - b.h > 0.03 * p.maxHealth && a.h - b.h > 5 * a.p * s0.imp * K_TYPICAL * dt) continue;
         const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1);
         g += (a.h - b.h) + (p.regenPerSecond || 0) * dt;
         const corr = s0.N ? Math.pow((a.p / s0.N) / SHARE_REF, SHARE_EXP - 1) : 1;
@@ -971,6 +995,75 @@ const ENGINE = (() => {
     }
     if (span < 900 || W <= 0 || G <= 0) return null;
     return { K: G / W, hours: span / 3600, per };
+  }
+
+  /* ---------- interventions: things the players can't explain ---------- */
+  // Rarely-changing facts per planet, with the time they last changed. The fight on a planet is only
+  // compared over a stretch where its owner, defense event, max HP and open regions stayed the same.
+  const K_TYPICAL = 0.027;
+  const planetFacts = (p) => ({
+    m: p.event ? p.event.maxHealth : p.maxHealth, e: p.event ? (p.event.id ?? 1) : 0, o: p.currentOwner,
+    g: (p.regions || []).filter(r => r && r.isAvailable && (r.health || 0) > 0).length,
+    r: p.event ? 0 : (p.regenPerSecond || 0),
+  });
+  function trackPlanets(meta, planets, now) {
+    const out = { ...(meta || {}) }, changes = [];
+    for (const [idx, p] of Object.entries(planets || {})) {
+      if (!p) continue;
+      const f = planetFacts(p), was = out[idx];
+      if (!was) { out[idx] = { m: f.m, e: f.e, o: f.o, g: f.g, since: now, seen: now, r: [[now, f.r]] }; continue; }
+      const lastR = was.r[was.r.length - 1][1];
+      const same = was.e === f.e && was.o === f.o;
+      if (f.e && was.e !== f.e && was.o === f.o) {
+        const start = Date.parse(p.event.startTime);
+        changes.push({ kind: 'attack', idx: Number(idx), t: isFinite(start) ? start : now, end: Date.parse(p.event.endTime) || null, faction: p.event.faction || null });
+      }
+      // resistance (regen) is set by hand: a change of more than a fifth is worth telling
+      if (same && was.g === f.g && Math.abs(f.r - lastR) > Math.max(0.2 * Math.abs(lastR), 0.2) && f.m > 0) {
+        changes.push({ kind: 'regen', idx: Number(idx), t: now, after: was.seen, from: lastR * 3600 / f.m, to: f.r * 3600 / f.m });
+      }
+      const rs = f.r !== lastR ? [...was.r, [now, f.r]].slice(-6) : was.r;
+      const moved = was.m !== f.m || was.e !== f.e || was.o !== f.o || was.g !== f.g;
+      out[idx] = { m: f.m, e: f.e, o: f.o, g: f.g, since: moved ? now : was.since, seen: now, r: rs };
+    }
+    for (const [idx, v] of Object.entries(out)) if (now - v.seen > 7 * 24 * 3.6e6) delete out[idx];
+    return { meta: out, changes };
+  }
+  const regenAt = (rs, t) => { let v = rs[0][1]; for (const [ti, ri] of rs) if (ti <= t) v = ri; return v; };
+
+  // Compares what happened to each planet over the last 20-90 minutes with what its Helldivers could do.
+  // A gap larger than 8% of the planet's HP (never seen from players alone in hour-long stretches of the
+  // 2026 war archive: 13 of 17,000) is reported as a jump forward or a setback.
+  function detectJumps(samples, meta, ctx) {
+    const { now, K = K_TYPICAL, hodMult = 1, C: Cnow } = ctx;
+    const found = [];
+    for (const [idx, mt] of Object.entries(meta || {})) {
+      if (!mt.m || now - mt.seen > 5 * 60e3) continue;
+      const from = Math.max(mt.since, now - 90 * 60e3);
+      const pts = samples.filter(s => s.t >= from && s.planets && s.planets[idx]);
+      if (pts.length < 2) continue;
+      const span = pts[pts.length - 1].t - pts[0].t;
+      if (span < 20 * 60e3) continue;
+      let exp = 0, gap = 0, bigStep = 0, at = pts[pts.length - 1].t;
+      for (let i = 1; i < pts.length; i++) {
+        const s0 = pts[i - 1], s1 = pts[i], a = s0.planets[idx], b = s1.planets[idx];
+        const dt = (s1.t - s0.t) / 3.6e6;
+        gap = Math.max(gap, dt);
+        const C = s0.imp && s0.N ? K * s0.imp * s0.N * 3600 : Cnow;
+        const mult = s0.dss == idx && s0.hod ? hodMult : 1;
+        const gross = s0.N ? dmg(a.p / s0.N, C) * mult : 0;
+        exp += (gross - regenAt(mt.r, s0.t) * 3600) * dt;
+        const step = Math.abs(a.h - b.h);
+        if (step > bigStep) { bigStep = step; at = s1.t; }
+      }
+      if (gap > 10 / 60) continue;   // the page wasn't open the whole time
+      const h0 = pts[0].planets[idx].h, h1 = pts[pts.length - 1].planets[idx].h;
+      const obs = h0 - h1, players = pts[pts.length - 1].planets[idx].p;
+      const base = { idx: Number(idx), t: at, mins: span / 60e3, pct: Math.abs(obs) / mt.m, players, attack: !!mt.e };
+      if (obs - exp > 0.08 * mt.m && obs > 3 * Math.max(exp, 0.01 * mt.m)) found.push({ kind: 'jump', ...base });
+      else if (exp - obs > 0.08 * mt.m && obs < -0.03 * mt.m) found.push({ kind: 'setback', ...base });
+    }
+    return found;
   }
 
   function calibrate(samples, planetsNow, now, dssBonus, hodMult) {
@@ -1611,7 +1704,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { dmg, shareFor, calibrateK, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
@@ -1674,6 +1767,21 @@ const TEXT = {
   why: 'Why and how', seePlan: 'See the plan', simulate: 'Simulate', close: 'Close',
   hint: 'New here? The big box is the one thing everyone should do right now. Open the Plan for the reasons and the other moves.',
   simBox: 'What if…? Try other player counts', bigPicture: 'The big picture', online: 'online', fineN: 'Already on track ({n})',
+  in: {
+    label: 'Intel',
+    jump: '<b>{planet}</b> jumped {pct} in {dur}, far more than its {players} Helldivers could do. Most likely Super Earth Command stepped in. Forecasts already start from the new figure.',
+    jumpDef: 'The defense of <b>{planet}</b> jumped {pct} in {dur}, far more than its {players} Helldivers could do. Most likely Super Earth Command stepped in.',
+    setback: '<b>{planet}</b> lost {pct} in {dur}, much more than enemy resistance explains. Most likely a scripted enemy push. Forecasts already start from the new figure.',
+    regenUp: 'Enemy resistance on <b>{planet}</b> went up: the enemy now wins back {to} of the planet every hour (was {from}). Forecasts use the new value.',
+    regenDown: 'Enemy resistance on <b>{planet}</b> went down: the enemy now wins back {to} of the planet every hour (was {from}). Forecasts use the new value.',
+    attack: '{faction} attack launched on <b>{planet}</b>: it has to be held until {when}.',
+    edited: 'Super Earth Command changed this order\'s objectives. Its pace history starts over.',
+    s: { jump: '{planet} jumped {pct}: likely Command stepped in', jumpDef: '{planet} defense jumped {pct}: likely Command stepped in', setback: '{planet} suddenly lost {pct}',
+      regenUp: 'Stronger enemy resistance on {planet}', regenDown: 'Weaker enemy resistance on {planet}', attack: 'New {faction} attack on {planet}',
+      edited: 'Objectives changed by Command', news: 'Super Earth news: {title}' },
+    more: '+{n} more', ago: '{d} ago', news: 'Super Earth news',
+    note: 'Spotted by comparing what the Helldivers on each planet can do with what actually happened: a gap this big showed up in fewer than 1 in 1,000 hours of the 2026 war archive. It only works while this page is open, so a first visit shows just the news.',
+  },
   xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy order', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
   gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
   intel: 'Details', iHp: 'Enemy HP', iRegen: 'Regen', iNet: 'Net progress', iBe: 'Share needed to match regen', iRegions: 'Region HP', iQuickest: 'Quickest to take', iFront: 'Helldivers on that front', iAttacks: 'Attacks running',
@@ -1797,7 +1905,8 @@ const TEXT = {
 const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>regen</b>. If the damage it takes is lower than its regen, progress is zero, even with thousands of players on it.</p>
 <p>How much each player is worth changes all the time: the game weighs every mission by the war's <b>impact multiplier</b>, which drops when more people are playing. The page reads it live from the API, so the numbers follow the current Major Order and the current playerbase, not a fixed reference. The damage constant that turns players into HP is measured by the page itself on the planets being fought over, and saved for your next visit.</p>
 <dl>
-<dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Strategy tab.</dd>
+<dt>Intel</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. Jumps are only spotted while the page is open.</dd>
+<dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
 <dt>Forecast</dt><dd>How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
 <dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
 <dt>Kills, samples, operations</dt><dd>The page compares the needed pace with the average pace since the order started, which covers day and night, and with the last hour.</dd>
@@ -1947,6 +2056,95 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   const fresh = new Set();                       // orders that arrived while the page was open
   let dragging = false, pendingRender = false;
 
+  /* ---------- intel: interventions and Super Earth news ---------- */
+  let alerts = store.get('alerts', []);
+  let news = store.get('news', { t: 0, items: [] });
+  const ALERT_KEEP = 3 * 24 * 3.6e6;
+  function addAlerts(found, now, live) {
+    alerts = alerts.filter(x => now - x.t < ALERT_KEEP);
+    for (const f of found) {
+      // one alert per planet and kind every 3 hours; a bigger jump replaces a smaller one
+      const same = alerts.find(x => x.kind === f.kind && x.idx === f.idx && x.order === f.order && Math.abs(x.t - f.t) < 3 * 3.6e6);
+      if (same) { if ((f.pct || 0) > (same.pct || 0)) Object.assign(same, f, { id: same.id }); continue; }
+      const a = { ...f, id: `${f.kind}:${f.idx ?? f.order}:${f.t}`, fresh: live };
+      alerts.push(a);
+      if (live && f.kind !== 'regen') pendingToast.push(a);
+    }
+    alerts = alerts.slice(-40);
+    store.set('alerts', alerts.map(({ fresh: _f, ...x }) => x));
+  }
+  const pendingToast = [];
+  async function loadNews(now) {
+    if (now - news.t < 15 * 60e3) return;
+    try {
+      const list = await getJSON('/api/v1/dispatches', 15000);
+      if (Array.isArray(list)) {
+        const items = list.filter(d => d && d.message).sort((a, b) => Date.parse(b.published) - Date.parse(a.published)).slice(0, 8)
+          .map(d => ({ id: d.id, t: Date.parse(d.published), msg: String(txt(d.message)).slice(0, 1200) }));
+        news = { t: now, items };
+        store.set('news', news);
+      }
+    } catch { news = { ...news, t: now - 10 * 60e3 }; }   // try again in 5 minutes
+  }
+  // planets an order depends on: the ones it names, or every planet that counts for "liberate / defend N"
+  function orderPlanets(res) {
+    const set = new Set();
+    for (const r of res.tasks || []) {
+      const tk = r.task || {};
+      if (tk.planetIndex != null) set.add(Number(tk.planetIndex));
+      if (r.planet) set.add(Number(r.planet.index));
+      if ([ENGINE.TASK.LIBERATE_COUNT, ENGINE.TASK.DEFEND_COUNT, ENGINE.TASK.NET_LIBERATION].includes(tk.type)) {
+        for (const p of Object.values(last.planets)) {
+          if (tk.faction && factionOfPlanet(p) !== tk.faction) continue;
+          if (tk.sectorIndex != null && last.sectorOf && last.sectorOf[p.index] !== tk.sectorIndex) continue;
+          set.add(Number(p.index));
+        }
+      }
+    }
+    return set;
+  }
+  const newsParts = (msg) => {
+    const m = String(msg).match(/^\s*<i=\d>([^<]+)<\/i>\s*/);
+    const title = m ? m[1].trim() : String(msg).split('\n')[0].replace(/<[^>]+>/g, '').slice(0, 80);
+    const body = (m ? String(msg).slice(m[0].length) : String(msg).split('\n').slice(1).join(' ')).trim();
+    return { title, body };
+  };
+  function intelFor(entry) {
+    const now = last.now, rel = orderPlanets(entry.res);
+    const names = [...rel].map(i => txt(last.planets[i]?.name)).filter(Boolean).map(n => n.toLowerCase());
+    const items = alerts.filter(x => x.kind === 'edited' ? x.order === String(entry.a.id) : rel.has(x.idx))
+      .filter(x => now - x.t < 24 * 3.6e6).sort((a, b) => b.t - a.t);
+    const ns = news.items.filter(d => now - d.t < 48 * 3.6e6).slice(0, 3)
+      .map(d => ({ kind: 'news', t: d.t, id: 'news:' + d.id, ...newsParts(d.msg), hit: names.some(n => n && d.msg.toLowerCase().includes(n)) }));
+    return { items, news: ns };
+  }
+  const PRIO = { setback: 0, jump: 1, attack: 2, edited: 3, regen: 4 };
+  function alertText(x, short) {
+    const p = last.planets[x.idx];
+    const planet = p ? planetName(p) : esc('#' + x.idx);
+    const k = x.kind === 'regen' ? (x.to > x.from ? 'regenUp' : 'regenDown') : x.kind === 'jump' && x.attack ? 'jumpDef' : x.kind;
+    const params = { planet, pct: pct(x.pct, 0), dur: dur((x.mins || 0) / 60), players: people(x.players || 0),
+      from: pct(x.from, 1), to: pct(x.to, 1), faction: facName(x.faction), when: x.end ? clock((x.end - last.now) / 3.6e6) : '—' };
+    return fill(t((short ? 'in.s.' : 'in.') + k), params);
+  }
+  const ago = (tm) => fill(t('in.ago'), { d: dur(Math.max(0, last.now - tm) / 3.6e6) });
+  function renderIntel(entry) {
+    const box = $('intel');
+    if (!entry) { box.innerHTML = ''; return; }
+    const { items, news: ns } = intelFor(entry);
+    if (!items.length && !ns.length) { box.innerHTML = ''; return; }
+    const top = [...items].sort((a, b) => PRIO[a.kind] - PRIO[b.kind] || b.t - a.t)[0];
+    const n = items.length + ns.length;
+    const short = top ? alertText(top, true) : fill(t('in.s.news'), { title: esc(ns[0].title) });
+    const more = n > 1 ? `<span class="more">${fill(t('in.more'), { n: n - 1 })}</span>` : '';
+    const level = top && (top.kind === 'setback' || top.kind === 'attack') ? 'bad' : top ? 'warn' : 'info';
+    const li = [...items].sort((a, b) => PRIO[a.kind] - PRIO[b.kind] || b.t - a.t).map(x => `<li class="k-${x.kind}"><span class="when">${esc(ago(x.t))}</span><p>${alertText(x, false)}</p></li>`).join('');
+    const nl = ns.map(d => `<li class="k-news ${d.hit ? 'hit' : ''}"><span class="when">${esc(t('in.news'))} · ${esc(ago(d.t))}</span><p><b>${esc(d.title)}</b> ${clean(d.body).slice(0, 320)}</p></li>`).join('');
+    box.innerHTML = `<details class="cmdintel v-${level}" data-intelstrip ${ui.intelStripOpen ? 'open' : ''}>
+      <summary><span class="label">${t('in.label')}</span><span class="xs">${short}</span>${more}${ICON.chev}</summary>
+      <ul>${li}${nl}</ul><p class="note">${esc(t('in.note'))}</p></details>`;
+  }
+
   async function refresh() {
     if (busy) return;
     busy = true;
@@ -2033,6 +2231,20 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       else if (imp && N) C = K * imp * N * 3600;
       else { C = ENGINE.DEFAULTS.capacity; capSrc = 'capDefault'; }
 
+      // interventions: hand-made changes the players can't explain, plus Super Earth's own news
+      const tracked = ENGINE.trackPlanets(store.get('pmeta', {}), planets, now);
+      store.set('pmeta', tracked.meta);
+      const found = [...tracked.changes, ...ENGINE.detectJumps(samples, tracked.meta, { now, K, hodMult: settings.hodMult, C })];
+      const okeys = store.get('okeys', {});
+      for (const a of assignments || []) {
+        const id = String(a.id), key = orderKey(a);
+        if (okeys[id] && okeys[id] !== key) found.push({ kind: 'edited', order: id, t: now });
+        okeys[id] = key;
+      }
+      store.set('okeys', okeys);
+      addAlerts(found, now, !!last);
+      await loadNews(now);
+
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };
       const results = (assignments || []).map(a => ({ a, res: ENGINE.analyzeAssignment(a, { ...base, startMs: startOf(a.id), progKey: orderKey(a) }), start: startOf(a.id) }));
       // a Major Order that wasn't there before: say so, and highlight its tab until it's opened
@@ -2044,9 +2256,11 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       }
       newOnes.forEach(x => known.add(String(x.a.id)));
       store.set('known', [...known].slice(-50));
-      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName };
+      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName, sectorOf };
       lastOk = now;
       if (dragging) pendingRender = true; else render();
+      const hit = pendingToast.splice(0).find(x => results.some(({ a, res }) => x.kind === 'edited' ? x.order === String(a.id) : orderPlanets(res).has(x.idx)));
+      if (hit && !newOnes.length) toast(plain(alertText(hit, true)));
       if (unknownNames(results)) loadNames(true).then(() => { if (last && !dragging) render(); });
     } catch (e) {
       errors.push(e && e.message ? e.message : String(e));
@@ -2793,6 +3007,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     renderOrderTabs();
     renderCross();
     const entry = last.results.find(x => String(x.a.id) === String(ui.order));
+    renderIntel(entry);
     const view = $('view');
     if (!entry) {
       view.innerHTML = `<div class="empty panel br"><div class="empty-ico">${ICON.dots.replace('class="ico"', 'style="width:40px;height:40px"')}</div><p>${esc(t('noOrders'))}</p></div>`;
@@ -3070,6 +3285,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     if (el && el.dataset && el.dataset.intel) ui.intelOpen[el.dataset.intel] = el.open;
     if (el && el.dataset && el.dataset.simbox) ui.simOpen[el.dataset.simbox] = el.open;
     if (el && el.dataset && 'cross' in el.dataset) ui.crossOpen = el.open;
+    if (el && el.dataset && 'intelstrip' in el.dataset) ui.intelStripOpen = el.open;
   }, true);
   // game-style shortcuts: Q / E switch tab, 1-3 jump to a tab, R refreshes, ? opens the guide
   document.addEventListener('keydown', (e) => {
