@@ -710,6 +710,131 @@ details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--m
 .boot .logo .l1 { font-size: 14px; margin-bottom: 8px; }
 @media (max-width: 640px) { .logo .l1 { font-size: 8px; letter-spacing: .26em; } }
 .brand { align-items: flex-end; } .brand .sub { padding-bottom: 2px; }
+
+/* ---------- history charts ---------- */
+.history { display: grid; gap: 16px; }
+.history .foot { font-size: 12px; color: var(--dim); }
+.hist-card { padding: 16px 18px 14px; display: grid; gap: 10px; }
+.hc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.hc-head h4 { font: 700 16px/1.25 var(--display); font-stretch: 108%; margin-right: auto; }
+.hc-stat { font-size: 14px; color: var(--muted); }
+.hc-stat b { color: var(--fg); font-family: var(--mono); font-weight: 400; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); }
+.seg button { padding: 5px 12px; background: transparent; border: 0; color: var(--muted); font: 600 12px var(--ui); letter-spacing: .1em; text-transform: uppercase; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg0); }
+.seg button:not([aria-pressed="true"]):hover { color: var(--fg); }
+.chart { position: relative; padding-left: 52px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.chart .plot { position: relative; height: 220px; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line-2); cursor: crosshair; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.chart .grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(90, 97, 120, .28); pointer-events: none; }
+.chart .yt { position: absolute; left: -52px; width: 46px; text-align: right; transform: translateY(50%); font: 11px var(--mono); color: var(--dim); }
+.chart .xaxis { position: relative; height: 20px; }
+.chart .xt { position: absolute; top: 4px; transform: translateX(-50%); font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
+.ln { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; transition: opacity .2s; }
+.ln.off, .area.off, .ch-tag.off { opacity: 0; }
+.ln.act { stroke: var(--fc, var(--fg)); stroke-width: 2.6; }
+.area { fill: var(--fc, var(--fg)); opacity: .12; stroke: none; transition: opacity .2s; }
+.ln.gapline { stroke-dasharray: 2 6; opacity: .7; }
+.ln.need { stroke: var(--yellow); stroke-dasharray: 8 6; }
+.ln.proj { stroke: var(--muted); stroke-dasharray: 3 5; }
+.ln.proj2 { stroke: var(--info); stroke-dasharray: 3 5; }
+.ln.pl { stroke: var(--sc); }
+.ln.pl.proj { stroke-dasharray: 3 5; opacity: .8; }
+.s1 { --sc: var(--s1); } .s2 { --sc: var(--s2); } .s3 { --sc: var(--s3); } .s4 { --sc: var(--s4); }
+.f-Terminids { --fc: var(--f-terminid); } .f-Automaton { --fc: var(--f-automaton); } .f-Illuminate { --fc: var(--f-illuminate); } .f-Humans, .f-none { --fc: var(--fg); }
+.bar-r { fill: var(--fc, var(--info)); opacity: .55; }
+.bar-r.ok { opacity: .9; }
+.ch-h { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line-2); pointer-events: none; }
+.ch-h span { position: absolute; right: 4px; bottom: 2px; font: 600 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--panel-solid); padding: 0 4px; }
+.ch-h.goal { border-top: 1px solid var(--fg); opacity: .8; }
+.ch-h.need { border-top: 1px dashed var(--yellow); } .ch-h.need span { color: var(--yellow); }
+.ch-h.avg { border-top: 1px dashed var(--muted); } .ch-h.avg span { bottom: auto; top: 2px; }
+.ch-mark { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line-2); pointer-events: none; }
+.ch-mark span { position: absolute; top: -18px; left: 0; transform: translateX(-50%); font: 600 10px var(--ui); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.ch-mark.now { border-left: 1px solid var(--fg); } .ch-mark.now span { color: var(--fg); }
+.ch-mark.ponr { border-left: 2px dashed var(--bad); } .ch-mark.ponr span { color: var(--bad); }
+.ch-mark.end { border-left: 1px solid var(--yellow); } .ch-mark.end span { color: var(--yellow); transform: translateX(-100%); }
+.ch-gap { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(90, 97, 120, .07) 0 6px, transparent 6px 12px); pointer-events: none; }
+.ch-gap span { position: absolute; bottom: 6px; left: 8px; font: 600 10px var(--ui); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.ch-tag { position: absolute; transform: translate(-100%, 50%); margin-left: -6px; font: 12px var(--mono); padding: 1px 6px; background: var(--panel-solid); border: 1px solid currentColor; pointer-events: none; transition: opacity .2s; white-space: nowrap; }
+.ch-tag.proj { color: var(--muted); } .ch-tag.proj2 { color: var(--info); } .ch-tag.pl { color: var(--sc); }
+.ch-cross, .ch-dot, .ch-tip { position: absolute; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.chart.hover .ch-cross, .chart.hover .ch-dot, .chart.hover .ch-tip { opacity: 1; }
+.ch-cross { top: 0; bottom: 0; border-left: 1px solid rgba(255, 233, 0, .6); }
+.ch-dot { width: 10px; height: 10px; margin: 0 0 -5px -5px; border-radius: 50%; background: var(--yellow); box-shadow: 0 0 0 4px rgba(255, 233, 0, .2); }
+.ch-tip { top: 8px; margin-left: 12px; min-width: 170px; max-width: 260px; padding: 8px 10px; background: rgba(2, 8, 26, .96); border: 1px solid var(--line-2); display: grid; gap: 2px; font-size: 12px; color: var(--muted); z-index: 3; }
+.ch-tip.left { transform: translateX(-100%); margin-left: -12px; }
+.ch-tip b { color: var(--fg); font: 600 12px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.ch-tip .need { color: var(--yellow); } .ch-tip .proj { color: var(--fg); } .ch-tip .proj2 { color: var(--info); }
+.ch-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.lg { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; background: transparent; border: 1px solid var(--line); color: var(--fg); font-size: 12px; transition: opacity .2s, border-color .2s; }
+.lg:hover { border-color: var(--line-2); }
+.lg[aria-pressed="false"] { opacity: .4; }
+.lg i { width: 18px; height: 0; border-top: 2px solid var(--fg); }
+.lg.need i { border-top: 2px dashed var(--yellow); } .lg.proj i { border-top: 2px dotted var(--muted); } .lg.proj2 i { border-top: 2px dotted var(--info); } .lg.pl i { border-top-color: var(--sc); }
+.done-card { gap: 8px; } .done-card h4 { font-size: 14px; color: var(--muted); }
+.ch-empty { font-size: 14px; color: var(--muted); padding: 30px 0; text-align: center; border: 1px dashed var(--line); }
+@media (max-width: 640px) {
+  .hist-card { padding: 14px 12px 12px; }
+  .chart { padding-left: 40px; }
+  .chart .yt { left: -40px; width: 36px; font-size: 10px; }
+  .chart .plot { height: 190px; }
+  .ch-tip { min-width: 140px; }
+}
+
+/* forecast: why */
+.fwhy { display: grid; gap: 12px; padding-top: 12px; margin-top: 2px; border-top: 1px solid var(--line); }
+.verdict-card.alert .fwhy { border-top-color: var(--alert-line); }
+.why-m { display: grid; gap: 5px; }
+.wm-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.wm-l { font: 600 13px var(--ui); color: var(--fg); }
+.wm-x { font: 400 18px/1 var(--mono); color: var(--warn); }
+.why-m.bad .wm-x { color: var(--bad); } .why-m.ok .wm-x { color: var(--ok); font: 600 11px var(--ui); letter-spacing: .12em; text-transform: uppercase; }
+.wm-bar { position: relative; height: 8px; background: rgba(255, 255, 255, .07); border: 1px solid var(--line); }
+.wm-bar::after { content: ""; position: absolute; right: -1px; top: -4px; bottom: -4px; border-right: 2px solid var(--fg); }
+.wm-bar .fill { height: 100%; width: 0; background: var(--warn); transition: width 1s var(--ease); }
+.why-m.bad .wm-bar .fill { background: var(--bad); } .why-m.ok .wm-bar .fill { background: var(--ok); }
+.wm-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--info); box-shadow: 0 0 0 2px rgba(107, 183, 234, .25); }
+.wm-sub { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.wm-sub b { color: var(--fg); font-family: var(--mono); font-weight: 400; }
+.why-done { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ok); }
+.why-done .ico { width: 14px; height: 14px; }
+
+/* plan: lost orders and long shots */
+.postmortem { display: grid; gap: 16px; }
+.pm-head { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border: 1px solid var(--alert-line); background: linear-gradient(rgba(58, 9, 5, .75), rgba(40, 6, 4, .6)); }
+.pm-head > .ico { width: 30px; height: 30px; flex: none; color: var(--bad); margin-top: 2px; }
+.pm-head h3 { font: 400 24px/1.1 var(--stencil); letter-spacing: .03em; text-transform: uppercase; color: var(--bad); }
+.pm-head p { margin-top: 6px; color: var(--alert-fg); font-size: 15px; max-width: 62ch; }
+.pm-head.small { border-color: rgba(255, 187, 37, .45); background: rgba(58, 40, 5, .35); padding: 12px 14px; }
+.pm-head.small > .ico { color: var(--warn); width: 24px; height: 24px; }
+.pm-head.small h3 { font-size: 19px; color: var(--warn); }
+.pm-head.small p { color: var(--fg); font-size: 14px; }
+.longshot { display: grid; gap: 10px; margin-bottom: 18px; }
+.pm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.pm-tile { padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); display: grid; gap: 4px; align-content: start; }
+.pm-tile .v { font: 400 26px/1.1 var(--mono); color: var(--fg); }
+.pm-tile .v small { font-size: 14px; color: var(--muted); margin-left: 2px; }
+.pm-tile .s { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.pm-tile.key { border-color: var(--bad); background: rgba(58, 9, 5, .45); }
+.pm-tile.key .v { color: var(--bad); }
+.pm-story { list-style: none; margin: 0; padding: 0 0 0 18px; display: grid; gap: 14px; position: relative; }
+.pm-story::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; border-left: 2px solid var(--line-2); }
+.pm-story li { position: relative; }
+.pm-story li::before { content: ""; position: absolute; left: -19px; top: 5px; width: 10px; height: 10px; background: var(--bg0); border: 2px solid var(--line-2); }
+.pm-story li.bad::before { border-color: var(--bad); background: var(--bad); }
+.pm-story li.ok::before { border-color: var(--ok); }
+.pm-story li.now::before { border-color: var(--yellow); background: var(--yellow); }
+.pm-story .when { font: 600 11px var(--ui); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pm-story li.bad .when { color: var(--bad); }
+.pm-story p { font-size: 15px; max-width: 70ch; }
+.pm-story b { font-family: var(--mono); font-weight: 400; }
+.postmortem > .ghost { justify-self: start; }
+.pm-still { padding: 12px 14px; border: 1px solid var(--line); background: var(--panel); display: grid; gap: 6px; }
+.pm-still p { font-size: 14px; color: var(--muted); }
+.move.lvl-long { border-left-color: var(--warn); }
+.move.lvl-long .lvl { color: var(--warn); border-color: var(--warn); }
+.mv-fx b { color: var(--warn); text-transform: uppercase; letter-spacing: .06em; }
 </style>
 </head>
 <body>
@@ -1830,9 +1955,43 @@ const TEXT = {
   meterAll: 'about {n} needed: {x} times everyone online', meterWeapon: ' at today\'s weapon use', onPlanet: 'on {p}', onFront: 'on the {f} front',
   meterProj: 'At this pace: {p} by the deadline',
   crowd: ['roughly the players already there', 'about one and a half times the players there now', 'about twice the players there now', 'about three times the players there now', 'far more players than are online right now'],
-  why: 'Why and how', seePlan: 'See the plan', simulate: 'Simulate', close: 'Close',
+  why: 'Why and how', seePlan: 'See the plan', seeWhy: 'See what happened', simulate: 'Simulate', close: 'Close',
   hint: 'New here? The big box is the one thing everyone should do right now. Open the Plan for the reasons and the other moves.',
   simBox: 'What if…? Try other player counts', bigPicture: 'The big picture', online: 'online', fineN: 'Already on track ({n})',
+  pm: {
+    title: 'Nothing left to win here', sub: 'No plan closes this gap with the players we have. Here is how it got here.',
+    lostTitle: 'This order is lost', lostSub: 'Time ran out before the objectives were done. Here is how it went.',
+    longTitle: 'A long shot', longSub: 'Only an exceptional surge of players can still turn this around. The moves below are the best odds, not a plan that wins.',
+    tStart: 'Needed from day one', tStartS: '{what} an hour, every hour, to finish on time', tAvg: 'What we averaged', tAvgS: '{p} of what it needed',
+    tBest: 'Our best hour', tBestS: 'the fastest recorded so far', tNeed: 'Needed from now on', tNeedS: '{x}× our average, every hour until the deadline',
+    tPlNow: 'Players on it now', tPlNowS: 'of everyone online', tPlNeed: 'Players it needs', tPlNeedS: 'about {n} Helldivers at once', tRecord: 'Most ever on one order', tRecordS: 'the all-time record share',
+    howTitle: 'How we got here',
+    sStart: 'The order begins. To finish on time it needed about <b>{need}</b> {what} an hour from the very first hour.',
+    sStartOut: 'The order begins. It needed about <b>{need}</b> {what} an hour from the first hour, more than even our best recorded hour (<b>{best}/h</b>): it was out of reach from the start.',
+    sStartAny: 'The order begins: {n} objectives in {d}.',
+    sNowLib: 'Taking the planets in time needs <b>{need}</b> of all players at once. The most ever seen on one order is <b>{rec}</b>.',
+    sPonr: 'Past our best hour: from here on, the pace still needed was more than our best recorded hour (<b>{best}/h</b>). The order slipped out of reach.',
+    sDone: '{task}: done.', so: 'So far', sNow: 'At our pace we end at about <b>{p}</b> of the hardest objective.',
+    chart: 'See it on the chart', stillTitle: 'What still counts',
+    still: 'Every kill and mission keeps counting until the deadline, but a Major Order pays its medals only if every objective is done. Your time also counts for your Personal Order and for the next Major Order.',
+    stillLost: 'The medals for this order are gone. The next Major Order usually arrives within hours.',
+  },
+  why: { title: 'Why', ok: 'on pace', done: '{k} of {n} objectives already done',
+    pace: '<b>{have}/h</b> on average · needs <b>{need}/h</b>', paceRec: '<b>{have}/h</b> on average, <b>{rec}/h</b> in the last hour · needs <b>{need}/h</b>',
+    players: '<b>{have}</b> of all players are there now · it needs <b>{need}</b>', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on the planets' },
+  h: {
+    libTitle: 'Liberation over time', prog: 'Progress', hour: 'Per hour', view: 'Chart view',
+    goal: 'Goal {v}', now: 'Now', deadline: 'Deadline', ponr: 'Past our best hour', unrecorded: 'not recorded',
+    needLine: 'needed {v}/h', avgLine: 'average {v}/h',
+    stat: 'Needs <b>{need}/h</b> from now on. We average <b>{avg}/h</b>: <b>{x}×</b> short.', statDone: 'Objective complete.', statOk: 'Needs <b>{need}/h</b> from now on. We average <b>{avg}/h</b>: on pace.',
+    lgAct: 'Done so far', lgNeed: 'Needed from now', lgAvg: 'At our average pace', lgRec: 'At the last hour\'s pace',
+    tipDone: '{v} done ({p})', tipEst: 'about {v} ({p}), estimated', tipAvg: 'average pace: {v} ({p})', tipRec: 'last hour\'s pace: {v} ({p})', tipNeed: 'needed by now: {v}',
+    tipHour: '{v} in this hour', tipFuture: 'forecast at today\'s pace',
+    fewHours: 'The hour-by-hour pace shows up once a couple of hours have been recorded.',
+    nothing: 'Nothing to chart for this kind of objective.',
+    foot: 'Recorded every 10 minutes since {when}. Hover or tap a chart to read any moment; tap a legend item to hide or show a line.', footLocal: 'Drawn from what this page has seen while open. Hover or tap a chart to read any moment.',
+    progAria: 'Progress of this objective over time', hourAria: 'Progress per hour', libAria: 'Liberation of each planet over time',
+  },
   in: {
     label: 'Intel',
     jump: '<b>{planet}</b> jumped {pct} in {dur}, far more than its {players} Helldivers could do. Most likely Super Earth Command stepped in. Forecasts already start from the new figure.',
@@ -1865,7 +2024,7 @@ const TEXT = {
   xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy order', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
   gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
   intel: 'Details', iHp: 'Enemy HP', iRegen: 'Regen', iNet: 'Net progress', iBe: 'Share needed to match regen', iRegions: 'Region HP', iQuickest: 'Quickest to take', iFront: 'Helldivers on that front', iAttacks: 'Attacks running',
-  lv: { critical: 'Critical', high: 'High', helps: 'Helps', tip: 'Tip' },
+  lv: { critical: 'Critical', high: 'High', helps: 'Helps', tip: 'Tip', long: 'Long shot' },
   moreTips: 'More tips ({n})', planBlock: 'The plan', planBlockPartial: 'The plan for the planets we can take', planBlockIf: 'The plan, if enough players join',
   mvWeapon: ' Only kills with the {item} count.', mvDssFrom: ' It\'s on {from} right now.', mvSpread: ' Right now players are split over {n} of them.',
   mv: {
@@ -1892,7 +2051,7 @@ const TEXT = {
     eta: '{planet} falls by {next} instead of {now}: {saved} sooner', etaNever: '{planet} falls by {next}: at today\'s pace it never would',
     saves: '{planet} falls about {h} sooner', decay: 'Loses about {p} of its progress every hour without players',
     gap: '{n} more players needed', gapAll: 'About {n} more players needed: {x} times everyone online', gapWhen: '{n} more players needed before {when}',
-    projUp: 'Lifts {what} from {now} to about {next} of the goal', it: 'it', proj: 'At this pace: {now} of the goal',
+    projUp: 'Lifts {what} from {now} to about {next} of the goal', projOnly: '<b>Only</b> lifts {what} from {now} to about {next} of the goal: still short', it: 'it', proj: 'At this pace: {now} of the goal',
     region: 'Knocks about {p} off the planet when it falls',
   },
   sitTitle: 'Situation', movesTitle: 'The moves', fineTitle: 'Already fine', noMoves: 'No moves needed right now: keep it up.', noMovesLost: 'No move changes the outcome: this order is out of reach.',
@@ -1904,7 +2063,7 @@ const TEXT = {
   m: { done: 'Objective reached.', ontrack: 'At the current pace we make it.', effort: 'Winnable, but it needs a push.', focus: 'Winnable if we focus.', hard: 'Very hard: it needs far more players.', record: 'It needs a record turnout.', nearly_impossible: 'It would take almost every player online.', impossible: 'Not winnable even with every player online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace.' },
   timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', medals: '{n} medals', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
-  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers',
+  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'History',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
     defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
     cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',
@@ -1987,7 +2146,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
 <dl>
 <dt>Intel</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open, so this covers everything since the start of the running orders (from 28 October 2026 on).</dd>
 <dt>Order of the day</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
-<dt>Forecast</dt><dd>How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
+<dt>Forecast</dt><dd>The bars under the stamp show why: what we do against what each objective needs, and how many times faster it would have to go. How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
+<dt>History</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, and the pace hour by hour. Hover or tap a chart to read any moment, tap the legend to hide a line.</dd>
 <dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
 <dt>Kills, samples, operations</dt><dd>The page compares the needed pace with the average pace since the order started, which covers day and night, and with the last hour.</dd>
 <dt>All active orders</dt><dd>When more than one order is running, the bar above shows what share of everyone online each one needs, counting players who help two orders at once (killing bots on a bot planet counts for both), and which order is the best bet if there aren't enough players for all of them.</dd>
@@ -2154,7 +2314,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   /* ---------- state ---------- */
   let samples = store.get('samples', []);
   let last = null, busy = false, lastRun = 0, lastOk = 0, lastStack = '', firstDone = false;
-  const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false }, store.get('ui', {}));
+  const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false, histMode: {}, chartOff: {} }, store.get('ui', {}));
   const saveUi = () => store.set('ui', { order: ui.order, tab: ui.tab, showNums: ui.showNums });
   const prev = { bars: {}, count: {}, dir: {}, verdict: {}, seen: {} };
   const $ = (id) => document.getElementById(id);
@@ -2188,17 +2348,18 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   // the running orders and scans it, so even a first visit sees what happened while nobody was watching
   const RECORD = 'https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/';
   let record = store.get('record', null);   // { t, since, every, alerts }
-  let recordSamples = [], recordFetched = 0;
+  let recordSamples = [], recordFetched = 0, recordProgress = null;
   async function loadRecord(now) {
     if (now - recordFetched < 5 * 60e3) return false;
     recordFetched = now;
     try {
-      const [intel, recent] = await Promise.all(['intel.json', 'recent.json'].map(f =>
+      const [intel, recent, prog] = await Promise.all(['intel.json', 'recent.json', 'progress.json'].map(f =>
         fetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
       if (intel && Array.isArray(intel.alerts)) {
         record = { t: intel.updated, since: intel.since, every: intel.every || 10, alerts: intel.alerts, effects: intel.effects || [], inf: intel.inf || null, official: !!intel.official };
         store.set('record', record);
       }
+      if (prog && prog.orders) recordProgress = prog;
       if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
         planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], w: v[8] ?? null }])), prog: x.prog || {} }));
       return true;
@@ -2737,7 +2898,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       <p class="why">${p.why}</p>
       ${p.meter}
       <div class="dir-actions">
-        <button type="button" class="btn primary" data-goto="strategy">${t('seePlan')} ›</button>
+        <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
         <button type="button" class="btn ghostly" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
       </div>
     </section></div>`;
@@ -2764,6 +2925,41 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   }
 
   /* ---------- rail ---------- */
+  // the forecast's "why": what we do against what it takes, one meter per open objective
+  function whyHTML(res) {
+    if (res.verdict === 'done' || res.verdict === 'unknown') return '';
+    const meters = [];
+    const meter = (label, have, need, sub, mark, key) => {
+      const ratio = need > 0 ? have / need : 1;
+      const ok = ratio >= 1;
+      const fillW = Math.max(2, Math.min(100, ratio * 100)), markW = mark != null && need > 0 ? Math.min(100, (mark / need) * 100) : null;
+      meters.push({ sev: ratio, html: `<div class="why-m ${ok ? 'ok' : ratio < 0.5 ? 'bad' : 'warn'}">
+        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${ok ? esc(t('why.ok')) : '×' + fmt(1 / Math.max(ratio, 0.01), 1, 1)}</span></div>
+        <div class="wm-bar" role="img" aria-label="${esc(plain(sub))}"><div class="fill" data-key="why:${esc(key)}" data-w="${fillW}"></div>${markW != null ? `<i class="wm-mark" style="left:${markW}%"></i>` : ''}</div>
+        <div class="wm-sub">${sub}</div></div>` });
+    };
+    for (const r of res.tasks) {
+      if (r.verdict === 'done') continue;
+      if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
+        const noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
+        const rec = r.rates.recent ? r.rates.recent.rate : null;
+        meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), r.primary.rate, r.needed,
+          fill(t(rec != null ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed) }), rec, `${res.id}:${r.idx}`);
+      } else if (r.defense && !r.defense.outlastsMO) {
+        meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,
+          fill(t('why.players'), { have: pct(r.defense.share), need: sharePct(r.defense.need) }), null, `${res.id}:${r.idx}`);
+      }
+    }
+    const lib = res.liberation;
+    if (lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
+      meter(esc(t(lib.count > 1 ? 'why.libN' : 'why.lib1')), lib.currentShare, isFinite(lib.seqNeed) ? lib.seqNeed : 5,
+        fill(t('why.players'), { have: pct(lib.currentShare), need: sharePct(lib.seqNeed) }), null, `${res.id}:lib`);
+    if (!meters.length) return '';
+    meters.sort((x, y) => x.sev - y.sev);
+    const doneN = res.tasks.filter(r => r.verdict === 'done').length;
+    return `<div class="fwhy"><span class="label">${esc(t('why.title'))}</span>${meters.slice(0, 3).map(m => m.html).join('')}
+      ${doneN ? `<p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p>` : ''}</div>`;
+  }
   function railHTML(res, a) {
     const v = res.verdict;
     const alert = v === 'impossible' || v === 'nearly_impossible' || v === 'failed';
@@ -2777,6 +2973,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         <span class="label">${t('forecast')}</span>
         <div class="stamp v-${v}" data-stamp="${esc(res.id)}:${v}">${esc(t('v.' + v))}</div>
         <p class="meaning">${esc(t('m.' + v))}</p>
+        ${whyHTML(res)}
         <div class="timer ${v === 'done' || res.ended ? 'finished' : ''}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">
           <div><span class="label">${t('timeLeft')}</span><div class="count" data-exp="${exp}">—</div></div>
           ${medals ? `<div class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></div>` : ''}
@@ -3021,7 +3218,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         if (N && e.more > N) return F('gapAll', { n: people(e.more), x: fmt(e.more / N, e.more / N < 10 ? 1 : 0) }) + w;
         return (e.hours != null ? F('gapWhen', { n: people(e.more), when: clock(e.hours) }) : F('gap', { n: people(e.more) })) + w;
       }
-      case 'proj': return e.next != null && e.next > e.now + 0.005 ? F('projUp', { what: subject || t('fx.it'), now: pct(e.now), next: pct(Math.min(e.next, 9.99)) }) : F('proj', { now: pct(e.now) });
+      case 'proj': return e.next != null && e.next > e.now + 0.005 ? F(e.next < 1 ? 'projOnly' : 'projUp', { what: subject || t('fx.it'), now: pct(e.now), next: pct(Math.min(e.next, 9.99)) }) : F('proj', { now: pct(e.now) });
       case 'region': return F('region', { p: pct(e.knock) });
       default: return '';
     }
@@ -3070,14 +3267,70 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const subj = m.task && m.task.task ? `${facName(m.task.task.faction)} ${t('what')[m.task.task.type] || t('what')[0]}`.trim() : null;
     const fx = effectText(m.effect, subj);
     const nums = MV.nums != null ? MV.nums : (R(m.kind) || [])[2] || '';
-    return `<li class="move lvl-${m.level || 'tip'}">
-      <div class="mv-top"><span class="lvl">${esc(t('lv.' + (m.level || 'tip')))}</span><h4>${fill(MV.head, p)}</h4></div>
+    return `<li class="move lvl-${res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip'}">
+      <div class="mv-top"><span class="lvl">${esc(t('lv.' + (res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip')))}</span><h4>${fill(MV.head, p)}</h4></div>
       <p class="mv-why">${fill(why, p)}</p>
       ${fx ? `<p class="mv-fx">${ICON.target}<span>${fx}</span></p>` : ''}
       ${nums ? `<div class="nums">${fill(nums, p)}</div>` : ''}${extra}</li>`;
   }
 
-  function strategyHTML(res) {
+  /* when the order can't be won: say so, and show how it got there instead of a plan */
+  function storyFacts(entry) {
+    const { res } = entry;
+    const counters = res.tasks.filter(r => r.counter && !r.simpleCount && r.task.goal && r.verdict !== 'done' && r.primary && r.needed > 0)
+      .map(r => ({ r, f: counterFacts(entry, r) })).sort((a, b) => (a.r.primary.rate / a.r.needed) - (b.r.primary.rate / b.r.needed));
+    return { worst: counters[0] || null, counters };
+  }
+  function tile(label, value, sub, cls = '') {
+    return `<div class="pm-tile ${cls}"><span class="label">${esc(label)}</span><div class="v">${value}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`;
+  }
+  function factsHTML(entry, compact) {
+    const { res } = entry, { worst } = storyFacts(entry), lib = res.liberation;
+    const tiles = [];
+    if (worst) {
+      const { r, f } = worst, noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
+      if (f.fromStart && !compact) tiles.push(tile(t('pm.tStart'), big(f.fromStart) + '<small>/h</small>', esc(fill(t('pm.tStartS'), { what: noun }))));
+      tiles.push(tile(t('pm.tAvg'), big(f.avg) + '<small>/h</small>', f.fromStart ? esc(fill(t('pm.tAvgS'), { p: pct(f.avg / f.fromStart) })) : ''));
+      if (f.best > f.avg * 1.05) tiles.push(tile(t('pm.tBest'), big(f.best) + '<small>/h</small>', esc(t('pm.tBestS'))));
+      tiles.push(tile(t('pm.tNeed'), big(f.needed) + '<small>/h</small>', esc(fill(t('pm.tNeedS'), { x: fmt(f.needed / f.avg, 1, 1) })), 'key'));
+    } else if (lib && isFinite(lib.currentShare)) {
+      tiles.push(tile(t('pm.tPlNow'), pct(lib.currentShare), esc(t('pm.tPlNowS'))));
+      tiles.push(tile(t('pm.tPlNeed'), sharePct(lib.seqNeed), esc(fill(t('pm.tPlNeedS'), { n: people((isFinite(lib.seqNeed) ? lib.seqNeed : 5) * res.model.N) })), 'key'));
+      tiles.push(tile(t('pm.tRecord'), pct(settings.recordShare), esc(t('pm.tRecordS'))));
+    }
+    return tiles.length ? `<div class="pm-tiles">${tiles.join('')}</div>` : '';
+  }
+  function storyHTML(entry) {
+    const { res, a } = entry, { worst } = storyFacts(entry);
+    const items = [];
+    const at = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const end = Date.parse(a.expiration);
+    const fromDayOne = worst && worst.f.ponr && entry.start && worst.f.ponr - entry.start < 3.6e6;
+    if (entry.start && worst) items.push({ t: entry.start, cls: fromDayOne ? 'bad' : '', html: fill(t(fromDayOne ? 'pm.sStartOut' : 'pm.sStart'), { need: worst.f.fromStart ? big(worst.f.fromStart) : '—', best: big(worst.f.best), what: esc(`${facName(worst.r.task.faction)} ${t('what')[worst.r.task.type] || ''}`.trim()) }) });
+    else if (entry.start) items.push({ t: entry.start, html: fill(t('pm.sStartAny'), { d: dur((end - entry.start) / 3.6e6), n: res.tasks.length }) });
+    for (const x of alerts.filter(al => al.kind === 'edited' && al.order === String(a.id))) items.push({ t: x.t, html: alertText(x, false) });
+    if (worst && worst.f.ponr && !fromDayOne) items.push({ t: worst.f.ponr, cls: 'bad', html: fill(t('pm.sPonr'), { best: big(worst.f.best) }) });
+    const lib = res.liberation;
+    if (!worst && lib && isFinite(lib.currentShare)) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNowLib'), { need: sharePct(lib.seqNeed), rec: pct(settings.recordShare) }) });
+    for (const r of res.tasks.filter(x => x.verdict === 'done')) items.push({ t: last.now - 1, cls: 'ok', html: fill(t('pm.sDone'), { task: taskText(r) }) });
+    if (worst) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNow'), { p: pct(worst.r.projection / worst.r.task.goal) }) });
+    if (!items.length) return '';
+    items.sort((x, y) => x.t - y.t);
+    return `<ol class="pm-story">${items.map(it => `<li class="${it.cls || ''}"><span class="when">${esc(it.cls === 'now' ? t('h.now') : it.cls === 'ok' ? t('pm.so') : at(it.t))}</span><p>${it.html}</p></li>`).join('')}</ol>`;
+  }
+  function postmortemHTML(entry) {
+    const { res, a } = entry, lost = res.ended || res.verdict === 'failed';
+    return `<section class="plan postmortem" id="steps-${esc(res.id)}">
+      <div class="pm-head">${ICON.cross}<div><h3>${esc(t(lost ? 'pm.lostTitle' : 'pm.title'))}</h3><p>${esc(t(lost ? 'pm.lostSub' : 'pm.sub'))}</p></div></div>
+      ${factsHTML(entry)}
+      <span class="label sub-label">${esc(t('pm.howTitle'))}</span>${storyHTML(entry)}
+      <button type="button" class="ghost" data-goto="history" data-scroll="tabs">${esc(t('pm.chart'))} ›</button>
+      <div class="pm-still"><span class="label">${esc(t('pm.stillTitle'))}</span><p>${esc(t(lost ? 'pm.stillLost' : 'pm.still'))}</p></div>
+    </section>`;
+  }
+  function strategyHTML(res, entry) {
+    if (entry && (res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done'))) return postmortemHTML(entry);
+    const longShot = entry && res.verdict === 'nearly_impossible' ? `<div class="longshot"><div class="pm-head small">${ICON.warn}<div><h3>${esc(t('pm.longTitle'))}</h3><p>${esc(t('pm.longSub'))}</p></div></div>${factsHTML(entry, true)}</div>` : '';
     const recs = res.recs || [];
     const assess = recs.filter(r => ASSESS.has(r.kind));
     const fine = recs.filter(r => FINE.has(r.kind));
@@ -3090,6 +3343,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const sitCls = assess.some(r => r.kind === 'libImpossible') ? 'k-bad' : 'k-warn';
     const lostNow = res.verdict === 'impossible' || (res.directive && res.directive.kind === 'lost');
     return `<section class="plan ${ui.showNums ? 'show-nums' : ''}" id="steps-${esc(res.id)}">
+        ${longShot}
         <div class="sec-head"><h3>${t('planTitle')}</h3>
           <button type="button" class="ghost" data-toggle-nums aria-pressed="${ui.showNums}">${ui.showNums ? t('hideNums') : t('showNums')}</button></div>
         ${moves.length ? `<span class="label sub-label">${t('movesTitle')}</span><ol class="moves">${moves.map(r => moveHTML(r, res)).join('')}</ol>
@@ -3105,6 +3359,257 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         <p class="foot">${t('planFoot')}</p>
       </section>
       ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
+  }
+
+  /* ---------- history: how the order got here (interactive charts) ---------- */
+  // Each chart: SVG paths drawn in a 1000 x 300 box stretched to the card (strokes keep their width),
+  // HTML for every label, and a crosshair + tooltip that follow the pointer.
+  const charts = {};
+  const HOPELESS = new Set(['impossible', 'nearly_impossible', 'failed']);
+  const CW = 1000, CH = 300;
+  const hhmm = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  function seriesAt(pts, x) {   // value of a polyline at time x (linear between points)
+    if (!pts.length || x < pts[0][0] || x > pts[pts.length - 1][0]) return null;
+    let lo = 0, hi = pts.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][0] <= x) lo = m; else hi = m; }
+    const a = pts[lo], b = pts[hi];
+    return b[0] === a[0] ? b[1] : a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+  }
+  function chartHTML(c) {
+    const X = (x) => ((x - c.x0) / (c.x1 - c.x0)) * CW, Y = (y) => CH - ((y - c.y0) / (c.y1 - c.y0)) * CH;
+    const path = (pts) => pts.map((q, i) => `${i ? 'L' : 'M'}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join('');
+    const pctX = (x) => Math.max(0, Math.min(100, ((x - c.x0) / (c.x1 - c.x0)) * 100));
+    const pctY = (y) => Math.max(0, Math.min(100, ((y - c.y0) / (c.y1 - c.y0)) * 100));
+    const hidden = ui.chartOff[c.id] || {};
+    const lines = c.series.filter(sr => sr.pts.length > 1).map(sr => `<path class="ln ${sr.cls}${hidden[sr.key] ? ' off' : ''}" data-s="${sr.key}" d="${path(sr.pts)}" vector-effect="non-scaling-stroke"/>`
+      + (sr.area ? `<path class="area ${sr.cls}${hidden[sr.key] ? ' off' : ''}" data-s="${sr.key}" d="${path(sr.pts)}L${X(sr.pts[sr.pts.length - 1][0]).toFixed(1)},${CH}L${X(sr.pts[0][0]).toFixed(1)},${CH}Z"/>` : '')).join('');
+    const bars = (c.bars || []).map(b => `<rect class="bar-r ${b.cls || ''}" x="${X(b.x0).toFixed(1)}" width="${Math.max(1, X(b.x1) - X(b.x0) - 3).toFixed(1)}" y="${Y(b.y).toFixed(1)}" height="${(CH - Y(b.y)).toFixed(1)}"/>`).join('');
+    const gaps = (c.gaps || []).map(g => `<div class="ch-gap" style="left:${pctX(g[0])}%;width:${pctX(g[1]) - pctX(g[0])}%"><span>${esc(t('h.unrecorded'))}</span></div>`).join('');
+    const yt = c.yTicks.map(v => `<span class="yt" style="bottom:${pctY(v)}%">${c.fmtY(v)}</span><i class="grid" style="bottom:${pctY(v)}%"></i>`).join('');
+    const xt = c.xTicks.map(v => `<span class="xt" style="left:${pctX(v)}%">${esc(v.label || new Date(v).toLocaleDateString(locale(), { weekday: 'short' }))}</span>`).join('');
+    const marks = (c.marks || []).map(m => `<div class="ch-mark ${m.cls}" style="left:${pctX(m.x)}%"><span>${esc(m.label)}</span></div>`).join('');
+    const hl = (c.hlines || []).map(h => `<div class="ch-h ${h.cls}" style="bottom:${pctY(h.y)}%"><span>${esc(h.label)}</span></div>`).join('');
+    const tags = (c.tags || []).map(g => `<span class="ch-tag ${g.cls}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" style="left:${pctX(g.x)}%;bottom:${pctY(g.y)}%">${esc(g.text)}</span>`).join('');
+    charts[c.id] = c;
+    return `<div class="chart" data-chart="${esc(c.id)}" role="img" aria-label="${esc(c.aria || '')}">
+      <div class="plot">${yt}${gaps}<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none" aria-hidden="true">${bars}${lines}</svg>${hl}${marks}${tags}
+        <div class="ch-cross"></div><div class="ch-dot"></div><div class="ch-tip" aria-live="polite"></div></div>
+      <div class="xaxis">${xt}</div></div>`;
+  }
+  function legendHTML(id, items) {
+    const hidden = ui.chartOff[id] || {};
+    return `<div class="ch-legend">${items.map(it => `<button type="button" class="lg ${it.cls}" data-legend="${esc(id)}" data-s="${it.key}" aria-pressed="${!hidden[it.key]}"><i></i>${esc(it.label)}</button>`).join('')}</div>`;
+  }
+  function niceTicks(max, n = 4) {
+    if (!(max > 0)) return [0];
+    const raw = max / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw) || raw;
+    const out = []; for (let v = 0; v <= max + 1e-9; v += step) out.push(v);
+    return out;
+  }
+  function dayTicks(x0, x1) {
+    const out = [], d = new Date(x0); d.setHours(0, 0, 0, 0);
+    for (d.setDate(d.getDate() + 1); d.getTime() < x1; d.setDate(d.getDate() + 1)) out.push(d.getTime());   // calendar days (DST-safe)
+    return out.length > 8 ? out.filter((_, i) => i % 2 === 0) : out;
+  }
+  // progress of one counter objective since the order began: recorder points, this browser's samples, now
+  function counterSeries(entry, r) {
+    const id = String(entry.a.id), i = r.idx, raw = [];
+    for (const x of recordProgress?.orders?.[id]?.pts || []) if (x[1 + i] != null) raw.push([x[0], Number(x[1 + i])]);
+    for (const sm of samples) {
+      const k = sm.prog && Object.keys(sm.prog).find(k2 => k2.startsWith(id + ':'));
+      if (k && sm.prog[k] && sm.prog[k][i] != null) raw.push([sm.t, Number(sm.prog[k][i])]);
+    }
+    raw.push([last.now, Number(r.task.progress)]);
+    raw.sort((a, b) => a[0] - b[0]);
+    const pts = []; for (const q of raw) { if (pts.length && q[0] - pts[pts.length - 1][0] < 90e3) pts[pts.length - 1] = q; else pts.push(q); }
+    return pts;
+  }
+  // kills (or other counts) per hour, from the stretches actually recorded
+  function hourly(pts) {
+    const b = new Map();
+    for (let k = 1; k < pts.length; k++) {
+      const [ta, va] = pts[k - 1], [tb, vb] = pts[k];
+      if (tb - ta > 40 * 60e3 || vb < va) continue;
+      for (let h = Math.floor(ta / 3.6e6); h * 3.6e6 < tb; h++) {
+        const s0 = Math.max(ta, h * 3.6e6), s1 = Math.min(tb, (h + 1) * 3.6e6);
+        if (s1 <= s0) continue;
+        const e = b.get(h) || { v: 0, span: 0 };
+        e.v += (vb - va) * (s1 - s0) / (tb - ta); e.span += s1 - s0; b.set(h, e);
+      }
+    }
+    return [...b.entries()].filter(([, e]) => e.span >= 30 * 60e3).map(([h, e]) => ({ x0: h * 3.6e6, x1: (h + 1) * 3.6e6, rate: e.v * 3.6e6 / e.span }));
+  }
+  // the moment the order slipped out of reach: from then on, the pace still needed was more than the
+  // best hour this order ever had
+  function pointOfNoReturn(pts, goal, end, best) {
+    if (!(best > 0) || pts.length < 2) return null;
+    const need = (tt, v) => end > tt ? (goal - v) * 3.6e6 / (end - tt) : Infinity;
+    if (need(pts[pts.length - 1][0], pts[pts.length - 1][1]) <= best) return null;
+    let at = null;
+    for (let k = pts.length - 1; k > 0; k--) {
+      const [ta, va] = pts[k - 1], [tb, vb] = pts[k];
+      for (let s = 20; s >= 0; s--) {
+        const tt = ta + (tb - ta) * s / 20, v = va + (vb - va) * s / 20;
+        if (need(tt, v) > best) at = tt; else return at;
+      }
+    }
+    return at;
+  }
+  function counterFacts(entry, r) {
+    const tk = r.task, end = Date.parse(entry.a.expiration), start = entry.start;
+    const pts = counterSeries(entry, r);
+    const hours = hourly(pts);
+    const recent = r.rates.recent ? r.rates.recent.rate : null;
+    const avg = r.primary ? r.primary.rate : null;
+    const best = Math.max(0, ...hours.map(h => h.rate), recent || 0, avg || 0);
+    const total = start && end > start ? (end - start) / 3.6e6 : null;
+    return { pts, hours, end, start, avg, recent, best, needed: r.needed, fromStart: total ? tk.goal / total : null,
+      ponr: tk.goal && HOPELESS.has(r.verdict) ? pointOfNoReturn(start ? [[start, 0], ...pts.filter(q => q[0] > start)] : pts, tk.goal, end, best) : null };
+  }
+  function counterChart(entry, r, mode) {
+    const tk = r.task, f = counterFacts(entry, r), now = last.now, H = entry.res.hoursLeft;
+    const id = `c:${entry.a.id}:${r.idx}:${mode}`;
+    const x0 = f.start || f.pts[0][0], x1 = Math.max(f.end, now);
+    const fac = tk.faction ? 'f-' + tk.faction : 'f-none';
+    if (mode === 'hour') {
+      if (f.hours.length < 2) return `<p class="ch-empty">${esc(t('h.fewHours'))}</p>`;
+      const hx0 = f.hours[0].x0, hx1 = Math.max(now, f.hours[f.hours.length - 1].x1);
+      const top = Math.max(f.needed || 0, ...f.hours.map(h => h.rate)) * 1.12;
+      const c = { id, x0: hx0, x1: hx1, y0: 0, y1: top, series: [], fmtY: big, yTicks: niceTicks(top),
+        xTicks: f.hours.filter((h, i) => i % Math.ceil(f.hours.length / 6) === 0).map(h => Object.assign(Number(h.x0), { label: new Date(h.x0).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) })),
+        bars: f.hours.map(h => ({ x0: h.x0, x1: h.x1, y: h.rate, cls: f.needed && h.rate >= f.needed ? 'ok ' + fac : fac })),
+        hlines: [f.needed && r.verdict !== 'done' ? { y: f.needed, cls: 'need', label: fill(t('h.needLine'), { v: big(f.needed) }) } : null, f.avg ? { y: f.avg, cls: 'avg', label: fill(t('h.avgLine'), { v: big(f.avg) }) } : null].filter(Boolean),
+        kind: 'hour', hours: f.hours, aria: t('h.hourAria') };
+      return chartHTML(c);
+    }
+    const projEnd = f.avg != null ? tk.progress + f.avg * H : null, recEnd = f.recent != null ? tk.progress + f.recent * H : null;
+    const top = Math.max(tk.goal || 0, projEnd || 0, recEnd || 0, ...f.pts.map(q => q[1])) * 1.08;
+    const actual = f.start ? [[f.start, 0], ...f.pts.filter(q => q[0] > f.start)] : f.pts;
+    const firstRec = f.pts.find(q => f.start && q[0] > f.start + 60e3);
+    const gap = f.start && firstRec && firstRec[0] - f.start > 2 * 3.6e6 ? [f.start, firstRec[0]] : null;
+    const done = r.verdict === 'done', ended = entry.res.ended;
+    const series = [
+      { key: 'act', cls: 'act ' + fac, pts: gap ? actual.filter(q => q[0] >= gap[1]) : actual, area: true },
+      gap ? { key: 'act', cls: 'act gapline ' + fac, pts: [[gap[0], 0], firstRec] } : null,
+      !done && !ended ? { key: 'need', cls: 'need', pts: [[now, tk.progress], [f.end, tk.goal]] } : null,
+      !done && !ended && projEnd != null ? { key: 'avg', cls: 'proj', pts: [[now, tk.progress], [f.end, projEnd]] } : null,
+      !done && !ended && recEnd != null && Math.abs(recEnd - (projEnd || 0)) / (tk.goal || 1) > 0.02 ? { key: 'rec', cls: 'proj2', pts: [[now, tk.progress], [f.end, recEnd]] } : null,
+    ].filter(Boolean);
+    const tagsArr = [];
+    if (!done && !ended && projEnd != null) tagsArr.push({ key: 'avg', cls: 'proj', x: f.end, y: projEnd, text: pct(projEnd / tk.goal) });
+    if (series.some(sr => sr.key === 'rec')) tagsArr.push({ key: 'rec', cls: 'proj2', x: f.end, y: recEnd, text: pct(recEnd / tk.goal) });
+    const c = { id, x0, x1, y0: 0, y1: top, series, fmtY: big, yTicks: niceTicks(top), xTicks: dayTicks(x0, x1), gaps: gap ? [gap] : [],
+      hlines: tk.goal ? [{ y: tk.goal, cls: 'goal', label: fill(t('h.goal'), { v: big(tk.goal) }) }] : [],
+      marks: [{ x: now, cls: 'now', label: t('h.now') }, f.ponr ? { x: f.ponr, cls: 'ponr', label: t('h.ponr') } : null, f.end > now ? { x: f.end, cls: 'end', label: t('h.deadline') } : null].filter(Boolean),
+      tags: tagsArr, kind: 'count', goal: tk.goal, actual, now, progress: tk.progress, end: f.end, avg: f.avg, recent: f.recent, gap, aria: t('h.progAria') };
+    return chartHTML(c);
+  }
+  // liberation of the planets an objective names, over time
+  function planetSeries(idx) {
+    const p = last.planets[idx], raw = [];
+    for (const x of recordProgress?.planets?.[idx] || []) raw.push([x[0], x[1]]);
+    const m = p ? (p.event ? p.event.maxHealth : p.maxHealth) : null;
+    if (m) for (const sm of samples) { const v = sm.planets && sm.planets[idx]; if (v && v.h != null) raw.push([sm.t, 1 - v.h / m]); }
+    if (p && m) raw.push([last.now, 1 - (p.event ? p.event.health : p.health) / m]);
+    raw.sort((a, b) => a[0] - b[0]);
+    const pts = []; for (const q of raw) { if (pts.length && q[0] - pts[pts.length - 1][0] < 90e3) pts[pts.length - 1] = q; else pts.push(q); }
+    return pts;
+  }
+  function libChart(entry, rows) {
+    const id = `l:${entry.a.id}`, now = last.now, end = Date.parse(entry.a.expiration), H = entry.res.hoursLeft;
+    const all = rows.map((r, k) => ({ r, k, pts: planetSeries(r.planet.index) })).filter(x => x.pts.length);
+    if (!all.length) return '';
+    const x0 = Math.min(entry.start || now, ...all.map(x => x.pts[0][0])), x1 = Math.max(end, now);
+    const series = [], tags = [];
+    all.forEach(({ r, k, pts }) => {
+      const key = 'p' + r.planet.index, cls = `pl s${(k % 4) + 1}`;
+      series.push({ key, cls, pts });
+      if (r.pw && isFinite(r.eta) && r.eta > 0 && !entry.res.ended) {
+        const tEnd = now + Math.min(r.eta, H * 1.6) * 3.6e6, frac = pts[pts.length - 1][1];
+        const reach = r.eta <= H * 1.6 ? 1 : frac + (1 - frac) * (H * 1.6 / r.eta);
+        series.push({ key, cls: cls + ' proj', pts: [[now, frac], [tEnd, reach]] });
+        if (r.eta <= H) tags.push({ key, cls: 'pl s' + ((k % 4) + 1), x: tEnd, y: 1, text: clock(r.eta) });
+      }
+    });
+    const c = { id, x0, x1: Math.max(x1, ...series.map(sr => sr.pts[sr.pts.length - 1][0])), y0: 0, y1: 1.06, series, tags,
+      fmtY: (v) => pct(v), yTicks: [0, 0.25, 0.5, 0.75, 1], xTicks: dayTicks(x0, x1),
+      hlines: [], marks: [{ x: now, cls: 'now', label: t('h.now') }, { x: end, cls: 'end', label: t('h.deadline') }],
+      kind: 'lib', now, planets: all.map(({ r, pts }) => ({ key: 'p' + r.planet.index, name: plain(planetName(r.planet)), pts, proj: (series.find(sr => sr.key === 'p' + r.planet.index && sr.cls.includes('proj')) || {}).pts || null })), aria: t('h.libAria') };
+    return chartHTML(c) + legendHTML(id, all.map(({ r, k }) => ({ key: 'p' + r.planet.index, cls: `pl s${(k % 4) + 1}`, label: plain(planetName(r.planet)) })));
+  }
+  function historyHTML(entry) {
+    const { res } = entry;
+    const cards = [];
+    const libRows = res.tasks.filter(r => r.planet && (r.pw || r.task.type === 11 || r.task.type === 13));
+    if (libRows.length) cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4>${esc(t('h.libTitle'))}</h4></div>${libChart(entry, libRows)}</section>`);
+    const doneList = res.tasks.filter(x => x.counter && !x.simpleCount && x.task.goal && x.verdict === 'done');
+    for (const r of res.tasks.filter(x => x.counter && !x.simpleCount && x.task.goal && x.verdict !== 'done')) {
+      const mode = (ui.histMode[`${entry.a.id}:${r.idx}`]) || 'prog';
+      const f = counterFacts(entry, r);
+      const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1) }) : '';
+      const key = `${entry.a.id}:${r.idx}`, cid = `c:${entry.a.id}:${r.idx}:prog`;
+      cards.push(`<section class="hist-card panel br">
+        <div class="hc-head"><h4>${taskText(r)}</h4>${pill(r.verdict)}
+          <div class="seg" role="group" aria-label="${esc(t('h.view'))}">
+            <button type="button" data-hmode="${esc(key)}" data-v="prog" aria-pressed="${mode === 'prog'}">${esc(t('h.prog'))}</button>
+            <button type="button" data-hmode="${esc(key)}" data-v="hour" aria-pressed="${mode === 'hour'}">${esc(t('h.hour'))}</button></div></div>
+        ${stat ? `<p class="hc-stat">${stat}</p>` : ''}
+        ${counterChart(entry, r, mode)}
+        ${mode === 'prog' ? legendHTML(cid, [{ key: 'act', cls: 'act', label: t('h.lgAct') }, r.verdict !== 'done' && !res.ended ? { key: 'need', cls: 'need', label: t('h.lgNeed') } : null,
+          r.verdict !== 'done' && !res.ended && f.avg ? { key: 'avg', cls: 'proj', label: t('h.lgAvg') } : null,
+          r.verdict !== 'done' && !res.ended && f.recent != null ? { key: 'rec', cls: 'proj2', label: t('h.lgRec') } : null].filter(Boolean)) : ''}
+      </section>`);
+    }
+    if (doneList.length) cards.push(`<section class="hist-card panel br done-card">${doneList.map(r => `<div class="hc-head"><h4>${taskText(r)}</h4>${pill('done')}</div>`).join('')}</section>`);
+    for (const r of res.tasks.filter(x => x.defense)) {
+      cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4>${taskText(r)}</h4>${pill(r.verdict)}</div>${libChart(entry, [r])}</section>`);
+    }
+    if (!cards.length) return `<p class="empty-moves unknown">${ICON.dots}<span>${esc(t('h.nothing'))}</span></p>`;
+    const since = record && record.since ? fill(t('h.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('h.footLocal');
+    return `<div class="history">${cards.join('')}<p class="foot">${esc(since)}</p></div>`;
+  }
+  // crosshair + tooltip
+  function chartHover(el, clientX) {
+    const c = charts[el.dataset.chart]; if (!c) return;
+    const plot = el.querySelector('.plot'), rect = plot.getBoundingClientRect();
+    const fx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const x = c.x0 + fx * (c.x1 - c.x0);
+    const tip = el.querySelector('.ch-tip'), cross = el.querySelector('.ch-cross'), dot = el.querySelector('.ch-dot');
+    let html = '', y = null;
+    if (c.kind === 'hour') {
+      const h = c.hours.find(b => x >= b.x0 && x < b.x1);
+      if (!h) { el.classList.remove('hover'); return; }
+      html = `<b>${esc(new Date(h.x0).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }))}</b><span>${esc(fill(t('h.tipHour'), { v: big(h.rate) }))}</span>`;
+      y = h.rate;
+    } else if (c.kind === 'count') {
+      html = `<b>${esc(hhmm(x))}</b>`;
+      if (x <= c.now) {
+        y = seriesAt(c.actual, x);
+        const inGap = c.gap && x < c.gap[1];
+        if (y != null) html += `<span>${esc(fill(t(inGap ? 'h.tipEst' : 'h.tipDone'), { v: big(y), p: c.goal ? pct(y / c.goal) : '' }))}</span>`;
+      } else {
+        const fr = (x - c.now) / (c.end - c.now);
+        const need = c.progress + (c.goal - c.progress) * fr;
+        if (c.avg != null) { y = c.progress + c.avg * (x - c.now) / 3.6e6; html += `<span class="proj">${esc(fill(t('h.tipAvg'), { v: big(y), p: pct(y / c.goal) }))}</span>`; }
+        if (c.recent != null) { const yr = c.progress + c.recent * (x - c.now) / 3.6e6; html += `<span class="proj2">${esc(fill(t('h.tipRec'), { v: big(yr), p: pct(yr / c.goal) }))}</span>`; }
+        html += `<span class="need">${esc(fill(t('h.tipNeed'), { v: big(need) }))}</span>`;
+      }
+    } else if (c.kind === 'lib') {
+      html = `<b>${esc(hhmm(x))}</b>`;
+      const off = ui.chartOff[c.id] || {};
+      for (const pl of c.planets) {
+        if (off[pl.key]) continue;
+        const v = x <= c.now ? seriesAt(pl.pts, x) : pl.proj ? seriesAt(pl.proj, x) ?? (x > pl.proj[pl.proj.length - 1][0] ? pl.proj[pl.proj.length - 1][1] : null) : null;
+        if (v != null) { html += `<span>${esc(pl.name)}: ${pct(Math.min(1, v))}</span>`; if (y == null) y = Math.min(1, v); }
+      }
+      if (x > c.now) html += `<span class="muted">${esc(t('h.tipFuture'))}</span>`;
+    }
+    el.classList.add('hover');
+    cross.style.left = fx * 100 + '%';
+    if (y != null) { dot.style.display = ''; dot.style.left = fx * 100 + '%'; dot.style.bottom = Math.max(0, Math.min(100, (y - c.y0) / (c.y1 - c.y0) * 100)) + '%'; } else dot.style.display = 'none';
+    tip.innerHTML = html;
+    tip.classList.toggle('left', fx > 0.6);
+    tip.style.left = fx * 100 + '%';
   }
 
   /* ---------- data tab ---------- */
@@ -3180,12 +3685,14 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   }
 
   /* ---------- view ---------- */
-  const TABS = ['objectives', 'strategy', 'data'];
+  const TABS = ['objectives', 'strategy', 'history'];
   function viewHTML(entry) {
     const { a, res, start } = entry;
-    const tab = ui.tab[a.id] || 'objectives';
-    const panel = tab === 'strategy' ? strategyHTML(res) : tab === 'data' ? dataHTML(res, start) : objectivesHTML(res);
-    const label = { objectives: t('tObj'), strategy: t('tStrat'), data: t('tData') };
+    let tab = ui.tab[a.id] || 'objectives';
+    if (tab === 'data') tab = 'history';
+    if (!TABS.includes(tab)) tab = 'objectives';
+    const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : objectivesHTML(res);
+    const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist') };
     const hint = store.get('hintSeen', false) ? '' : `<div class="hint" role="note">${ICON.target}<p>${t('hint')}</p><button type="button" class="icon-btn" data-hint-close aria-label="${esc(t('close'))}">✕</button></div>`;
     return `<div class="order ${hint ? 'has-hint' : ''}" data-order="${esc(a.id)}">
       ${hint}
@@ -3442,8 +3949,16 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   }
 
   document.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-brief],[data-preset],[data-close],[data-copy],[data-cycle],[data-hint-close]');
+    const el = e.target.closest('[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-brief],[data-preset],[data-close],[data-copy],[data-cycle],[data-hint-close],[data-legend],[data-hmode]');
     if (!el) return;
+    if (el.dataset.legend) {   // show / hide one line of a chart
+      const id = el.dataset.legend, k = el.dataset.s, off = (ui.chartOff[id] ||= {});
+      off[k] = !off[k];
+      el.setAttribute('aria-pressed', String(!off[k]));
+      document.querySelectorAll(`[data-chart="${CSS.escape(id)}"] [data-s="${CSS.escape(k)}"]`).forEach(n => n.classList.toggle('off', off[k]));
+      return;
+    }
+    if (el.dataset.hmode) { ui.histMode[el.dataset.hmode] = el.dataset.v; render(); return; }
     if (el.dataset.otab) { ui.order = el.dataset.otab; saveUi(); render(); return; }
     if (el.dataset.tab) { selectTab(el.dataset.tab); return; }
     if (el.dataset.cycle) { cycleTab(Number(el.dataset.cycle)); return; }
@@ -3524,6 +4039,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       if (again) again.focus();
     }, 0);
   });
+  // charts: crosshair follows the pointer (mouse, pen or finger)
+  document.addEventListener('pointermove', (e) => { const c = e.target.closest && e.target.closest('.chart'); if (c) chartHover(c, e.clientX); });
+  document.addEventListener('pointerdown', (e) => { const c = e.target.closest && e.target.closest('.chart'); if (c) chartHover(c, e.clientX); });
+  document.addEventListener('pointerout', (e) => { const c = e.target.closest && e.target.closest('.chart'); if (c && !(e.relatedTarget && c.contains(e.relatedTarget))) c.classList.remove('hover'); });
   document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
   $('open-settings').addEventListener('click', () => $('dlg-settings').showModal());
   $('open-info').addEventListener('click', () => $('dlg-info').showModal());
