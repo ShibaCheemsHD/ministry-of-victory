@@ -2028,17 +2028,47 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   // got Italian briefings). `culture` in the query wins over the browser's Accept-Language, and the
   // header is set as well; both are "simple" for CORS, so no preflight is needed.
   const apiUrl = (path) => `${API}${path}${path.includes('?') ? '&' : '?'}culture=en-US&ui-culture=en-US&x-super-client=ministry-of-victory&x-super-contact=${encodeURIComponent(settings.contact || 'ministry-of-victory-user')}`;
-  async function getJSON(path, timeoutMs = 20000) {
+  // The API allows 5 requests every 10 seconds per address, and refuses the rest (HTTP 429).
+  // Requests wait for a free slot here instead (and a refused one is tried again once, 10 s later).
+  // Sliding window: never more than 5 requests in any 11 seconds, so the server's bucket can't run dry.
+  const sent = [];
+  const WINDOW_MS = window.__mockScenario && !window.__mockRealRate ? 200 : 11000;   // tests run fast
+  const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+  const freeSlots = () => { const now = Date.now(); return 5 - sent.filter(t0 => now - t0 < WINDOW_MS).length; };
+  async function slot() {
+    for (;;) {
+      const now = Date.now();
+      while (sent.length && now - sent[0] >= WINDOW_MS) sent.shift();
+      if (sent.length < 5) { sent.push(now); return; }
+      await sleep(sent[0] + WINDOW_MS - now + 20);
+    }
+  }
+  async function getJSON(path, timeoutMs = 20000, retry = true) {
+    await slot();
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(() => ctrl && ctrl.abort(), timeoutMs);
     try {
       const r = await fetch(apiUrl(path), { cache: 'no-store', headers: { 'Accept-Language': 'en-US' }, signal: ctrl ? ctrl.signal : undefined });
+      if (r.status === 429 && retry) {
+        clearTimeout(timer);
+        await sleep(10500);
+        return getJSON(path, timeoutMs, false);
+      }
       if (!r.ok) throw new Error(`HTTP ${r.status} ${path}`);
       return await r.json();
     } catch (e) {
       if (e && e.name === 'AbortError') throw new Error(`timeout ${path}`);
       throw e;
     } finally { clearTimeout(timer); }
+  }
+  // things that change slowly are fetched again only every few minutes
+  const memo = {};
+  async function getCached(path, maxAgeMs, timeoutMs) {
+    const m = memo[path];
+    if (m && Date.now() - m.t < maxAgeMs) return m.data;
+    const data = await getJSON(path, timeoutMs);
+    memo[path] = { t: Date.now(), data };
+    return data;
   }
 
   /* ---------- state ---------- */
@@ -2151,13 +2181,16 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     $('refresh').classList.add('busy');
     const errors = [];
     try {
-      const [war, assignments, campaigns, stations, raw] = await Promise.all([
+      const [war, assignments, campaigns, stations] = await Promise.all([
         getJSON('/api/v1/war'),
         getJSON('/api/v1/assignments'),
         getJSON('/api/v1/campaigns').catch(e => { errors.push(e.message); return []; }),
-        getJSON('/api/v2/space-stations').catch(() => []),
-        getJSON('/raw/api/v2/Assignment/War/801').catch(() => []),
+        getCached('/api/v2/space-stations', 2 * 60e3).catch(() => []),
       ]);
+      // order start times never change: asked again only when an order appears that isn't listed yet
+      const rawPath = '/raw/api/v2/Assignment/War/801';
+      if (memo[rawPath] && (assignments || []).some(a => !(memo[rawPath].data || []).some(x => String(x.id32) === String(a.id)))) delete memo[rawPath];
+      const raw = await getCached(rawPath, 30 * 60e3).catch(() => []);
       const planets = {};
       for (const c of campaigns || []) if (c && c.planet) planets[c.planet.index] = c.planet;
       const needed = new Set();
@@ -2165,8 +2198,21 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         const p = ENGINE.parseTask(tk, 0);
         if (p.planetIndex != null && !planets[p.planetIndex]) needed.add(p.planetIndex);
       }
-      const extra = await Promise.all([...needed].slice(0, 8).map(i => getJSON('/api/v1/planets/' + i).catch(() => null)));
-      extra.forEach(p => { if (p) planets[p.index] = p; });
+      // planets an order names that aren't being fought over (already liberated, held...). They rarely
+      // change, so they're kept for 30 minutes; if the request budget is spent, the page shows what it
+      // has now and fills them in a few seconds later.
+      const xcache = store.get('xplanets', {}), tnow = Date.now();
+      for (const k of Object.keys(xcache)) if (tnow - xcache[k].t > 30 * 60e3) delete xcache[k];
+      const want = [...needed].slice(0, 8);
+      want.forEach(i => { if (xcache[i]) planets[i] = xcache[i].p; });
+      const missing = want.filter(i => !planets[i]);
+      const nowList = missing.filter(i => memo['/api/v1/planets/' + i]).concat(missing.filter(i => !memo['/api/v1/planets/' + i]).slice(0, freeSlots()));
+      const laterList = missing.filter(i => !nowList.includes(i));
+      const keep = (p) => { if (p && p.index != null) { planets[p.index] = p; xcache[p.index] = { t: tnow, p }; } };
+      (await Promise.all(nowList.map(i => getCached('/api/v1/planets/' + i, 3 * 60e3).catch(() => null)))).forEach(keep);
+      store.set('xplanets', xcache);
+      if (laterList.length) Promise.all(laterList.map(i => getCached('/api/v1/planets/' + i, 3 * 60e3).catch(() => null)))
+        .then(ps => { const xc = store.get('xplanets', {}); ps.forEach(p => { if (p && p.index != null) xc[p.index] = { t: Date.now(), p }; }); store.set('xplanets', xc); refresh(); });
 
       // sector-limited objectives: planet -> sector map from the raw war info (static, cached for a day)
       let sectorOf = null, sectorName = null;
@@ -2243,7 +2289,6 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       }
       store.set('okeys', okeys);
       addAlerts(found, now, !!last);
-      await loadNews(now);
 
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };
       const results = (assignments || []).map(a => ({ a, res: ENGINE.analyzeAssignment(a, { ...base, startMs: startOf(a.id), progKey: orderKey(a) }), start: startOf(a.id) }));
@@ -2259,6 +2304,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName, sectorOf };
       lastOk = now;
       if (dragging) pendingRender = true; else render();
+      // news last, in the background: it never holds up the numbers
+      if (now - news.t >= 15 * 60e3) loadNews(now).then(() => { if (last && !dragging) { const e = last.results.find(x => String(x.a.id) === String(ui.order)); renderIntel(e); } });
       const hit = pendingToast.splice(0).find(x => results.some(({ a, res }) => x.kind === 'edited' ? x.order === String(a.id) : orderPlanets(res).has(x.idx)));
       if (hit && !newOnes.length) toast(plain(alertText(hit, true)));
       if (unknownNames(results)) loadNames(true).then(() => { if (last && !dragging) render(); });
