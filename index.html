@@ -2699,7 +2699,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const merged = { ...keep, t: Math.min(...eds.map(x => x.t)), merged: eds.some(x => !x.ref) };
       items = [...items.filter(x => x.kind !== 'edited'), merged].sort((a, b) => b.t - a.t);
     }
-    const weapons = new Set(entry.res.tasks.map(r => r.task.itemId).filter(Boolean).map(String));
+    const weapons = new Set(entry.res.tasks.filter(r => r.verdict !== 'done').map(r => r.task.itemId).filter(Boolean).map(String));
     // effects switched on right now on the planets this order depends on (straight from the game)
     const active = (record?.effects || []).filter(e => (e.planets.some(i => i === -1 || rel.has(i)) || (e.type === 32 && weapons.has(String(valOf(e.v, 4))))) && !items.some(x => x.kind === 'effect' && x.on && x.eid === e.id))
       .map(e => ({ kind: 'active', t: record.t, eid: e.id, type: e.type, v: e.v, planets: e.planets, mine: e.type === 32 && weapons.has(String(valOf(e.v, 4))) }))
@@ -2739,8 +2739,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   }
   function planetList(list, rel) {
     if (list.includes(-1)) return t('in.fx.galaxy');
-    const mine = list.filter(i => rel.has(i)).map(i => last.planets[i] ? '<b>' + planetName(last.planets[i]) + '</b>' : '#' + i);
-    const others = list.length - mine.length;
+    const all = list.filter(i => rel.has(i)).map(i => last.planets[i] ? '<b>' + planetName(last.planets[i]) + '</b>' : '#' + i);
+    const mine = all.slice(0, 3), others = list.length - mine.length;
     if (others > 0) mine.push(fill(t(others === 1 ? 'in.fx.other1' : 'in.fx.others'), { n: others }));
     return listJoin(mine);
   }
