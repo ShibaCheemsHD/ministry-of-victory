@@ -7,13 +7,13 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node recorder/probe.mjs "$RUNNER_TEMP/probe"
+      - run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe"
       - run: |
           cd "$RUNNER_TEMP/probe"
           git init -q -b probe
