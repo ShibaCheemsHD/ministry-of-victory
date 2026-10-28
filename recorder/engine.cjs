@@ -830,7 +830,12 @@ const ENGINE = (() => {
           }
           break;
         }
-        case 'cntShort': m.level = 'high'; m.effect = { kind: 'gap', more: r.players, weaponUse: r.weaponUse }; break;
+        case 'cntShort': {
+          // same front as a "move over" step: one step that says both things, not two that repeat
+          const host = out.find(x => x.kind === 'cntMove' && x.to === r.to);
+          if (host) { host.short = r.players; host.shortWeaponUse = r.weaponUse; continue; }
+          m.level = 'high'; m.effect = { kind: 'gap', more: r.players, weaponUse: r.weaponUse }; break;
+        }
         case 'cntBehind': {
           // already covered by a "move to the X front" step for the same faction
           if (recs.some(x => (x.kind === 'cntMove' || x.kind === 'cntShort') && x.to === r.task.task.faction)) continue;
@@ -839,10 +844,11 @@ const ENGINE = (() => {
           break;
         }
         case 'cntWeapon': {
-          // the weapon note rides on the front step for that faction when there is one
-          const host = out.find(x => (x.kind === 'cntMove' || x.kind === 'cntBehind') && (x.to || x.task?.task?.faction) === r.task.task.faction);
-          if (host) { host.weapon = r.task.task.itemId; continue; }
-          m.level = 'helps'; break;
+          // a weapon is a requirement of the objective, not advice: it rides on the step for that front,
+          // and with no such step it is already said by the objective itself
+          const host = out.find(x => (x.kind === 'cntMove' || x.kind === 'cntBehind' || x.kind === 'cntShort') && (x.to || x.task?.task?.faction) === r.task.task.faction);
+          if (host) host.weapon = r.task.task.itemId;
+          continue;
         }
         case 'cntStart': m.level = 'tip'; break;
         default: break;
@@ -851,8 +857,13 @@ const ENGINE = (() => {
     }
     // a weapon note for a front step that was pushed after the weapon rec
     for (const w of recs.filter(x => x.kind === 'cntWeapon')) {
-      const host = out.find(x => (x.kind === 'cntMove' || x.kind === 'cntBehind') && (x.to || x.task?.task?.faction) === w.task.task.faction);
-      if (host && !host.weapon) { host.weapon = w.task.task.itemId; const i = out.findIndex(x => x.kind === 'cntWeapon' && x.task === w.task); if (i >= 0) out.splice(i, 1); }
+      const host = out.find(x => (x.kind === 'cntMove' || x.kind === 'cntBehind' || x.kind === 'cntShort') && (x.to || x.task?.task?.faction) === w.task.task.faction);
+      if (host && !host.weapon) host.weapon = w.task.task.itemId;
+    }
+    // a front that is still short after a "move over" step was pushed before it
+    for (const sh of out.filter(x => x.kind === 'cntShort')) {
+      const host = out.find(x => x.kind === 'cntMove' && x.to === sh.to);
+      if (host) { host.short = sh.players; host.shortWeaponUse = sh.weaponUse; host.weapon = host.weapon || sh.weapon; out.splice(out.indexOf(sh), 1); }
     }
     return out.sort((a, b) => (LEVEL[a.level] ?? 4) - (LEVEL[b.level] ?? 4) || a.prio - b.prio);
   }
