@@ -1,14 +1,18 @@
-# Records the war every ~10 minutes so the site has a history even when nobody has it open.
-# The data lives on the "data" branch (one commit, replaced every run) and the page reads it from there.
+# Records the war every 10 minutes so the site has a history even when nobody has it open.
+# Each run keeps going for about 5 h 40 min (one snapshot every 10 minutes), then starts the next run
+# itself, so the record doesn't depend on GitHub's cron, which can be late or skip runs. The cron is
+# only a backup that restarts the chain if it ever breaks.
+# The data lives on the "data" branch (one commit, replaced every snapshot) and the page reads it there.
 name: Record the war
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '7 */2 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: recorder
@@ -17,22 +21,37 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Previous history
-        run: git fetch --depth 1 origin data && git show origin/data:history.json > "$RUNNER_TEMP/history.json" || echo '{}' > "$RUNNER_TEMP/history.json"
-      - name: Snapshot
-        run: node recorder/record.mjs "$RUNNER_TEMP/history.json" "$RUNNER_TEMP/out"
-      - name: Publish to the data branch
+      - name: Snapshots every 10 minutes
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd "$RUNNER_TEMP/out"
-          git init -q -b data
-          git config user.name "ministry-recorder"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add history.json intel.json recent.json
-          git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data:data
+          H="$RUNNER_TEMP/history.json"; OUT="$RUNNER_TEMP/out"
+          git fetch -q --depth 1 origin data 2>/dev/null && git show origin/data:history.json > "$H" || echo '{}' > "$H"
+          end=$(( $(date +%s) + 340*60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            start=$(date +%s)
+            if node recorder/record.mjs "$H" "$OUT"; then
+              cp "$OUT/history.json" "$H"
+              ( cd "$OUT" && rm -rf .git && git init -q -b data && git config user.name "ministry-recorder" \
+                && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
+                && git add history.json intel.json recent.json && git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)" \
+                && git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data:data ) || echo "::warning::push failed"
+            else
+              echo "::warning::snapshot failed, trying again at the next one"
+            fi
+            sleep $(( 600 - ( $(date +%s) - start ) % 600 ))
+          done
+      - name: Start the next run
+        if: ${{ !cancelled() }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/record.yml/dispatches" -d '{"ref":"main"}'

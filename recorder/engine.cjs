@@ -249,7 +249,8 @@ const ENGINE = (() => {
   // Compares what happened to a planet over a stretch of 20-90 minutes with what its Helldivers could do.
   // A gap larger than 8% of the planet's HP (13 of 17,000 hour-long stretches of the 2026 war archive)
   // is reported as a jump forward or a setback. pts: [{t, h, p, r (HP/s), N, imp, dss, hod}], oldest first.
-  function judgeStretch(pts, idx, m, attack, { K = K_TYPICAL, hodMult = 1, C: Cfb, maxGap = 10 / 60 } = {}) {
+  function judgeStretch(pts, idx, m, attack, opts = {}) {
+    const { K = K_TYPICAL, hodMult = 1, C: Cfb, maxGap = 10 / 60 } = opts;
     if (pts.length < 2 || !m) return null;
     const span = pts[pts.length - 1].t - pts[0].t;
     if (span < 20 * 60e3) return null;
@@ -267,6 +268,14 @@ const ENGINE = (() => {
     }
     const obs = pts[0].h - pts[pts.length - 1].h, players = pts[pts.length - 1].p;
     const base = { idx: Number(idx), t: at, mins: span / 60e3, pct: Math.abs(obs) / m, players, attack: !!attack };
+    // evidence the game itself keeps: how many missions were won on the planet meanwhile, and what
+    // they are worth (inf = HP per won mission per unit of impact multiplier, measured by the recorder)
+    const w0 = pts[0].w, w1 = pts[pts.length - 1].w;
+    if (w0 != null && w1 != null && w1 >= w0) {
+      const impAvg = pts.reduce((a, x) => a + (x.imp || 0), 0) / pts.length;
+      base.won = w1 - w0;
+      if (impAvg) base.worth = base.won * impAvg * (opts.inf || 100) / m;
+    }
     if (obs - exp > 0.08 * m && obs > 3 * Math.max(exp, 0.01 * m)) return { kind: 'jump', ...base };
     // from nearly taken to full health is a planet changing hands and starting over, not a setback
     const reset = pts[0].h < 0.02 * m && pts[pts.length - 1].h > 0.98 * m;
@@ -281,7 +290,7 @@ const ENGINE = (() => {
       if (!mt.m || now - mt.seen > 5 * 60e3) continue;
       const from = Math.max(mt.since, now - 90 * 60e3);
       const pts = samples.filter(s => s.t >= from && s.planets && s.planets[idx])
-        .map(s => ({ t: s.t, h: s.planets[idx].h, p: s.planets[idx].p, r: regenAt(mt.r, s.t), N: s.N, imp: s.imp, dss: s.dss, hod: s.hod }));
+        .map(s => ({ t: s.t, h: s.planets[idx].h, p: s.planets[idx].p, w: s.planets[idx].w, r: regenAt(mt.r, s.t), N: s.N, imp: s.imp, dss: s.dss, hod: s.hod }));
       const hit = judgeStretch(pts, idx, mt.m, mt.e, ctx);
       if (hit) found.push(hit);
     }
@@ -302,7 +311,7 @@ const ENGINE = (() => {
       for (const s of record) {
         const v = s.pl && s.pl[idx];
         if (!v) { f = null; seg = []; continue; }
-        const [h, p, r, m, e, g, o, end] = v;
+        const [h, p, r, m, e, g, o, end, w] = v;
         if (f && s.t - lastT <= 3 * 3.6e6) {
           if (e && f.e !== e && f.o === o) add({ kind: 'attack', idx: Number(idx), t: s.t, end: end || null, faction: ctx.factionOf ? ctx.factionOf(idx, s) : null });
           if (f.e === e && f.o === o && f.g === g && m > 0 && Math.abs(r - f.r) > Math.max(0.2 * Math.abs(f.r), 0.2))
@@ -310,7 +319,7 @@ const ENGINE = (() => {
         }
         if (!f || f.m !== m || f.e !== e || f.o !== o || f.g !== g || s.t - lastT > opts.maxGap * 3.6e6) seg = [];
         f = { m, e, o, g, r }; lastT = s.t;
-        seg.push({ t: s.t, h, p, r: e ? 0 : r, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod });
+        seg.push({ t: s.t, h, p, w, r: e ? 0 : r, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod });
         while (seg.length && s.t - seg[0].t > 90 * 60e3) seg.shift();
         const hit = judgeStretch(seg, idx, m, e, opts);
         if (hit) add(hit);
