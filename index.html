@@ -835,6 +835,12 @@ details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--m
 .move.lvl-long { border-left-color: var(--warn); }
 .move.lvl-long .lvl { color: var(--warn); border-color: var(--warn); }
 .mv-fx b { color: var(--warn); text-transform: uppercase; letter-spacing: .06em; }
+
+.ch-mark.r1 span { top: 6px; background: var(--panel-solid); padding: 1px 4px; }
+.ch-mark.r2 span { top: 26px; background: var(--panel-solid); padding: 1px 4px; }
+.ch-mark.end.r1 span, .ch-mark.end.r2 span { transform: translateX(-100%); }
+.ch-mark.ponr:not(.r1):not(.r2) span { transform: translateX(-100%); margin-left: -4px; }
+.ch-h.goal span { right: auto; left: 6px; }
 </style>
 </head>
 <body>
@@ -3387,7 +3393,12 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const gaps = (c.gaps || []).map(g => `<div class="ch-gap" style="left:${pctX(g[0])}%;width:${pctX(g[1]) - pctX(g[0])}%"><span>${esc(t('h.unrecorded'))}</span></div>`).join('');
     const yt = c.yTicks.map(v => `<span class="yt" style="bottom:${pctY(v)}%">${c.fmtY(v)}</span><i class="grid" style="bottom:${pctY(v)}%"></i>`).join('');
     const xt = c.xTicks.map(v => `<span class="xt" style="left:${pctX(v)}%">${esc(v.label || new Date(v).toLocaleDateString(locale(), { weekday: 'short' }))}</span>`).join('');
-    const marks = (c.marks || []).map(m => `<div class="ch-mark ${m.cls}" style="left:${pctX(m.x)}%"><span>${esc(m.label)}</span></div>`).join('');
+    // labels of marks that sit close together take turns above and inside the plot
+    let lastAt = -99, row = 0;
+    const marks = (c.marks || []).slice().sort((a, b) => a.x - b.x).map(m => {
+      const at = pctX(m.x); row = at - lastAt < 14 ? row + 1 : 0; lastAt = at;
+      return `<div class="ch-mark ${m.cls} r${row % 3}" style="left:${at}%"><span>${esc(m.label)}</span></div>`;
+    }).join('');
     const hl = (c.hlines || []).map(h => `<div class="ch-h ${h.cls}" style="bottom:${pctY(h.y)}%"><span>${esc(h.label)}</span></div>`).join('');
     const tags = (c.tags || []).map(g => `<span class="ch-tag ${g.cls}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" style="left:${pctX(g.x)}%;bottom:${pctY(g.y)}%">${esc(g.text)}</span>`).join('');
     charts[c.id] = c;
