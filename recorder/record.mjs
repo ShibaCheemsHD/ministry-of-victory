@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 const require = createRequire(import.meta.url);
 const E = require('./engine.cjs');
+import { loadStatic, mapOfficial } from './official.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -25,20 +26,20 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 // the API allows 5 requests per 10 s per address: one every 2.3 s, and wait out a refusal
 let lastReq = 0;
 const seen = [];
-async function get(p) {
-  for (let attempt = 0; attempt < 5; attempt++) {
+async function get(p, tries = 5) {
+  for (let attempt = 0; attempt < tries; attempt++) {
     const wait = lastReq + 2300 - Date.now();
     if (wait > 0) await sleep(wait);
     lastReq = Date.now();
     const url = `${API}${p}${p.includes('?') ? '&' : '?'}culture=en-US`;
     try {
-      const r = await fetch(url, { headers: { 'Accept-Language': 'en-US', 'X-Super-Client': CLIENT, 'X-Super-Contact': CONTACT } });
+      const r = await fetch(url, { headers: { 'Accept-Language': 'en-US', 'X-Super-Client': CLIENT, 'X-Super-Contact': CONTACT }, signal: AbortSignal.timeout(20000) });
       if (r.status === 429 || r.status >= 500) { seen.push(r.status + ' ' + (r.headers.get('server') || '') + ' ' + (await r.text()).slice(0, 120).replace(/\s+/g, ' ')); await sleep(11000); continue; }
       if (!r.ok) throw new Error(`HTTP ${r.status} ${p}`);
       return await r.json();
     } catch (e) {
       seen.push(String(e && e.cause ? e.message + ' / ' + e.cause : e));
-      if (attempt === 4) throw new Error(p + ': ' + seen.join(' | '));
+      if (attempt === tries - 1) throw new Error(p + ': ' + seen.join(' | '));
       await sleep(5000);
     }
   }
@@ -49,7 +50,8 @@ async function get(p) {
 const OFFICIAL = 'https://api.live.prod.thehelldiversgame.com/api/';
 async function official(p) {
   if (process.env.OFFICIAL_DIR) {   // tests: saved copies of the endpoints
-    const f = { 'WarSeason/801/Status': 'status.json', 'WarSeason/GalacticWarEffects': 'effects.json', 'Episode/801': 'episode.json' }[p];
+    const f = { 'WarSeason/801/Status': 'status.json', 'WarSeason/GalacticWarEffects': 'effects.json', 'Episode/801': 'episode.json',
+      'WarSeason/801/WarInfo': 'warinfo.json', 'v2/Assignment/War/801': 'assignment.json', 'Stats/war/801/summary': 'summary.json' }[p];
     try { return JSON.parse(fs.readFileSync(path.join(process.env.OFFICIAL_DIR, f), 'utf8')); } catch { return null; }
   }
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -57,7 +59,7 @@ async function official(p) {
     if (wait > 0) await sleep(wait);
     lastReq = Date.now();
     try {
-      const r = await fetch(OFFICIAL + p, { headers: { 'Accept-Language': 'en-US', 'X-Super-Client': CLIENT, 'X-Super-Contact': CONTACT } });
+      const r = await fetch(OFFICIAL + p, { headers: { 'Accept-Language': 'en-US', 'X-Super-Client': CLIENT, 'X-Super-Contact': CONTACT }, signal: AbortSignal.timeout(20000) });
       if (r.ok) return await r.json();
     } catch { /* try again */ }
     await sleep(5000);
@@ -74,11 +76,23 @@ const [, , histPath = 'history.json', outDir = '.'] = process.argv;
 let hist = { v: 1, samples: [], orders: {}, edits: [], names: {} };
 try { hist = { ...hist, ...JSON.parse(fs.readFileSync(histPath, 'utf8')) }; } catch { /* first run */ }
 
-const war = await get('/api/v1/war');
-const assignments = await get('/api/v1/assignments');
-const campaigns = await get('/api/v1/campaigns');
-const stations = await get('/api/v2/space-stations').catch(() => []);
-const raw = await get('/raw/api/v2/Assignment/War/801').catch(() => []);
+// the community API first; if it's down, the same data built from the game's own API
+let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null;
+try {
+  war = await get('/api/v1/war', 3);
+  assignments = await get('/api/v1/assignments', 3);
+  campaigns = await get('/api/v1/campaigns', 3);
+  stations = await get('/api/v2/space-stations', 2).catch(() => []);
+  raw = await get('/raw/api/v2/Assignment/War/801', 2).catch(() => []);
+} catch (e) {
+  console.log('::warning::community API unreachable, reading the official API instead: ' + String(e.message || e).slice(0, 400));
+  const fetchJson = async (u) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(20000) }); return r.ok ? await r.json() : null; } catch { return null; } };
+  if (!hist.static || Date.now() - hist.static.t > 24 * H) { const S = await loadStatic(fetchJson); if (S) hist.static = { t: Date.now(), ...S }; }
+  const [info, status0, summary, asg] = [await official('WarSeason/801/WarInfo'), await official('WarSeason/801/Status'), await official('Stats/war/801/summary'), await official('v2/Assignment/War/801')];
+  const o = mapOfficial({ info, status: status0, summary, assignments: asg, S: hist.static }, Date.now());
+  if (!o || !Array.isArray(asg)) throw new Error('both APIs unreachable: ' + String(e.message || e).slice(0, 300));
+  ({ war, assignments, campaigns } = o); raw = asg; all = o.planets; src = 'official';
+}
 const now = Date.now();
 
 const planets = {};
@@ -89,7 +103,7 @@ for (const a of assignments || []) for (const tk of a.tasks || []) {
   if (t.planetIndex != null) named.add(t.planetIndex);
 }
 for (const i of [...named].filter(i => !planets[i]).slice(0, 10)) {
-  const p = await get('/api/v1/planets/' + i).catch(() => null);
+  const p = all ? all[i] : await get('/api/v1/planets/' + i, 2).catch(() => null);
   if (p) planets[p.index] = p;
 }
 const st = (stations || [])[0];
@@ -229,6 +243,10 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
+// the page's plan B: the war as this snapshot saw it, in the community API's shapes
+const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
+fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
+  extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
 fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, official: !!status, alerts, effects, orders: hist.orders }));
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
@@ -246,4 +264,4 @@ for (const i of named) {
 fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));
 const progDay = thin(hist.samples.filter(s => now - s.t < 26 * H && s.prog).map(s => [s.t, s.prog])).map(([t, prog]) => ({ t, prog }));
 fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 2, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H), prog: progDay }));
-console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, ${alerts.length} alerts`);
+console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, source ${src}, ${alerts.length} alerts`);

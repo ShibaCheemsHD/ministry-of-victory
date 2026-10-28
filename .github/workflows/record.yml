@@ -41,7 +41,7 @@ jobs:
               cp "$OUT/history.json" "$H"
               ( cd "$OUT" && rm -rf .git && git init -q -b data && git config user.name "ministry-recorder" \
                 && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
-                && git add history.json intel.json recent.json progress.json && git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)" \
+                && git add history.json intel.json recent.json progress.json live.json && git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)" \
                 && git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data:data ) || echo "::warning::push failed"
             else
               echo "::warning::snapshot failed, trying again at the next one"

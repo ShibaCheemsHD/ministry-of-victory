@@ -1254,6 +1254,13 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
 
 .dir-meter button.q { padding: 0; background: transparent; }
 .otab .idx { display: none; } .otab { padding-right: 14px; }
+
+/* plan B banner: data from the recorder while the community API is down */
+.stale-bar { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); border-left: 3px solid var(--warn); background: rgba(255, 185, 0, .06); font-size: 14px; }
+.stale-bar .ico { width: 16px; height: 16px; color: var(--warn); flex: none; margin-top: 2px; }
+.stale-bar b { color: var(--fg); }
+.live.warn { background: var(--warn); animation: none; box-shadow: none; }
+#stale:empty { display: none; }
 </style>
 </head>
 <body>
@@ -1295,6 +1302,7 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
     <div id="cross"></div>
     <div id="intel" hidden></div>
     <div id="errors"></div>
+    <div id="stale"></div>
     <main id="view">
       <div class="skeleton" id="skeleton">
         <p class="sk-note" id="sk-note"></p>
@@ -2392,6 +2400,8 @@ const TEXT = {
   newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'New advice: {x}',
   order: 'Order {n}', noOrders: 'No active Major Order right now. Check back later, Helldiver.',
   firstLoad: 'Reading the Helldivers 2 API…',
+  stale: '<b>The community API isn\'t answering.</b> Showing the war as of {when} ({ago}), copied by our recorder from {src}. The page keeps trying and switches back by itself.',
+  staleMin: '{n} min ago', staleH: '{n} h ago', staleOff: 'the game\'s official servers', staleCom: 'the community API',
   dirLabel: 'What to do now',
   lead: { hard: 'Tough but doable: it needs more of us. ', record: 'It needs record numbers. ', nearly_impossible: 'A long shot: only a big surge of players can still win this. If you play for it, play here. ' },
   req: 'Required', reqItem: 'only kills with the {item} count',
@@ -2872,6 +2882,17 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       return true;
     } catch { return false; }
   }
+  // Plan B: when the community API can't be reached, the recorder's last copy of the war (taken from
+  // the community API, or from the game's official API when that one is down too) stands in for it.
+  let apiDown = false, stale = null;
+  async function loadLive() {
+    try {
+      const r = await fetch(RECORD + 'live.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      if (!j || j.v !== 1 || !j.war || !Array.isArray(j.assignments) || Date.now() - j.t > 6 * 3600e3) return null;
+      return j;
+    } catch { return null; }
+  }
   // the recorder's snapshots fill the holes in this browser's own history
   function mergeRecord(list) {
     if (!recordSamples.length) return list;
@@ -3122,18 +3143,31 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const errors = [];
     try {
       const recP = loadRecord(Date.now());
-      const [war, assignments, campaigns, stations] = await Promise.all([
-        getJSON('/api/v1/war'),
-        getJSON('/api/v1/assignments'),
-        getJSON('/api/v1/campaigns').catch(e => { errors.push(e.message); return []; }),
-        getCached('/api/v2/space-stations', 2 * 60e3).catch(() => []),
-      ]);
+      let war, assignments, campaigns, stations, live = null;
+      try {
+        // while the API is known to be down, ask it once, quickly, then go to plan B
+        const tmo = apiDown ? 8000 : 15000, rt = apiDown ? 0 : 2;
+        [war, assignments, campaigns, stations] = await Promise.all([
+          getJSON('/api/v1/war', tmo, rt),
+          getJSON('/api/v1/assignments', tmo, rt),
+          getJSON('/api/v1/campaigns', tmo, rt).catch(e => { errors.push(e.message); return []; }),
+          getCached('/api/v2/space-stations', 2 * 60e3, tmo).catch(() => []),
+        ]);
+        apiDown = false; stale = null;
+      } catch (e) {
+        live = await loadLive();
+        if (!live) throw e;
+        apiDown = true; errors.length = 0;
+        ({ war, assignments, campaigns, stations } = live);
+        stale = { t: live.t, src: live.src };
+      }
       // order start times never change: asked again only when an order appears that isn't listed yet
       const rawPath = '/raw/api/v2/Assignment/War/801';
-      if (memo[rawPath] && (assignments || []).some(a => !(memo[rawPath].data || []).some(x => String(x.id32) === String(a.id)))) delete memo[rawPath];
-      const raw = await getCached(rawPath, 30 * 60e3).catch(() => []);
+      if (!live && memo[rawPath] && (assignments || []).some(a => !(memo[rawPath].data || []).some(x => String(x.id32) === String(a.id)))) delete memo[rawPath];
+      const raw = live ? (live.raw || []) : await getCached(rawPath, 30 * 60e3).catch(() => []);
       const planets = {};
       for (const c of campaigns || []) if (c && c.planet) planets[c.planet.index] = c.planet;
+      if (live) for (const p of live.extra || []) if (p && p.index != null && !planets[p.index]) planets[p.index] = p;
       const needed = new Set();
       for (const a of assignments || []) for (const tk of a.tasks || []) {
         const p = ENGINE.parseTask(tk, 0);
@@ -3146,7 +3180,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       for (const k of Object.keys(xcache)) if (tnow - xcache[k].t > 30 * 60e3) delete xcache[k];
       const want = [...needed].slice(0, 8);
       want.forEach(i => { if (xcache[i]) planets[i] = xcache[i].p; });
-      const missing = want.filter(i => !planets[i]);
+      const missing = live ? [] : want.filter(i => !planets[i]);
       const nowList = missing.filter(i => memo['/api/v1/planets/' + i]).concat(missing.filter(i => !memo['/api/v1/planets/' + i]).slice(0, freeSlots()));
       const laterList = missing.filter(i => !nowList.includes(i));
       const keep = (p) => { if (p && p.index != null) { planets[p.index] = p; xcache[p.index] = { t: tnow, p }; } };
@@ -3162,7 +3196,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         const cached = store.get('sectors', null);
         if (cached && Date.now() - cached.t < 24 * 3600e3) sectorOf = cached.map;
         else {
-          const info = await getJSON('/raw/api/WarSeason/801/WarInfo').catch(() => null);
+          const info = live ? null : await getJSON('/raw/api/WarSeason/801/WarInfo').catch(() => null);
           if (info && Array.isArray(info.planetInfos)) {
             sectorOf = Object.fromEntries(info.planetInfos.map(x => [x.index, x.sector]));
             store.set('sectors', { t: Date.now(), map: sectorOf });
@@ -3200,7 +3234,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       for (const a of assignments || []) sample.prog[orderKey(a)] = a.progress;
       await recP;
       samples = mergeRecord(samples.filter(s => now - s.t < KEEP_MS));
-      if (!samples.length || now - samples[samples.length - 1].t > 30e3) samples.push(sample);
+      if (!live && (!samples.length || now - samples[samples.length - 1].t > 30e3)) samples.push(sample);
       if (samples.length > 3000) samples = samples.slice(-3000);
       store.set('samples', samples);
 
@@ -3246,11 +3280,11 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       }
       newOnes.forEach(x => known.add(String(x.a.id)));
       store.set('known', [...known].slice(-50));
-      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName, sectorOf };
+      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName, sectorOf, stale };
       lastOk = now;
       if (dragging) pendingRender = true; else render();
       // news last, in the background: it never holds up the numbers
-      if (now - news.t >= 15 * 60e3) loadNews(now).then(() => { if (last && !dragging) { const e = last.results.find(x => String(x.a.id) === String(ui.order)); renderIntel(e); } });
+      if (!live && now - news.t >= 15 * 60e3) loadNews(now).then(() => { if (last && !dragging) { const e = last.results.find(x => String(x.a.id) === String(ui.order)); renderIntel(e); } });
       const hit = pendingToast.splice(0).find(x => (x.kind !== 'effect' || WAR_FX.has(x.type)) && results.some(({ a, res }) => { const rel = orderPlanets(res); return x.kind === 'edited' ? x.order === String(a.id) : Array.isArray(x.planets) ? x.planets.some(i => i === -1 || rel.has(i)) : rel.has(x.idx); }));
       if (hit && !newOnes.length) toast(plain(alertText(hit, true, new Set())));
       if (unknownNames(results)) loadNames(true).then(() => { if (last && !dragging) render(); });
@@ -3347,7 +3381,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const Ls = last;
     const dssP = Ls.dssIdx != null ? Ls.planets[Ls.dssIdx] : null;
     $('hud-stats').innerHTML = `
-      <div class="stat" title="${esc(t('players'))}"><span class="label">${t('players')}</span><span class="v"><i class="live"></i><span data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</span><small class="m-only"> ${t('online')}</small></span></div>`;
+      <div class="stat" title="${esc(t('players'))}"><span class="label">${t('players')}</span><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}"></i><span data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</span><small class="m-only"> ${t('online')}</small></span></div>`;
   }
 
   /* ---------- order tabs ---------- */
@@ -4537,10 +4571,19 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     if (el.hasAttribute('data-toggle-nums')) return '[data-toggle-nums]';
     return null;
   }
+  function renderStale() {
+    const box = $('stale'); if (!box) return;
+    const st = last && last.stale;
+    if (!st) { box.innerHTML = ''; return; }
+    const mins = Math.max(1, Math.round((Date.now() - st.t) / 60e3));
+    const ago = mins < 90 ? fill(t('staleMin'), { n: mins }) : fill(t('staleH'), { n: fmt(mins / 60, 1) });
+    box.innerHTML = `<div class="stale-bar" role="status">${ICON.warn}<p>${fill(t('stale'), { when: esc(new Date(st.t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })), ago: esc(ago), src: esc(t(st.src === 'official' ? 'staleOff' : 'staleCom')) })}</p></div>`;
+  }
   function render(opts = {}) {
     if (!last) return;
     const keepFocus = focusSelector();
     renderHud();
+    renderStale();
     renderOrderTabs();
     renderCross();
     const entry = last.results.find(x => String(x.a.id) === String(ui.order));
