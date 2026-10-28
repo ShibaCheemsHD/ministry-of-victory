@@ -204,5 +204,19 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
 fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, official: !!status, alerts, effects, orders: hist.orders }));
+// progress history for the page's charts: every running order since recording began (one point per
+// 20 minutes), and the liberation of the planets the orders name
+const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };
+const progress = { v: 1, updated: now, since: hist.since, orders: {}, planets: {} };
+for (const [id, o] of Object.entries(hist.orders)) {
+  const pts = hist.samples.filter(sm => sm.prog && Object.keys(sm.prog).some(k => k.startsWith(id + ':')))
+    .map(sm => [sm.t, ...(sm.prog[Object.keys(sm.prog).find(k => k.startsWith(id + ':'))] || [])]);
+  progress.orders[id] = { start: o.start, exp: o.exp, title: o.title, pts: thin(pts) };
+}
+for (const i of named) {
+  const pts = hist.samples.filter(sm => sm.pl[i]).map(sm => { const v = sm.pl[i]; return [sm.t, v[3] ? +(1 - v[0] / v[3]).toFixed(5) : 0, v[4] ? 1 : 0, v[1]]; });
+  if (pts.length) progress.planets[i] = thin(pts);
+}
+fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));
 fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 1, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H) }));
 console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, ${alerts.length} alerts`);
