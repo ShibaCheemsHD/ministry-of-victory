@@ -168,14 +168,22 @@ const ENGINE = (() => {
   }
 
   // Observed net HP/h on a planet from stored samples (last 90 min, >= 15 min span).
-  function observedNet(samples, idx, now) {
-    const pts = samples.filter(s => s.planets && s.planets[idx] && now - s.t <= 90 * 60e3)
+  // Pace actually seen on a planet over the last 90 minutes. Steps bigger than 3% of the planet in one
+  // go are left out: they are region captures (whose bonus the remaining work already accounts for) or
+  // Super Earth Command stepping in, and would make the forecast far too optimistic.
+  function observedNet(samples, idx, now, maxH) {
+    const pts = samples.filter(s => s.planets && s.planets[idx] && s.planets[idx].h != null && now - s.t <= 90 * 60e3)
       .map(s => ({ t: s.t, h: s.planets[idx].h }));
     if (pts.length < 2) return null;
-    const a = pts[0], b = pts[pts.length - 1];
-    const span = (b.t - a.t) / 3.6e6;
-    if (span < 0.25) return null;
-    return { net: (a.h - b.h) / span, span };
+    let dh = 0, dt = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const step = pts[i - 1].h - pts[i].h, gap = (pts[i].t - pts[i - 1].t) / 3.6e6;
+      if (gap <= 0 || gap > 0.6) continue;
+      if (maxH && Math.abs(step) > 0.03 * maxH) continue;
+      dh += step; dt += gap;
+    }
+    if (dt < 0.25) return null;
+    return { net: dh / dt, span: dt };
   }
 
   // Live calibration of capacity C from samples of planets under liberation.
@@ -370,17 +378,24 @@ const ENGINE = (() => {
 
   // Counter projection: rate since MO start and recent rate from samples.
   function counterRates(samples, assignmentId, taskIdx, progress, startMs, now) {
-    const out = { sinceStart: null, recent: null, recentSpan: 0 };
+    const out = { sinceStart: null, recent: null, recentSpan: 0, day: null };
+    // last 24 hours (from the site's recorder): current, and it covers a whole day-night cycle
+    const day = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 26 * 3600e3 && s.prog[assignmentId][taskIdx] != null)
+      .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
+    if (day.length >= 2) {
+      const a = day.find(x => now - x.t <= 24.5 * 3600e3) || day[0], b = day[day.length - 1], span = (b.t - a.t) / 3.6e6;
+      if (span >= 20 && b.v >= a.v) out.day = { rate: (b.v - a.v) / span, hours: span, kind: 'day' };
+    }
     if (startMs && now > startMs) {
       const h = (now - startMs) / 3.6e6;
-      if (h > 0.25) out.sinceStart = { rate: progress / h, hours: h };
+      if (h > 0.25) out.sinceStart = { rate: progress / h, hours: h, kind: 'start' };
     }
     const pts = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 3 * 3600e3)
       .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
     if (pts.length >= 2) {
       const a = pts[0], b = pts[pts.length - 1];
       const span = (b.t - a.t) / 3.6e6;
-      if (span >= 0.2) { out.recent = { rate: (b.v - a.v) / span, hours: span }; out.recentSpan = span; }
+      if (span >= 0.2) { out.recent = { rate: (b.v - a.v) / span, hours: span, kind: 'recent' }; out.recentSpan = span; }
     }
     return out;
   }
@@ -407,7 +422,7 @@ const ENGINE = (() => {
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-          const obs = observedNet(samples, p.index, now);
+          const obs = observedNet(samples, p.index, now, p.maxHealth);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
           const eta = net > 0 ? pw.work / net : Infinity;
@@ -423,7 +438,7 @@ const ENGINE = (() => {
           // must be liberated before the end: same math as a liberation
           const pw = planetWork(p);
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
-          const obs = observedNet(samples, p.index, now);
+          const obs = observedNet(samples, p.index, now, p.maxHealth);
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
@@ -438,11 +453,12 @@ const ENGINE = (() => {
         } else { r.verdict = 'done'; r.safe = true; }
       } else if (COUNTER_TYPES.has(t.type) && t.goal) {
         // progress samples are stored per assignment *and* task list, so an edited order starts a fresh history
-        const rates = counterRates(samples, ctx.progKey ?? a.id, i, t.progress, startMs, now);
+        const rates = counterRates(samples, ctx.progKey ?? a.id, i + (ctx.taskOffset || 0), t.progress, startMs, now);
         const remaining = Math.max(0, t.goal - t.progress);
         const needed = H > 0 ? remaining / H : Infinity;
-        const primary = rates.sinceStart && rates.sinceStart.hours >= 12 ? rates.sinceStart
-          : (rates.recent && rates.recent.hours >= 0.25 ? rates.recent : rates.sinceStart);
+        // the last 24 hours when recorded, else the average since the start (12 h or more), else the last hour
+        const primary = rates.day || (rates.sinceStart && rates.sinceStart.hours >= 12 ? rates.sinceStart
+          : (rates.recent && rates.recent.hours >= 0.25 ? rates.recent : rates.sinceStart));
         const projection = primary ? t.progress + primary.rate * H : null;
         let verdict = 'unknown';
         if (remaining <= 0) verdict = 'done';
@@ -511,6 +527,22 @@ const ENGINE = (() => {
     }
     const worst = res.tasks.reduce((w, r) => (RANK[r.verdict] ?? 1) > (RANK[w] ?? 0) ? r.verdict : w, 'done');
     res.verdict = res.tasks.length ? worst : 'unknown';
+    // "Option 1 / Option 2" orders (flags 2 or 3 in the game data): completing any one objective wins.
+    // The forecast follows the most winnable option, and the plan is made for that one alone.
+    const anyOf = !ctx.taskOffset && !ctx.single && (Number(a.flags) === 2 || Number(a.flags) === 3) && res.tasks.length > 1;
+    if (anyOf) {
+      // each option judged on its own (a liberation option doesn't share players with the others)
+      const subs = res.tasks.map((r, k) => analyzeAssignment({ ...a, flags: 0, tasks: [a.tasks[k]], progress: [(a.progress || [])[k]] }, { ...ctx, single: true, taskOffset: k }));
+      subs.forEach((sub, k) => { const st = sub.tasks[0]; if (st) res.tasks[k] = { ...st, idx: k, verdict: sub.verdict }; });
+      const frac = (r) => r.task.goal ? r.task.progress / r.task.goal : (r.pw ? 1 - r.planet.health / r.planet.maxHealth : 0);
+      const k = res.tasks.map((r, i) => i).sort((x, y) => (RANK[res.tasks[x].verdict] ?? 1.5) - (RANK[res.tasks[y].verdict] ?? 1.5) || frac(res.tasks[y]) - frac(res.tasks[x]))[0];
+      res.anyOf = true; res.pick = k; res.verdict = res.tasks[k].verdict;
+      if (!res.ended) {
+        const sub = subs[k];
+        res.recs = sub.recs; res.directive = sub.directive; res.liberation = sub.liberation; res.fronts = sub.fronts;
+        return res;
+      }
+    }
     if (res.ended) {
       const won = res.verdict === 'done';
       res.recs = won ? [{ kind: 'allDone', prio: 0 }] : [];
@@ -890,13 +922,15 @@ const ENGINE = (() => {
     const share = N ? (p.statistics?.playerCount || 0) / N : 0;
     const onDss = dssIdx === p.index;
     const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-    const rate = dmg(share, C) * mult;
+    const model = dmg(share, C) * mult;
+    const obs = observedNet(ctx.samples || [], p.index, now, e.maxHealth);
+    const rate = obs && obs.net > 0 ? obs.net : model;
     const need = shareFor(e.health / hEvent / (1 + settings.dssBonus), C);
     const eta = rate > 0 ? e.health / rate : Infinity;
     const outlastsMO = hEvent > H; // the attack ends after the MO: planet is still ours at MO end
     let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.5 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
     if (outlastsMO) verdict = 'done';
-    return { hoursToEnd: hEvent, share, rate, need, eta, verdict, outlastsMO, progress: 1 - e.health / e.maxHealth };
+    return { hoursToEnd: hEvent, share, rate, observed: obs, need, eta, verdict, outlastsMO, progress: 1 - e.health / e.maxHealth };
   }
 
   /* ---------- Several orders at once ----------
@@ -906,6 +940,8 @@ const ENGINE = (() => {
      defenses and hold targets on different planets don't overlap. Shares are of everyone online. */
   function orderNeeds(res) {
     if (!res || res.ended || res.verdict === 'done') return null;
+    // a choice order only needs its most winnable option
+    if (res.anyOf) res = { ...res, tasks: res.tasks.filter((r, i) => i === res.pick) };
     const N = res.model.N || 0;
     const place = {}, front = {};   // per faction: planet-bound needs (add up) / front-wide needs (overlap)
     const add = (o, f, x) => { if (f && x > 0 && isFinite(x)) o[f] = (o[f] || 0) + x; };

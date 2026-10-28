@@ -1085,6 +1085,11 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
 
 .tab { white-space: nowrap; }
 @media (max-width: 420px) { .tab-badge { min-width: 14px; height: 14px; font-size: 9px; padding: 0 3px; margin-left: 3px; vertical-align: 1px; } }
+
+.anyof { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 1px solid rgba(255, 233, 0, .45); background: rgba(255, 233, 0, .05); font-size: 14px; }
+.anyof .ico { width: 16px; height: 16px; color: var(--yellow); flex: none; }
+.objective .opt { display: inline-block; margin-right: 10px; padding: 2px 6px; font: 700 11px var(--ui); letter-spacing: .12em; text-transform: uppercase; border: 1px solid var(--line-2); color: var(--muted); vertical-align: 2px; }
+.objective .opt.best { border-color: var(--yellow); color: var(--yellow); }
 </style>
 </head>
 <body>
@@ -1332,14 +1337,22 @@ const ENGINE = (() => {
   }
 
   // Observed net HP/h on a planet from stored samples (last 90 min, >= 15 min span).
-  function observedNet(samples, idx, now) {
-    const pts = samples.filter(s => s.planets && s.planets[idx] && now - s.t <= 90 * 60e3)
+  // Pace actually seen on a planet over the last 90 minutes. Steps bigger than 3% of the planet in one
+  // go are left out: they are region captures (whose bonus the remaining work already accounts for) or
+  // Super Earth Command stepping in, and would make the forecast far too optimistic.
+  function observedNet(samples, idx, now, maxH) {
+    const pts = samples.filter(s => s.planets && s.planets[idx] && s.planets[idx].h != null && now - s.t <= 90 * 60e3)
       .map(s => ({ t: s.t, h: s.planets[idx].h }));
     if (pts.length < 2) return null;
-    const a = pts[0], b = pts[pts.length - 1];
-    const span = (b.t - a.t) / 3.6e6;
-    if (span < 0.25) return null;
-    return { net: (a.h - b.h) / span, span };
+    let dh = 0, dt = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const step = pts[i - 1].h - pts[i].h, gap = (pts[i].t - pts[i - 1].t) / 3.6e6;
+      if (gap <= 0 || gap > 0.6) continue;
+      if (maxH && Math.abs(step) > 0.03 * maxH) continue;
+      dh += step; dt += gap;
+    }
+    if (dt < 0.25) return null;
+    return { net: dh / dt, span: dt };
   }
 
   // Live calibration of capacity C from samples of planets under liberation.
@@ -1534,17 +1547,24 @@ const ENGINE = (() => {
 
   // Counter projection: rate since MO start and recent rate from samples.
   function counterRates(samples, assignmentId, taskIdx, progress, startMs, now) {
-    const out = { sinceStart: null, recent: null, recentSpan: 0 };
+    const out = { sinceStart: null, recent: null, recentSpan: 0, day: null };
+    // last 24 hours (from the site's recorder): current, and it covers a whole day-night cycle
+    const day = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 26 * 3600e3 && s.prog[assignmentId][taskIdx] != null)
+      .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
+    if (day.length >= 2) {
+      const a = day.find(x => now - x.t <= 24.5 * 3600e3) || day[0], b = day[day.length - 1], span = (b.t - a.t) / 3.6e6;
+      if (span >= 20 && b.v >= a.v) out.day = { rate: (b.v - a.v) / span, hours: span, kind: 'day' };
+    }
     if (startMs && now > startMs) {
       const h = (now - startMs) / 3.6e6;
-      if (h > 0.25) out.sinceStart = { rate: progress / h, hours: h };
+      if (h > 0.25) out.sinceStart = { rate: progress / h, hours: h, kind: 'start' };
     }
     const pts = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 3 * 3600e3)
       .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
     if (pts.length >= 2) {
       const a = pts[0], b = pts[pts.length - 1];
       const span = (b.t - a.t) / 3.6e6;
-      if (span >= 0.2) { out.recent = { rate: (b.v - a.v) / span, hours: span }; out.recentSpan = span; }
+      if (span >= 0.2) { out.recent = { rate: (b.v - a.v) / span, hours: span, kind: 'recent' }; out.recentSpan = span; }
     }
     return out;
   }
@@ -1571,7 +1591,7 @@ const ENGINE = (() => {
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-          const obs = observedNet(samples, p.index, now);
+          const obs = observedNet(samples, p.index, now, p.maxHealth);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
           const eta = net > 0 ? pw.work / net : Infinity;
@@ -1587,7 +1607,7 @@ const ENGINE = (() => {
           // must be liberated before the end: same math as a liberation
           const pw = planetWork(p);
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
-          const obs = observedNet(samples, p.index, now);
+          const obs = observedNet(samples, p.index, now, p.maxHealth);
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
@@ -1602,11 +1622,12 @@ const ENGINE = (() => {
         } else { r.verdict = 'done'; r.safe = true; }
       } else if (COUNTER_TYPES.has(t.type) && t.goal) {
         // progress samples are stored per assignment *and* task list, so an edited order starts a fresh history
-        const rates = counterRates(samples, ctx.progKey ?? a.id, i, t.progress, startMs, now);
+        const rates = counterRates(samples, ctx.progKey ?? a.id, i + (ctx.taskOffset || 0), t.progress, startMs, now);
         const remaining = Math.max(0, t.goal - t.progress);
         const needed = H > 0 ? remaining / H : Infinity;
-        const primary = rates.sinceStart && rates.sinceStart.hours >= 12 ? rates.sinceStart
-          : (rates.recent && rates.recent.hours >= 0.25 ? rates.recent : rates.sinceStart);
+        // the last 24 hours when recorded, else the average since the start (12 h or more), else the last hour
+        const primary = rates.day || (rates.sinceStart && rates.sinceStart.hours >= 12 ? rates.sinceStart
+          : (rates.recent && rates.recent.hours >= 0.25 ? rates.recent : rates.sinceStart));
         const projection = primary ? t.progress + primary.rate * H : null;
         let verdict = 'unknown';
         if (remaining <= 0) verdict = 'done';
@@ -1675,6 +1696,22 @@ const ENGINE = (() => {
     }
     const worst = res.tasks.reduce((w, r) => (RANK[r.verdict] ?? 1) > (RANK[w] ?? 0) ? r.verdict : w, 'done');
     res.verdict = res.tasks.length ? worst : 'unknown';
+    // "Option 1 / Option 2" orders (flags 2 or 3 in the game data): completing any one objective wins.
+    // The forecast follows the most winnable option, and the plan is made for that one alone.
+    const anyOf = !ctx.taskOffset && !ctx.single && (Number(a.flags) === 2 || Number(a.flags) === 3) && res.tasks.length > 1;
+    if (anyOf) {
+      // each option judged on its own (a liberation option doesn't share players with the others)
+      const subs = res.tasks.map((r, k) => analyzeAssignment({ ...a, flags: 0, tasks: [a.tasks[k]], progress: [(a.progress || [])[k]] }, { ...ctx, single: true, taskOffset: k }));
+      subs.forEach((sub, k) => { const st = sub.tasks[0]; if (st) res.tasks[k] = { ...st, idx: k, verdict: sub.verdict }; });
+      const frac = (r) => r.task.goal ? r.task.progress / r.task.goal : (r.pw ? 1 - r.planet.health / r.planet.maxHealth : 0);
+      const k = res.tasks.map((r, i) => i).sort((x, y) => (RANK[res.tasks[x].verdict] ?? 1.5) - (RANK[res.tasks[y].verdict] ?? 1.5) || frac(res.tasks[y]) - frac(res.tasks[x]))[0];
+      res.anyOf = true; res.pick = k; res.verdict = res.tasks[k].verdict;
+      if (!res.ended) {
+        const sub = subs[k];
+        res.recs = sub.recs; res.directive = sub.directive; res.liberation = sub.liberation; res.fronts = sub.fronts;
+        return res;
+      }
+    }
     if (res.ended) {
       const won = res.verdict === 'done';
       res.recs = won ? [{ kind: 'allDone', prio: 0 }] : [];
@@ -2054,13 +2091,15 @@ const ENGINE = (() => {
     const share = N ? (p.statistics?.playerCount || 0) / N : 0;
     const onDss = dssIdx === p.index;
     const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
-    const rate = dmg(share, C) * mult;
+    const model = dmg(share, C) * mult;
+    const obs = observedNet(ctx.samples || [], p.index, now, e.maxHealth);
+    const rate = obs && obs.net > 0 ? obs.net : model;
     const need = shareFor(e.health / hEvent / (1 + settings.dssBonus), C);
     const eta = rate > 0 ? e.health / rate : Infinity;
     const outlastsMO = hEvent > H; // the attack ends after the MO: planet is still ours at MO end
     let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.5 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
     if (outlastsMO) verdict = 'done';
-    return { hoursToEnd: hEvent, share, rate, need, eta, verdict, outlastsMO, progress: 1 - e.health / e.maxHealth };
+    return { hoursToEnd: hEvent, share, rate, observed: obs, need, eta, verdict, outlastsMO, progress: 1 - e.health / e.maxHealth };
   }
 
   /* ---------- Several orders at once ----------
@@ -2070,6 +2109,8 @@ const ENGINE = (() => {
      defenses and hold targets on different planets don't overlap. Shares are of everyone online. */
   function orderNeeds(res) {
     if (!res || res.ended || res.verdict === 'done') return null;
+    // a choice order only needs its most winnable option
+    if (res.anyOf) res = { ...res, tasks: res.tasks.filter((r, i) => i === res.pick) };
     const N = res.model.N || 0;
     const place = {}, front = {};   // per faction: planet-bound needs (add up) / front-wide needs (overlap)
     const add = (o, f, x) => { if (f && x > 0 && isFinite(x)) o[f] = (o[f] || 0) + x; };
@@ -2225,7 +2266,7 @@ const TEXT = {
     title: 'Nothing left to win here', sub: 'No plan closes this gap with the players we have. Here is how it got here.',
     lostTitle: 'This order is lost', lostSub: 'Time ran out before the objectives were done. Here is how it went.',
     longTitle: 'A long shot', longSub: 'Only an exceptional surge of players can still turn this around. The moves below are the best odds, not a plan that wins.',
-    tStart: 'Needed from day one', tStartS: '{what} an hour, every hour, to finish on time', tAvg: 'What we averaged', tAvgS: '{p} of what it needed',
+    tStart: 'Needed from day one', tStartS: '{what} an hour, every hour, to finish on time', tAvg: 'What we averaged', tDay: 'Our last 24 hours', tAvgS: '{p} of what it needed',
     tBest: 'Our best hour', tBestS: 'the fastest recorded so far', tNeed: 'Needed from now on', tNeedS: '{x}× our average, every hour until the deadline',
     tPlNow: 'Players on it now', tPlNowS: 'of everyone online', tPlNeed: 'Players it needs', tPlNeedS: 'about {n} Helldivers at once', tRecord: 'Most ever on one order', tRecordS: 'the all-time record share',
     howTitle: 'How we got here',
@@ -2240,7 +2281,8 @@ const TEXT = {
     stillLost: 'The medals for this order are gone. The next Major Order usually arrives within hours.',
   },
   why: { title: 'Why', ok: 'on pace', done: '{k} of {n} objectives already done',
-    pace: '<b>{have}/h</b> on average · needs <b>{need}/h</b>', paceRec: '<b>{have}/h</b> on average, <b>{rec}/h</b> in the last hour · needs <b>{need}/h</b>',
+    pace: '<b>{have}/h</b> {basis} · needs <b>{need}/h</b>', paceRec: '<b>{have}/h</b> {basis}, <b>{rec}/h</b> in the last hour · needs <b>{need}/h</b>',
+    basis: { start: 'on average', day: 'over the last 24 h', recent: 'in the last hour' },
     players: '<b>{have}</b> of all players are there now · it needs <b>{need}</b>', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on the planets' },
   it: {
     title: 'Command intel', none: 'Nothing new in the last 48 hours.', n1: '1 event', n: '{n} events', nActive: '{n} effects active', nNews: '{n} news',
@@ -2254,11 +2296,11 @@ const TEXT = {
     libTitle: 'Liberation over time', prog: 'Progress', hour: 'Per hour', view: 'Chart view',
     goal: 'Goal {v}', now: 'Now', deadline: 'Deadline', ponr: 'Past our best hour', unrecorded: 'not recorded',
     needLine: 'needed {v}/h', avgLine: 'average {v}/h',
-    stat: 'Needs <b>{need}/h</b> from now on. We average <b>{avg}/h</b>: <b>{x}×</b> short.', statDone: 'Objective complete.', statOk: 'Needs <b>{need}/h</b> from now on. We average <b>{avg}/h</b>: on pace.',
-    lgAct: 'Done so far', lgNeed: 'Needed from now', lgAvg: 'At our average pace', lgRec: 'At the last hour\'s pace',
-    tipDone: '{v} done ({p})', tipEst: 'about {v} ({p}), estimated', tipAvg: 'average pace: {v} ({p})', tipRec: 'last hour\'s pace: {v} ({p})', tipNeed: 'needed by now: {v}',
+    stat: 'Needs <b>{need}/h</b> from now on. We do <b>{avg}/h</b> {basis}: <b>{x}×</b> short.', statDone: 'Objective complete.', statOk: 'Needs <b>{need}/h</b> from now on. We do <b>{avg}/h</b> {basis}: on pace.',
+    lgAct: 'Done so far', lgNeed: 'Needed from now', lgAvg: 'At our pace ({basis})', lgRec: 'At the last hour\'s pace',
+    tipDone: '{v} done ({p})', tipEst: 'about {v} ({p}), estimated', tipAvg: 'at our pace: {v} ({p})', tipRec: 'last hour\'s pace: {v} ({p})', tipNeed: 'needed by now: {v}',
     lnAct: 'What the game has counted so far.', lnGap: 'Before recording began: drawn straight from the start of the order to the first recorded point.',
-    lnNeed: 'The straight line to the goal by the deadline: {v} every hour from now on.', lnAvg: 'Where the order ends if we keep our average since the start ({v}/h): {p} of the goal.',
+    lnNeed: 'The straight line to the goal by the deadline: {v} every hour from now on.', lnAvg: 'Where the order ends if we keep our pace {basis} ({v}/h): {p} of the goal.',
     lnRec: 'Where the order ends at the pace of the last hour ({v}/h): {p} of the goal.', lnPlanet: 'Liberation of the planet as the game reports it.',
     lnFalls: 'Forecast at today\'s pace: falls {when}.', lnLate: 'At today\'s pace it doesn\'t fall before the deadline.',
     ponrTip: 'From here on, the pace still needed was higher than our best recorded hour ({best}/h).', endTip: 'The order ends {when}.',
@@ -2341,6 +2383,7 @@ const TEXT = {
   timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', medals: '{n} medals', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
   prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
+  anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
   tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'History', tIntel: 'Intel',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
     defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
@@ -2395,7 +2438,7 @@ const TEXT = {
   deepBasis: 'Based on {c} HP per hour with every player on one planet ({src}).',
   capMeasured: 'measured now', capDefault: 'October 2026 reference', capManual: 'set manually',
   deepBasisLive: 'Right now each Helldiver on a planet deals about {per} HP per hour, so everyone together on one planet would deal {c} HP per hour. Worked out from the live impact multiplier ({imp}) and a damage constant {src}. Replayed on 51 real liberations from the past year, the forecast fall time was within 10% for half of them and within 25% for two thirds; the big misses were planets that fell sooner than forecast (events, Super Earth help).',
-  kMeasured: 'measured on the planets being fought over right now', kRecent: 'measured on your last visit', kDefault: 'measured on 28 October 2026',
+  kMeasured: 'measured on the planets being fought over right now', kRecent: 'measured on your last visit', kRecord: 'measured by the site\'s recorder in the last hours', kDefault: 'measured on 28 October 2026',
   gaugeTitle: 'Share of the playerbase', gNow: 'Now on MO planets', gNeed: 'Needed (one planet at a time)', gRecord: 'All-time record', gFull: '100% = everyone',
   fNow: 'Now on MO planets', fNeed: 'Needed, one planet at a time', fPar: 'Needed, all at once', fAtNow: 'Current share, well coordinated', of: 'of', never: 'never',
   th: { planet: 'Planet', hp: 'Enemy HP', regen: 'Regen/h', divers: 'Helldivers', be: 'Break-even', net: 'Net/h', eta: 'Est. finish' },
@@ -2427,7 +2470,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
 <dt>Forecast</dt><dd>The bars under the stamp show why: what we do against what each objective needs, and how many times faster it would have to go. How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
 <dt>History</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, and the pace hour by hour. Hover or tap a chart to read any moment, tap the legend to hide a line.</dd>
 <dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
-<dt>Kills, samples, operations</dt><dd>The page compares the needed pace with the average pace since the order started, which covers day and night, and with the last hour.</dd>
+<dt>Kills, samples, operations</dt><dd>The page compares the pace needed with the pace of the last 24 hours (a full day and night, recorded by the site), or the average since the order started until a day has been recorded, and shows the last hour too.</dd>
+<dt>Option orders</dt><dd>Some orders say Option 1, Option 2: any one of them wins. The forecast and the plan then follow the most winnable option.</dd>
 <dt>All active orders</dt><dd>When more than one order is running, the bar above shows what share of everyone online each one needs, counting players who help two orders at once (killing bots on a bot planet counts for both), and which order is the best bet if there aren't enough players for all of them.</dd>
 <dt>Regions</dt><dd>Planets with regions are taken one region at a time, quickest first. While regions are being captured, the planet's own regen keeps eating into the damage already done, so splitting players across regions slows everything down.</dd>
 <dt>New orders</dt><dd>The page checks the API every minute. When Super Earth issues a new Major Order, or changes the current one, everything on the page is worked out again from the new objectives.</dd>
@@ -2636,12 +2680,14 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const [intel, recent, prog] = await Promise.all(['intel.json', 'recent.json', 'progress.json'].map(f =>
         fetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
       if (intel && Array.isArray(intel.alerts)) {
-        record = { t: intel.updated, since: intel.since, every: intel.every || 10, alerts: intel.alerts, effects: intel.effects || [], inf: intel.inf || null, official: !!intel.official };
+        record = { t: intel.updated, since: intel.since, every: intel.every || 10, alerts: intel.alerts, effects: intel.effects || [], inf: intel.inf || null, official: !!intel.official, K: intel.K || null };
         store.set('record', record);
       }
       if (prog && prog.orders) recordProgress = prog;
       if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
-        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], w: v[8] ?? null }])), prog: x.prog || {} }));
+        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], w: v[8] ?? null }])), prog: x.prog || {} }))
+        // older progress only (no planets), so a full day of pace is known on a first visit
+        .concat((recent.prog || []).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
       return true;
     } catch { return false; }
   }
@@ -2985,7 +3031,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       if (calib && calib.K > K_MIN && calib.K < K_MAX) { K = calib.K; capSrc = 'kMeasured'; store.set('kcal', { K, t: now, hours: calib.hours }); }
       else {
         const saved = store.get('kcal', null);
-        if (saved && now - saved.t < 7 * 24 * 3600e3 && saved.K > K_MIN && saved.K < K_MAX) { K = saved.K; capSrc = 'kRecent'; }
+        if (record && record.K > K_MIN && record.K < K_MAX && now - record.t < 2 * 3600e3) { K = record.K; capSrc = 'kRecord'; }
+        else if (saved && now - saved.t < 7 * 24 * 3600e3 && saved.K > K_MIN && saved.K < K_MAX) { K = saved.K; capSrc = 'kRecent'; }
         else { K = K_REF; capSrc = 'kDefault'; }
       }
       if (settings.capMode === 'manual') { C = settings.capacity; capSrc = 'capManual'; }
@@ -3339,13 +3386,13 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         <div class="wm-bar" role="img" aria-label="${esc(plain(sub))}"><div class="fill" data-key="why:${esc(key)}" data-w="${fillW}"></div>${markW != null ? `<i class="wm-mark" style="left:${markW}%"></i>` : ''}</div>
         <div class="wm-sub">${sub}</div></div>` });
     };
-    for (const r of res.tasks) {
+    for (const r of res.anyOf ? [res.tasks[res.pick]] : res.tasks) {
       if (r.verdict === 'done') continue;
       if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
         const noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
         const rec = r.rates.recent ? r.rates.recent.rate : null;
         meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), r.primary.rate, r.needed,
-          fill(t(rec != null ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed) }), rec, `${res.id}:${r.idx}`);
+          fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
       } else if (r.defense && !r.defense.outlastsMO) {
         meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,
           fill(t('why.players'), { have: pct(r.defense.share), need: sharePct(r.defense.need) }), null, `${res.id}:${r.idx}`);
@@ -3423,7 +3470,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   function objectivesHTML(res) {
     const H = res.hoursLeft;
     const S = (k, p = {}) => fill(t('s.' + k), p);
-    return res.tasks.map((r, i) => {
+    const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
+    return banner + res.tasks.map((r, i) => {
       const tk = r.task;
       const p = r.planet;
       const fac = p ? factionOfPlanet(p) : tk.faction;
@@ -3457,7 +3505,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       }
       const check = r.verdict === 'done' ? `<span class="check done">${ICON.check}</span>` : r.verdict === 'impossible' || r.verdict === 'failed' ? `<span class="check fail">${ICON.cross}</span>` : '<span class="check"></span>';
       return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}">
-        ${check}<h4>${taskText(r)}</h4>${pill(r.verdict)}
+        ${check}<h4>${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${pill(r.verdict)}
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
     }).join('');
@@ -3694,7 +3742,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     if (worst) {
       const { r, f } = worst, noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
       if (f.fromStart && !compact) tiles.push(tile(t('pm.tStart'), big(f.fromStart) + '<small>/h</small>', esc(fill(t('pm.tStartS'), { what: noun }))));
-      tiles.push(tile(t('pm.tAvg'), big(f.avg) + '<small>/h</small>', f.fromStart ? esc(fill(t('pm.tAvgS'), { p: pct(f.avg / f.fromStart) })) : ''));
+      const day = r.primary && r.primary.kind === 'day';
+      tiles.push(tile(t(day ? 'pm.tDay' : 'pm.tAvg'), big(f.avg) + '<small>/h</small>', f.fromStart ? esc(fill(t('pm.tAvgS'), { p: pct(f.avg / f.fromStart) })) : ''));
       if (f.best > f.avg * 1.05) tiles.push(tile(t('pm.tBest'), big(f.best) + '<small>/h</small>', esc(t('pm.tBestS'))));
       tiles.push(tile(t('pm.tNeed'), big(f.needed) + '<small>/h</small>', esc(fill(t('pm.tNeedS'), { x: fmt(f.needed / f.avg, 1, 1) })), 'key'));
     } else if (lib && isFinite(lib.currentShare)) {
@@ -3902,7 +3951,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       { key: 'act', cls: 'act ' + fac, pts: gap ? actual.filter(q => q[0] >= gap[1]) : actual, area: true, name: t('h.lgAct'), tip: t('h.lnAct') },
       gap ? { key: 'act', cls: 'act gapline ' + fac, pts: [[gap[0], 0], firstRec], name: t('h.lgAct'), tip: t('h.lnGap') } : null,
       !done && !ended ? { key: 'need', cls: 'need', pts: [[now, tk.progress], [f.end, tk.goal]], name: t('h.lgNeed'), tip: fill(t('h.lnNeed'), { v: big(f.needed) }) } : null,
-      !done && !ended && projEnd != null ? { key: 'avg', cls: 'proj', pts: [[now, tk.progress], [f.end, projEnd]], name: t('h.lgAvg'), tip: fill(t('h.lnAvg'), { v: big(f.avg), p: pct(projEnd / tk.goal) }) } : null,
+      !done && !ended && projEnd != null ? { key: 'avg', cls: 'proj', pts: [[now, tk.progress], [f.end, projEnd]], name: fill(t('h.lgAvg'), { basis: t('why.basis.' + (r.primary?.kind || 'start')) }), tip: fill(t('h.lnAvg'), { v: big(f.avg), p: pct(projEnd / tk.goal), basis: t('why.basis.' + (r.primary?.kind || 'start')) }) } : null,
       !done && !ended && recEnd != null && Math.abs(recEnd - (projEnd || 0)) / (tk.goal || 1) > 0.02 ? { key: 'rec', cls: 'proj2', pts: [[now, tk.progress], [f.end, recEnd]], name: t('h.lgRec'), tip: fill(t('h.lnRec'), { v: big(f.recent), p: pct(recEnd / tk.goal) }) } : null,
     ].filter(Boolean);
     const tagsArr = [];
@@ -3957,7 +4006,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     for (const r of res.tasks.filter(x => x.counter && !x.simpleCount && x.task.goal && x.verdict !== 'done')) {
       const mode = (ui.histMode[`${entry.a.id}:${r.idx}`]) || 'prog';
       const f = counterFacts(entry, r);
-      const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1) }) : '';
+      const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1), basis: t('why.basis.' + (r.primary?.kind || 'start')) }) : '';
       const key = `${entry.a.id}:${r.idx}`, cid = `c:${entry.a.id}:${r.idx}:prog`;
       cards.push(`<section class="hist-card panel br">
         <div class="hc-head"><h4>${taskText(r)}</h4>${pill(r.verdict)}
@@ -3967,7 +4016,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         ${stat ? `<p class="hc-stat">${stat}</p>` : ''}
         ${counterChart(entry, r, mode)}
         ${mode === 'prog' ? legendHTML(cid, [{ key: 'act', cls: 'act', label: t('h.lgAct') }, r.verdict !== 'done' && !res.ended ? { key: 'need', cls: 'need', label: t('h.lgNeed') } : null,
-          r.verdict !== 'done' && !res.ended && f.avg ? { key: 'avg', cls: 'proj', label: t('h.lgAvg') } : null,
+          r.verdict !== 'done' && !res.ended && f.avg ? { key: 'avg', cls: 'proj', label: fill(t('h.lgAvg'), { basis: t('why.basis.' + (r.primary?.kind || 'start')) }) } : null,
           r.verdict !== 'done' && !res.ended && f.recent != null ? { key: 'rec', cls: 'proj2', label: t('h.lgRec') } : null].filter(Boolean)) : ''}
       </section>`);
     }

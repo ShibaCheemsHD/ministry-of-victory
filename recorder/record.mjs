@@ -244,5 +244,6 @@ for (const i of named) {
   if (pts.length) progress.planets[i] = thin(pts);
 }
 fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));
-fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 1, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H) }));
+const progDay = thin(hist.samples.filter(s => now - s.t < 26 * H && s.prog).map(s => [s.t, s.prog])).map(([t, prog]) => ({ t, prog }));
+fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 2, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H), prog: progDay }));
 console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, ${alerts.length} alerts`);
