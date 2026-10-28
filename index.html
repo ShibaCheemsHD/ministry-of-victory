@@ -2658,7 +2658,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   // The API allows 5 requests every 10 seconds per address, and refuses the rest (HTTP 429).
   // Requests wait for a free slot here instead (and a refused one is tried again once, 10 s later).
   // Sliding window: never more than 5 requests in any 11 seconds, so the server's bucket can't run dry.
-  const sent = [];
+  // The timestamps are kept across reloads, so refreshing the page can't burst past the limit either.
+  const sentKey = 'mov-sent';
+  const sent = (() => { try { return (JSON.parse(localStorage.getItem(sentKey)) || []).filter(x => typeof x === 'number' && Date.now() - x < 11000).sort((a, b) => a - b); } catch (e) { return []; } })();
+  const saveSent = () => { try { localStorage.setItem(sentKey, JSON.stringify(sent)); } catch (e) { } };
   const WINDOW_MS = window.__mockScenario && !window.__mockRealRate ? 200 : 11000;   // tests run fast
   const sleep = (ms) => new Promise(res => setTimeout(res, ms));
   const freeSlots = () => { const now = Date.now(); return 5 - sent.filter(t0 => now - t0 < WINDOW_MS).length; };
@@ -2666,20 +2669,21 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     for (;;) {
       const now = Date.now();
       while (sent.length && now - sent[0] >= WINDOW_MS) sent.shift();
-      if (sent.length < 5) { sent.push(now); return; }
+      if (sent.length < 5) { sent.push(now); saveSent(); return; }
       await sleep(sent[0] + WINDOW_MS - now + 20);
     }
   }
-  async function getJSON(path, timeoutMs = 20000, retry = true) {
+  async function getJSON(path, timeoutMs = 20000, retry = 2) {
     await slot();
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(() => ctrl && ctrl.abort(), timeoutMs);
     try {
       const r = await fetch(apiUrl(path), { cache: 'no-store', headers: { 'Accept-Language': 'en-US' }, signal: ctrl ? ctrl.signal : undefined });
-      if (r.status === 429 && retry) {
+      if (r.status === 429 && retry > 0) {
         clearTimeout(timer);
-        await sleep(10500);
-        return getJSON(path, timeoutMs, false);
+        const ra = Number(r.headers.get('Retry-After'));
+        await sleep(ra > 0 && ra < 60 ? ra * 1000 + 300 : 10500);
+        return getJSON(path, timeoutMs, retry - 1);
       }
       if (!r.ok) throw new Error(`HTTP ${r.status} ${path}`);
       return await r.json();
