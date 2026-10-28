@@ -1952,9 +1952,15 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const now = Date.now();
       const N = war?.statistics?.playerCount || 0;
       const warStart = Date.parse(war?.started) || null;
+      // startTime is in *game* seconds, and the game clock runs weeks behind the calendar, so it can't
+      // be added to the war's real start date. The API's war "now" is the game clock (as epoch seconds):
+      // elapsed = game now - start, and the real start is that long before the real now.
+      const gameNow = Date.parse(war?.now) / 1000;
       const startOf = (id) => {
         const r = (raw || []).find(x => String(x.id32) === String(id));
-        return r && r.startTime != null && warStart ? warStart + r.startTime * 1000 : null;
+        if (!r || r.startTime == null) return null;
+        if (isFinite(gameNow) && gameNow > r.startTime) return now - (gameNow - r.startTime) * 1000;
+        return warStart ? warStart + r.startTime * 1000 : null;
       };
 
       const sample = { t: now, N, dss: dssIdx, hod: !!hod, planets: {}, prog: {} };
