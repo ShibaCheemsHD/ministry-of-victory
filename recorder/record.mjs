@@ -93,8 +93,10 @@ for (const a of assignments || []) {
   const id = String(a.id), key = orderKey(a);
   const r = (raw || []).find(x => String(x.id32) === id);
   const start = r && isFinite(gameNow) && gameNow > r.startTime ? Math.round(now - (gameNow - r.startTime) * 1000) : (hist.orders[id]?.start ?? now);
-  if (hist.orders[id] && hist.orders[id].key !== key) hist.edits.push({ kind: 'edited', order: id, t: now });
-  hist.orders[id] = { key, start, title: txt(a.title), exp: Date.parse(a.expiration) || null, seen: now };
+  const tasks = (a.tasks || []).map(tk => ({ type: tk.type, values: tk.values, valueTypes: tk.valueTypes }));
+  const was = hist.orders[id];
+  if (was && was.key !== key) hist.edits.push({ kind: 'edited', order: id, t: now, diff: was.tasks ? E.taskDiff(was.tasks, tasks) : null });
+  hist.orders[id] = { key, start, title: txt(a.title), exp: Date.parse(a.expiration) || null, seen: now, tasks };
 }
 for (const [id, o] of Object.entries(hist.orders)) if (now - o.seen > 3 * 24 * H) delete hist.orders[id];
 hist.edits = hist.edits.filter(e => now - e.t < 3 * 24 * H);

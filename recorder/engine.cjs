@@ -319,6 +319,23 @@ const ENGINE = (() => {
     return out.sort((a, b) => a.t - b.t);
   }
 
+  // What changed between two versions of an order's task list (Super Earth edits orders in place).
+  function taskDiff(before, after) {
+    const out = [];
+    const n = Math.max(before.length, after.length);
+    for (let i = 0; i < n; i++) {
+      const a = before[i], b = after[i];
+      if (!a) { out.push({ i: i + 1, kind: 'added' }); continue; }
+      if (!b) { out.push({ i: i + 1, kind: 'removed' }); continue; }
+      if (JSON.stringify([a.type, a.values, a.valueTypes]) === JSON.stringify([b.type, b.values, b.valueTypes])) continue;
+      const pa = parseTask(a, 0), pb = parseTask(b, 0);
+      const sameRest = JSON.stringify({ ...pa.raw, 3: 0 }) === JSON.stringify({ ...pb.raw, 3: 0 }) && a.type === b.type;
+      if (sameRest && pa.goal !== pb.goal) out.push({ i: i + 1, kind: 'goal', from: pa.goal, to: pb.goal });
+      else out.push({ i: i + 1, kind: 'changed' });
+    }
+    return out;
+  }
+
   function calibrate(samples, planetsNow, now, dssBonus, hodMult) {
     let G = 0, W = 0, span = 0;
     for (const [idx, p] of Object.entries(planetsNow)) {
@@ -957,7 +974,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

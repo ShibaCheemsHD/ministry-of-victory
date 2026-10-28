@@ -1104,6 +1104,23 @@ const ENGINE = (() => {
     return out.sort((a, b) => a.t - b.t);
   }
 
+  // What changed between two versions of an order's task list (Super Earth edits orders in place).
+  function taskDiff(before, after) {
+    const out = [];
+    const n = Math.max(before.length, after.length);
+    for (let i = 0; i < n; i++) {
+      const a = before[i], b = after[i];
+      if (!a) { out.push({ i: i + 1, kind: 'added' }); continue; }
+      if (!b) { out.push({ i: i + 1, kind: 'removed' }); continue; }
+      if (JSON.stringify([a.type, a.values, a.valueTypes]) === JSON.stringify([b.type, b.values, b.valueTypes])) continue;
+      const pa = parseTask(a, 0), pb = parseTask(b, 0);
+      const sameRest = JSON.stringify({ ...pa.raw, 3: 0 }) === JSON.stringify({ ...pb.raw, 3: 0 }) && a.type === b.type;
+      if (sameRest && pa.goal !== pb.goal) out.push({ i: i + 1, kind: 'goal', from: pa.goal, to: pb.goal });
+      else out.push({ i: i + 1, kind: 'changed' });
+    }
+    return out;
+  }
+
   function calibrate(samples, planetsNow, now, dssBonus, hodMult) {
     let G = 0, W = 0, span = 0;
     for (const [idx, p] of Object.entries(planetsNow)) {
@@ -1742,7 +1759,7 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
-  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
@@ -1814,6 +1831,7 @@ const TEXT = {
     regenDown: 'Enemy resistance on <b>{planet}</b> went down: the enemy now wins back {to} of the planet every hour (was {from}). Forecasts use the new value.',
     attack: '{faction} attack launched on <b>{planet}</b>: it has to be held until {when}.',
     edited: 'Super Earth Command changed this order\'s objectives. Its pace history starts over.',
+    d: { goal: 'Objective {i}: goal changed from {from} to {to}.', added: 'Objective {i} was added.', removed: 'Objective {i} was removed.', changed: 'Objective {i} now has different conditions.' },
     s: { jump: '{planet} jumped {pct}: likely Command stepped in', jumpDef: '{planet} defense jumped {pct}: likely Command stepped in', setback: '{planet} suddenly lost {pct}',
       regenUp: 'Stronger enemy resistance on {planet}', regenDown: 'Weaker enemy resistance on {planet}', attack: 'New {faction} attack on {planet}',
       edited: 'Objectives changed by Command', news: 'Super Earth news: {title}' },
@@ -2222,7 +2240,9 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const k = x.kind === 'regen' ? (x.to > x.from ? 'regenUp' : 'regenDown') : x.kind === 'jump' && x.attack ? 'jumpDef' : x.kind;
     const params = { planet, pct: pct(x.pct, 0), dur: dur((x.mins || 0) / 60), players: people(x.players || 0),
       from: pct(x.from, 1), to: pct(x.to, 1), faction: facName(x.faction), when: x.end ? clock((x.end - last.now) / 3.6e6) : '—' };
-    return fill(t((short ? 'in.s.' : 'in.') + k), params);
+    let out = fill(t((short ? 'in.s.' : 'in.') + k), params);
+    if (x.kind === 'edited' && !short && Array.isArray(x.diff) && x.diff.length) out += ' ' + x.diff.map(d => fill(t('in.d.' + d.kind), { i: d.i, from: fmt(d.from), to: fmt(d.to) })).join(' ');
+    return out;
   }
   const ago = (tm) => fill(t('in.ago'), { d: dur(Math.max(0, last.now - tm) / 3.6e6) });
   function renderIntel(entry) {
@@ -2352,9 +2372,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const found = [...tracked.changes, ...ENGINE.detectJumps(samples, tracked.meta, { now, K, hodMult: settings.hodMult, C })];
       const okeys = store.get('okeys', {});
       for (const a of assignments || []) {
-        const id = String(a.id), key = orderKey(a);
-        if (okeys[id] && okeys[id] !== key) found.push({ kind: 'edited', order: id, t: now });
-        okeys[id] = key;
+        const id = String(a.id), key = orderKey(a), was = okeys[id];
+        const wasKey = typeof was === 'string' ? was : was?.key;
+        if (wasKey && wasKey !== key) found.push({ kind: 'edited', order: id, t: now, diff: was.tasks ? ENGINE.taskDiff(was.tasks, a.tasks || []) : null });
+        okeys[id] = { key, tasks: (a.tasks || []).map(tk => ({ type: tk.type, values: tk.values, valueTypes: tk.valueTypes })) };
       }
       store.set('okeys', okeys);
       if (record) found.push(...record.alerts.filter(a => a && a.kind && now - a.t < ALERT_KEEP));
