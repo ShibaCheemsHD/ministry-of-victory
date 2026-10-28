@@ -2246,7 +2246,7 @@ const TEXT = {
     title: 'Command intel', none: 'Nothing new in the last 48 hours.', n1: '1 event', n: '{n} events', nActive: '{n} effects active', nNews: '{n} news',
     cmd: 'Command & battlefield', activeNow: 'Active right now', quiet: 'All quiet: no Command action on this order\'s planets in the last 48 hours.',
     noNews: 'No news from Super Earth in the last 48 hours.', read: 'Read all', why: 'Why we think so', details: 'Details',
-    won: '{n} missions won', afterSo: 'right after: {title}', hold: 'hold until {when}', lineAria: 'Events of the last 48 hours',
+    won: '{n} missions won', sinceLaunch: 'since launch', afterSo: 'right after: {title}', afterSo2: 'after: {title}', hold: 'hold until {when}', lineAria: 'Events of the last 48 hours',
     dataT: 'Read straight from the game', deducedT: 'Worked out from the numbers: the planet moved far more than its Helldivers could manage',
     foot: 'Watched every 10 minutes since {when}, even when nobody has the page open.', footLocal: 'Only what this page sees while it is open.',
   },
@@ -2276,7 +2276,7 @@ const TEXT = {
     regenUp: 'Enemy resistance on <b>{planet}</b> went up: the enemy now wins back {to} of the planet every hour (was {from}). Forecasts use the new value.',
     regenDown: 'Enemy resistance on <b>{planet}</b> went down: the enemy now wins back {to} of the planet every hour (was {from}). Forecasts use the new value.',
     attack: '{faction} attack launched on <b>{planet}</b>: it has to be held until {when}.',
-    edited: 'Super Earth Command changed this order while it was running.', editedCause: 'It came right after this news: "{title}". Strategic Opportunities often reward the Major Order this way.', editedUnknown: 'The previous version wasn\'t recorded, so the exact change isn\'t known.', editedNote: 'Paces and forecasts now use the new objectives.',
+    edited: 'Super Earth Command changed this order while it was running.', editedLaunch: 'The order now asks for different numbers than its launch briefing did.', editedCause: 'It came right after this news: "{title}". Strategic Opportunities often reward the Major Order this way.', editedUnknown: 'The previous version wasn\'t recorded, so the exact change isn\'t known.', editedNote: 'Paces and forecasts now use the new objectives.',
     fxOn: 'Super Earth Command switched on: {label} on {where}.',
     fxOff: 'Switched off: {label} on {where}.',
     active: 'Active on {where}: {label}.',
@@ -2291,7 +2291,7 @@ const TEXT = {
     d: { goal: 'Objective {i}: goal changed from {from} to {to}.', lower: '{what}: the goal went down from {from} to {to}.', higher: '{what}: the goal went up from {from} to {to}.', added: 'Objective {i} was added.', removed: 'Objective {i} was removed.', changed: 'Objective {i} now has different conditions.' },
     s: { jump: '{planet} jumped {pct}: likely Command stepped in', jumpDef: '{planet} defense jumped {pct}: likely Command stepped in', setback: '{planet} suddenly lost {pct}',
       regenUp: 'Stronger enemy resistance on {planet}', regenDown: 'Weaker enemy resistance on {planet}', attack: 'New {faction} attack on {planet}',
-      edited: 'Command changed the objectives', editedGoal: 'Goal cut: {what} {from} → {to}', editedRaise: 'Goal raised: {what} {from} → {to}', news: 'Super Earth news: {title}', fxOn: 'Command switched on: {label}', fxOff: 'Switched off: {label}', active: 'Active: {label}' },
+      edited: 'Command changed the objectives', editedGoal: 'Goal cut: {what} {from} → {to}', editedCutN: 'Goals cut on {n} objectives', editedRaiseN: 'Goals raised on {n} objectives', editedRaise: 'Goal raised: {what} {from} → {to}', news: 'Super Earth news: {title}', fxOn: 'Command switched on: {label}', fxOff: 'Switched off: {label}', active: 'Active: {label}' },
     more: '+{n} more', ago: '{d} ago', news: 'Super Earth news',
     note: '"Game data" is read straight from the game (resistance, attacks, objectives, the war effects Command switches on). "Deduced" means the planet moved far more than its Helldivers could manage; the game\'s own count of missions won there is shown as evidence.',
     recorded: 'The war is recorded every {n} minutes since {when}, even while nobody has this page open, and checked live while it is.',
@@ -2609,10 +2609,12 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   let news = store.get('news', { t: 0, items: [] });
   const ALERT_KEEP = 3 * 24 * 3.6e6;
   function addAlerts(found, now, live) {
-    alerts = alerts.filter(x => now - x.t < ALERT_KEEP);
+    alerts = alerts.filter(x => x.ref === 'briefing' ? last == null || last.results.some(r => String(r.a.id) === x.order) : now - x.t < ALERT_KEEP);
     for (const f of found) {
       // one alert per planet and kind every 3 hours; a bigger jump replaces a smaller one
-      const same = alerts.find(x => x.kind === f.kind && x.idx === f.idx && x.order === f.order && x.eid === f.eid && x.on === f.on && Math.abs(x.t - f.t) < 3 * 3.6e6);
+      const same = f.ref === 'briefing' ? alerts.find(x => x.ref === 'briefing' && x.order === f.order)
+        : alerts.find(x => x.kind === f.kind && x.idx === f.idx && x.order === f.order && x.eid === f.eid && x.on === f.on && !x.ref && Math.abs(x.t - f.t) < 3 * 3.6e6);
+      if (same && f.ref === 'briefing') { Object.assign(same, f, { id: same.id }); continue; }
       if (same) { if ((f.pct || 0) > (same.pct || 0)) Object.assign(same, f, { id: same.id }); continue; }
       const a = { ...f, id: `${f.kind}:${f.idx ?? f.order ?? f.eid}:${f.t}`, fresh: live };
       alerts.push(a);
@@ -2669,7 +2671,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const tk = r.task || {};
       if (tk.planetIndex != null) set.add(Number(tk.planetIndex));
       if (r.planet) set.add(Number(r.planet.index));
-      if ([ENGINE.TASK.LIBERATE_COUNT, ENGINE.TASK.DEFEND_COUNT, ENGINE.TASK.NET_LIBERATION].includes(tk.type)) {
+      if ([ENGINE.TASK.LIBERATE_COUNT, ENGINE.TASK.DEFEND_COUNT, ENGINE.TASK.NET_LIBERATION].includes(tk.type) || (r.counter && tk.faction)) {
         for (const p of Object.values(last.planets)) {
           if (tk.faction && factionOfPlanet(p) !== tk.faction) continue;
           if (tk.sectorIndex != null && last.sectorOf && last.sectorOf[p.index] !== tk.sectorIndex) continue;
@@ -2690,9 +2692,16 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const names = [...rel].map(i => txt(last.planets[i]?.name)).filter(Boolean).map(n => n.toLowerCase());
     const touches = (x) => x.kind === 'edited' ? x.order === String(entry.a.id)
       : Array.isArray(x.planets) ? x.planets.some(i => i === -1 || rel.has(i)) : rel.has(x.idx);
-    const items = alerts.filter(touches).filter(x => now - x.t < 24 * 3.6e6).sort((a, b) => b.t - a.t);
+    let items = alerts.filter(touches).filter(x => x.ref === 'briefing' || now - x.t < 24 * 3.6e6).sort((a, b) => b.t - a.t);
+    const eds = items.filter(x => x.kind === 'edited');
+    if (eds.length > 1) {
+      const keep = eds.find(x => Array.isArray(x.diff) && x.diff.length) || eds[0];
+      const merged = { ...keep, t: Math.min(...eds.map(x => x.t)), merged: eds.some(x => !x.ref) };
+      items = [...items.filter(x => x.kind !== 'edited'), merged].sort((a, b) => b.t - a.t);
+    }
+    const weapons = new Set(entry.res.tasks.map(r => r.task.itemId).filter(Boolean).map(String));
     // effects switched on right now on the planets this order depends on (straight from the game)
-    const active = (record?.effects || []).filter(e => e.planets.some(i => i === -1 || rel.has(i)) && !items.some(x => x.kind === 'effect' && x.on && x.eid === e.id))
+    const active = (record?.effects || []).filter(e => (e.planets.some(i => i === -1 || rel.has(i)) || (e.type === 32 && weapons.has(String(valOf(e.v, 4))))) && !items.some(x => x.kind === 'effect' && x.on && x.eid === e.id))
       .map(e => ({ kind: 'active', t: record.t, eid: e.id, type: e.type, v: e.v, planets: e.planets }))
       .filter((x, i, arr) => WAR_FX.has(x.type) || arr.filter(y => !WAR_FX.has(y.type)).indexOf(x) < 3);
     const ns = news.items.filter(d => now - d.t < 48 * 3.6e6).slice(0, 3)
@@ -2752,6 +2761,16 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       out += ' ' + fill(t('in.proof'), { won: fmt(x.won), worth: x.worth == null ? '—' : x.worth < 0.0001 ? t('in.lt') : fill(t('in.about'), { x: pct(x.worth, 2) }) });
     return out;
   }
+  // the Strategic Opportunity news that most likely explains an edit: close in time, or (for a change
+  // found against the launch briefing) the latest one won while the order was running
+  function soNews(x, entry) {
+    const won = (news.items || []).filter(n => /strategic opportunity/i.test(n.msg));
+    if (x.ref === 'briefing') {
+      const start = x.start || entry?.start || 0;
+      return won.filter(n => n.t >= start && /seized|won|success|secured/i.test(n.msg)).sort((a, b) => b.t - a.t)[0] || null;
+    }
+    return won.find(n => Math.abs(n.t - x.t) < 3 * 3.6e6) || null;
+  }
   // an order edited in place: what changed, in the words of the objective, and the likely reason
   function editedText(x, short) {
     const entry = last && last.results.find(r => String(r.a.id) === String(x.order));
@@ -2759,12 +2778,14 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const goals = (x.diff || []).filter(d => d.kind === 'goal');
     if (short) {
       if (goals.length === 1) return fill(t(goals[0].to < goals[0].from ? 'in.s.editedGoal' : 'in.s.editedRaise'), { what: esc(whatOf(goals[0].i)), from: big(goals[0].from), to: big(goals[0].to) });
+      if (goals.length > 1 && goals.every(g => g.to < g.from)) return fill(t('in.s.editedCutN'), { n: goals.length });
+      if (goals.length > 1 && goals.every(g => g.to > g.from)) return fill(t('in.s.editedRaiseN'), { n: goals.length });
       return t('in.s.edited');
     }
-    const parts = [t('in.edited')];
+    const parts = [t(x.ref === 'briefing' ? 'in.editedLaunch' : 'in.edited')];
     if (Array.isArray(x.diff) && x.diff.length) parts.push(x.diff.map(d => d.kind === 'goal' ? fill(t(d.to < d.from ? 'in.d.lower' : 'in.d.higher'), { what: esc(whatOf(d.i)), from: big(d.from), to: big(d.to) }) : fill(t('in.d.' + d.kind), { i: d.i })).join(' '));
     else parts.push(t('in.editedUnknown'));
-    const so = (news.items || []).find(n => /strategic opportunity/i.test(n.msg) && Math.abs(n.t - x.t) < 3 * 3.6e6);
+    const so = soNews(x, entry);
     if (so) parts.push(fill(t('in.editedCause'), { title: esc(newsParts(so.msg).title) }));
     parts.push(t('in.editedNote'));
     return parts.join(' ');
@@ -2805,7 +2826,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       case 'jump': case 'setback': return `${x.kind === 'jump' ? '+' : '−'}${pct(x.pct, 0)} · ${dur((x.mins || 0) / 60)}${x.won != null ? ' · ' + fill(t('it.won'), { n: fmt(x.won) }) : ''}`;
       case 'regen': return `${pct(x.from, 1)}/h → <b>${pct(x.to, 1)}/h</b>`;
       case 'attack': return x.end ? fill(t('it.hold'), { when: clock((x.end - last.now) / 3.6e6) }) : '';
-      case 'edited': { const so = (news.items || []).find(n => /strategic opportunity/i.test(n.msg) && Math.abs(n.t - x.t) < 3 * 3.6e6); return so ? fill(t('it.afterSo'), { title: esc(newsParts(so.msg).title) }) : ''; }
+      case 'edited': {
+        const so = soNews(x), cut = (x.diff || []).filter(d => d.kind === 'goal').map(d => `${big(d.from)} → <b>${big(d.to)}</b>`).join(' · ');
+        return [cut, so ? fill(t(x.ref === 'briefing' ? 'it.afterSo2' : 'it.afterSo'), { title: esc(newsParts(so.msg).title) }) : ''].filter(Boolean).join(' · ');
+      }
       case 'effect': case 'active': return planetList(x.planets || [], rel);
       default: return '';
     }
@@ -2840,7 +2864,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
       const key = keyLine(x, rel);
       return `<article class="it-card lv-${lv}" id="it-${i}">
         <span class="it-ico">${ICON[KIND_ICON[x.kind]] || ''}</span>
-        <div class="it-body"><div class="it-top"><h5>${alertText(x, true, rel)}</h5><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : ago(x.t))}</span></div>
+        <div class="it-body"><div class="it-top"><h5>${alertText(x, true, rel)}</h5><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
           ${key ? `<p class="it-key">${key}</p>` : ''}${sparkHTML(x)}
           <div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span>
             <details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)}</p></details></div></div></article>`;
@@ -2979,7 +3003,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         okeys[id] = { key, tasks: (a.tasks || []).map(tk => ({ type: tk.type, values: tk.values, valueTypes: tk.valueTypes })) };
       }
       store.set('okeys', okeys);
-      if (record) found.push(...record.alerts.filter(a => a && a.kind && now - a.t < ALERT_KEEP));
+      if (record) found.push(...record.alerts.filter(a => a && a.kind && (a.ref === 'briefing' || now - a.t < ALERT_KEEP)));
       addAlerts(found, now, !!last);
 
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };

@@ -49,7 +49,7 @@ async function get(p) {
 const OFFICIAL = 'https://api.live.prod.thehelldiversgame.com/api/';
 async function official(p) {
   if (process.env.OFFICIAL_DIR) {   // tests: saved copies of the endpoints
-    const f = { 'WarSeason/801/Status': 'status.json', 'WarSeason/GalacticWarEffects': 'effects.json' }[p];
+    const f = { 'WarSeason/801/Status': 'status.json', 'WarSeason/GalacticWarEffects': 'effects.json', 'Episode/801': 'episode.json' }[p];
     try { return JSON.parse(fs.readFileSync(path.join(process.env.OFFICIAL_DIR, f), 'utf8')); } catch { return null; }
   }
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -123,7 +123,7 @@ for (const a of assignments || []) {
   hist.orders[id] = { key, start, title: txt(a.title), exp: Date.parse(a.expiration) || null, seen: now, tasks };
 }
 for (const [id, o] of Object.entries(hist.orders)) if (now - o.seen > 3 * 24 * H) delete hist.orders[id];
-hist.edits = hist.edits.filter(e => now - e.t < 3 * 24 * H);
+hist.edits = hist.edits.filter(e => (e.ref === 'briefing' && hist.orders[e.order]) || now - e.t < 3 * 24 * H);
 
 // history since the start of the oldest running order (at least 48 hours, at most 8 days)
 hist.samples.push(sample);
@@ -197,8 +197,34 @@ if (status && hist.effDefs) {
 }
 hist.effAlerts = (hist.effAlerts || []).filter(a => now - a.t < 3 * 24 * H);
 
+// Goals changed since launch: the game's own launch briefing (Episode / control centre) states the
+// original numbers ("kill 300,000,000 Terminids..."); the order today may ask for different ones.
+if (!hist.episode || now - hist.episode.t > H) {
+  const ep = await official('Episode/801');
+  if (ep && Array.isArray(ep.episodes)) hist.episode = { t: now, phases: ep.episodes.flatMap(e => e.phases || []).map(ph => ({ title: ph.introTitle || '', intro: ph.introMessage || '' })) };
+}
+const FAC = { terminid: 'Terminids', automaton: 'Automaton', illuminate: 'Illuminate' };
+for (const a of assignments || []) {
+  const ge = (status?.globalEvents || []).find(g => String(g.assignmentId32) === String(a.id) && g.title);
+  const ph = ge && (hist.episode?.phases || []).find(x => x.title === ge.title);
+  if (!ph) continue;
+  const said = {};
+  for (const m of ph.intro.replace(/<[^>]+>/g, '').matchAll(/(\d[\d,.]*)\s*(?:million\s+)?(Terminids?|Automatons?|Illuminates?)/gi)) {
+    const f = FAC[m[2].toLowerCase().replace(/s$/, '')];
+    if (f && !(f in said)) said[f] = Number(m[1].replace(/[,.]/g, ''));
+  }
+  const diff = [];
+  (a.tasks || []).forEach((tk, i) => {
+    const pt = E.parseTask(tk, 0);
+    if (pt.type === 3 && pt.faction && said[pt.faction] && pt.goal && said[pt.faction] !== pt.goal) diff.push({ i: i + 1, kind: 'goal', from: said[pt.faction], to: pt.goal });
+  });
+  const sig = JSON.stringify(diff);
+  if (diff.length && !hist.edits.some(e => e.ref === 'briefing' && e.order === String(a.id) && e.sig === sig))
+    hist.edits.push({ kind: 'edited', ref: 'briefing', order: String(a.id), t: now, start: hist.orders[String(a.id)]?.start || null, diff, sig });
+}
+
 const found = E.scanHistory(hist.samples, { K, inf, hodMult: E.DEFAULTS.hodMult, factionOf: (i) => hist.factions?.[i] || null });
-const alerts = [...found, ...hist.edits, ...hist.effAlerts].filter(a => now - a.t < 3 * 24 * H).map(a => ({ ...a, name: a.idx != null ? hist.names[a.idx] || null : null }));
+const alerts = [...found, ...hist.edits, ...hist.effAlerts].filter(a => a.ref === 'briefing' || now - a.t < 3 * 24 * H).map(a => ({ ...a, name: a.idx != null ? hist.names[a.idx] || null : null }));
 hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf = inf;
 
 fs.mkdirSync(outDir, { recursive: true });
