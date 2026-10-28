@@ -9,6 +9,9 @@ import fs from 'fs';
 import path from 'path';
 const require = createRequire(import.meta.url);
 const E = require('./engine.cjs');
+// failures show up as annotations on the run page
+const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
+process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
 
 const API = 'https://api.helldivers2.dev';
 const CLIENT = 'ministry-of-victory-recorder';
