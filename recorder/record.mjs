@@ -13,6 +13,7 @@ import path from 'path';
 const require = createRequire(import.meta.url);
 const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
+import { buildRetro } from './retro.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -312,12 +313,23 @@ if (!hist.arch || now - hist.arch.t > 12 * H) {
           mos.set(key, x);
         }
       }
+      // rebuild the day-one call of past liberation orders from the same log (planet states at launch)
+      try {
+        const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
+        if (rr.ok) hist.retro = buildRetro(j, await rr.json(), E).map(x => ({ code: x.code, start: x.start, result: x.result, v: x.v, need: x.need, hours: x.hours, anyOf: x.anyOf, players: x.players, C: x.C, targets: x.targets }));
+      } catch (e) { console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }
   } catch (e) { console.log('::warning::war log not reachable: ' + String(e).slice(0, 200)); }
 }
 const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
+// rebuilt calls join their order (only lost ones are judged: a won order was winnable by definition)
+for (const r of hist.retro || []) {
+  if (r.result !== 'lost') continue;
+  const m = archive.orders.find(x => (r.code && x.code === r.code) || (x.start && Math.abs(x.start - r.start) < 60e3));
+  if (m) m.retro = r;
+}
 // our own call joins the community log entry that started within 3 hours of it
 for (const c of archive.watched) {
   const m = archive.orders.find(x => x.start && Math.abs(x.start - c.start) < 3 * H);
