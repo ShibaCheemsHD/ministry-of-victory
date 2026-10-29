@@ -1262,6 +1262,87 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
 .live.warn { background: var(--warn); animation: none; box-shadow: none; }
 #stale:empty { display: none; }
 .boot.out { pointer-events: none; }
+
+/* =====================================================================================
+   SKILLS PASS — Impeccable's craft floor, Taste's app-screen rules, Emil Kowalski's motion rules.
+   Fewer boxes (a tone step instead of coloured side borders), no glows, numbers in running text
+   in the text face, themed browser surfaces, press feedback and origin-aware popovers.
+   ===================================================================================== */
+:root { --ease-out: cubic-bezier(.23, 1, .32, 1); --ease-io: cubic-bezier(.77, 0, .175, 1); --row: rgba(255, 255, 255, .028); --row-hi: rgba(255, 255, 255, .055); }
+
+/* rows, not cards: one surface per list, separated by a 2px gap and a tone step */
+.objective, .move, .it-card, .hist-card, .pm-tile, .sim-out, .situation, .the-plan, .longshot .pm-head.small {
+  background: var(--row); border: 0; border-left: 0; box-shadow: none;
+}
+.objective:hover, .move:hover, .it-card:hover { background: var(--row-hi); border: 0; }
+.tabpanel > .objective + .objective { margin-top: 2px; }
+.moves { gap: 2px; }
+.objective .check { border-color: color-mix(in srgb, var(--fc, #888) 75%, #000); }
+.pm-tiles { gap: 2px; }
+.pm-tile.key { background: rgba(175, 65, 65, .14); border: 0; }
+.it-card.lv-bad .it-ico { color: var(--bad); } .it-card.lv-info .it-ico { color: var(--info); } .it-card.lv-perk .it-ico { color: var(--muted); }
+.cross, details.cmdintel, .stale-bar, .fact { border-left-width: 1px; }
+.cross { border-color: var(--line); }
+
+/* no halos: the planet and the progress ring stand on their own */
+.directive .glow { display: none; }
+.globe .g-arc, .globe.cnt .g-arc, .globe .g-sat, .globe .g-sat.hod { filter: none; }
+.dir-actions .btn.primary:hover { box-shadow: none; }
+
+/* numbers inside sentences use the text face with tabular figures; mono stays for tiles, timers, axes */
+.wm-sub b, .why b, .dir-meter .cap b, .objective .line b, .mv-why b, .it-card p b, .pm-story b, .meaning b, .cross p b, .stale-bar b {
+  font-family: var(--ui); font-variant-numeric: tabular-nums; font-weight: 700;
+}
+.brand .sub { text-transform: none; letter-spacing: .04em; font-size: 13px; }
+
+/* browser surfaces carry the design too */
+::selection { background: var(--yellow); color: var(--yellow-ink); }
+html { scrollbar-color: #3c3f45 #0d0d0f; accent-color: var(--yellow); caret-color: var(--yellow); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0d0d0f; }
+::-webkit-scrollbar-thumb { background: #3c3f45; border: 2px solid #0d0d0f; }
+::-webkit-scrollbar-thumb:hover { background: #55585f; }
+a { text-underline-offset: 3px; }
+
+/* press feedback on everything pressable; hover motion only where there is a real pointer */
+.btn, .icon-btn, .ghost, .linkbtn, .xchip, .lg, .seg button, .pc-tabs button, .pc-x, .otab, .tab, .dir-meter button.q {
+  transition: transform 160ms var(--ease-out), background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+.btn:active, .icon-btn:active, .ghost:active, .linkbtn:active, .xchip:active, .lg:active, .seg button:active, .pc-tabs button:active, .pc-x:active, .otab:active, .tab:active { transform: scale(.97); }
+.globe[data-globe]:hover { transform: none; }
+.globe[data-globe] { transition: transform 200ms var(--ease-out); }
+.globe[data-globe]:active { transform: scale(.98); }
+@media (hover: hover) and (pointer: fine) { .globe[data-globe]:hover { transform: scale(1.02); } }
+
+/* the planet card grows out of the planet, quick in and instant out */
+.pc-wrap.open .pcard { animation: pcGrow 180ms var(--ease-out) both; }
+.pc-wrap[data-side="right"] .pcard { transform-origin: left 30%; }
+.pc-wrap[data-side="left"] .pcard { transform-origin: right 30%; }
+.pc-wrap[data-side="below"] .pcard { transform-origin: 50% 0; }
+@keyframes pcGrow { from { opacity: 0; transform: scale(.96); } }
+@media (max-width: 760px) { .pc-wrap.open .pcard { animation: pcUp 240ms var(--ease-out) both; } }
+@keyframes pcUp { from { transform: translateY(24px); opacity: 0; } }
+
+/* data reveals: strong ease-out, shorter */
+.bar .fill, .wm-bar .fill { transition: width 700ms var(--ease-out); }
+.globe .g-arc { transition: stroke-dashoffset 900ms var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active, .icon-btn:active, .ghost:active, .tab:active, .otab:active, .globe[data-globe]:active { transform: none; }
+  .pc-wrap.open .pcard { animation: none; }
+}
+.calm .btn:active, .calm .tab:active, .calm .otab:active, .calm .globe[data-globe]:active { transform: none; }
+.it-key { font: 500 14px var(--ui); font-variant-numeric: tabular-nums; text-transform: none; }
+.it-key b { font-weight: 700; color: var(--fg); }
+.it-when { font: 600 12px var(--ui); letter-spacing: .02em; text-transform: none; }
+/* the "long shot" header already says it: no badge on every move under it */
+.longshot ~ .moves .move.lvl-long .lvl { display: none; }
+/* phones: the four tabs fit the width instead of scrolling off the edge */
+@media (max-width: 640px) {
+  .tabbar .tabs { width: 100%; justify-content: space-between; gap: 2px; }
+  .tab { flex: 1 1 auto; padding: 10px 6px 16px; font-size: 11px; letter-spacing: .02em; }
+  .tab[aria-selected="true"]::after { left: 6px; right: 6px; }
+}
 </style>
 </head>
 <body>
@@ -3730,7 +3811,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     if (!meters.length) return '';
     meters.sort((x, y) => x.sev - y.sev);
     const doneN = res.tasks.filter(r => r.verdict === 'done').length;
-    return `<div class="fwhy"><span class="label">${esc(t('why.title'))}</span>${meters.slice(0, 3).map(m => m.html).join('')}
+    return `<div class="fwhy">${meters.slice(0, 3).map(m => m.html).join('')}
       ${doneN ? `<p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p>` : ''}</div>`;
   }
   function railHTML(res, a) {
@@ -4124,7 +4205,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         ${longShot}
         <div class="sec-head"><h3>${t('planTitle')}</h3>
           <button type="button" class="ghost" data-toggle-nums aria-pressed="${ui.showNums}">${ui.showNums ? t('hideNums') : t('showNums')}</button></div>
-        ${moves.length ? `<span class="label sub-label">${t('movesTitle')}</span><ol class="moves">${moves.map(r => moveHTML(r, res)).join('')}</ol>
+        ${moves.length ? `<ol class="moves">${moves.map(r => moveHTML(r, res)).join('')}</ol>
           ${tips.length ? `<details class="more-tips"><summary>${ICON.chev}<span>${fill(t('moreTips'), { n: tips.length })}</span></summary><ol class="moves minor" style="counter-reset: mv ${moves.length}">${tips.map(r => moveHTML(r, res)).join('')}</ol></details>` : ''}`
           : res.directive && res.directive.kind === 'play' ? `<p class="empty-moves unknown">${ICON.dots}<span>${t('noMovesUnknown')}</span></p>`
           : res.ended && res.verdict !== 'done' ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesEnded')}</span></p>`
@@ -4134,7 +4215,6 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         ${order ? `<div class="the-plan"><span class="label">${t(order.partial ? 'planBlockPartial' : res.liberation && !res.liberation.winnableNow ? 'planBlockIf' : 'planBlock')}</span>
           <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`)}</div>` : ''}
         ${fine.length ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
-        <p class="foot">${t('planFoot')}</p>
       </section>
       ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
   }
