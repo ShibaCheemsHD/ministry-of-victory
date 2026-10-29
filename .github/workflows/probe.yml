@@ -7,18 +7,25 @@ on:
         description: 'Extra pages to save (space separated)'
         required: false
         default: ''
+      hs:
+        description: 'Only dump helldiversstats orders (yes/no)'
+        required: false
+        default: 'no'
 permissions:
   contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && URLS="${{ inputs.urls }}" node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
+      - if: ${{ inputs.hs == 'yes' }}
+        run: node recorder/hsdump.mjs "$RUNNER_TEMP/probe"
+      - if: ${{ inputs.hs != 'yes' }}
+        run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && URLS="${{ inputs.urls }}" node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
       - run: |
           cd "$RUNNER_TEMP/probe"
           git init -q -b probe
