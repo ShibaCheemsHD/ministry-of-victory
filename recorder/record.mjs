@@ -162,6 +162,43 @@ const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, pla
 const cal = E.calibrateK(hist.samples.map(asPage), planets, now, 0, 1);
 const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
 
+// The Ministry's call on every order it watches: the forecast after the first 3 hours (the "day-one
+// call"), after 24 hours, the worst it ever looked, and the last one. Kept for good: this is the
+// record that says whether an order was winnable from the start.
+{
+  const N0 = war?.statistics?.playerCount || 0, imp0 = Number(war?.impactMultiplier) || 0;
+  const C = imp0 && N0 ? K * imp0 * N0 * 3600 : E.DEFAULTS.capacity;
+  const pageSamples = hist.samples.map(sm => ({ ...asPage(sm), prog: sm.prog || {} }));
+  const RANKV = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5, failed: 6, unknown: -1 };
+  hist.calls ||= {};
+  for (const a of assignments || []) {
+    const id = String(a.id), o = hist.orders[id]; if (!o) continue;
+    let res;
+    try { res = E.analyzeAssignment(a, { planets, N: N0, now, C, dssIdx: dss, hod: null, settings: { ...E.DEFAULTS }, samples: pageSamples, sectorOf: null, startMs: o.start, progKey: orderKey(a) }); } catch { continue; }
+    const need = (() => { try { const n = E.orderNeeds(res); return n && !n.unknown && isFinite(n.total) ? +n.total.toFixed(3) : null; } catch { return null; } })();
+    const early = res.tasks.some(r => r.early);
+    const snap = { t: now, v: res.verdict, need, early, age: +((now - o.start) / H).toFixed(1) };
+    const c = hist.calls[id] ||= { id, title: o.title, start: o.start, exp: o.exp, firstSeen: now, tasks: o.tasks };
+    c.title = o.title; c.exp = o.exp; c.tasks = o.tasks;
+    if (res.verdict !== 'unknown' && !early) {
+      if (!c.first && snap.age >= 3) c.first = { ...snap, late: (c.firstSeen - o.start) / H > 6 };
+      if (!c.d1 && snap.age >= 24) c.d1 = snap;
+      if (!c.worst || (RANKV[snap.v] ?? 0) > (RANKV[c.worst.v] ?? 0)) c.worst = snap;
+    }
+    c.last = snap;
+    c.prog = a.progress;
+  }
+  // an order that is gone: done if every objective reached its goal in the last progress seen
+  for (const c of Object.values(hist.calls)) {
+    if (c.result || (assignments || []).some(a => String(a.id) === c.id)) continue;
+    if (c.exp && now < c.exp - 5 * 60e3 && now - (c.last?.t || 0) < 30 * 60e3) continue;
+    const parsed = (c.tasks || []).map((tk, i) => E.parseTask(tk, (c.prog || [])[i]));
+    const won = parsed.length && parsed.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1);
+    c.result = c.exp && (c.last?.t || 0) < c.exp - 30 * 60e3 && !won ? 'won?' : won ? 'won' : 'lost';
+    if (c.result === 'won?') c.result = 'won';   // gone before the deadline: Super Earth closed it as done
+  }
+}
+
 // HP of liberation one won mission is worth, per unit of impact multiplier: measured on stretches of
 // this history where nothing else was going on (no event, no open region, not at full health)
 const inf = (() => {
@@ -252,6 +289,43 @@ const found = E.scanHistory(hist.samples, { K, inf, hodMult: E.DEFAULTS.hodMult,
 const alerts = [...found, ...hist.edits, ...hist.effAlerts].filter(a => a.ref === 'briefing' || now - a.t < 3 * 24 * H).map(a => ({ ...a, name: a.idx != null ? hist.names[a.idx] || null : null }));
 hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf = inf;
 
+// Every Major Order since launch, with its result, from the community war log kept by
+// CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
+if (!hist.arch || now - hist.arch.t > 12 * H) {
+  try {
+    const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
+    if (r.ok) {
+      const j = await r.json(), mos = new Map();
+      for (const e of j.events || []) {
+        const t = Date.parse(String(e.time).slice(0, 16).replace(' ', 'T') + ':00Z');
+        const disp = (e.log || []).find(l => l.type === 'Dispatch' && /major order/i.test(l.text || ''));
+        for (const l of e.log || []) {
+          const m = /^(Major Order Start|Major Order Won|Major Order Lost)$/.exec(l.type || ''); if (!m) continue;
+          const tx = String(l.text || '').replace(/^Major Order \|\s*/, '');
+          const code = (tx.match(/A\d+-\d+-\d+/) || [null])[0];
+          const name = tx.replace(/A\d+-\d+-\d+\s*/, '').replace(/\s*is\s*(issued|won|failed).*$/i, '').replace(/^[-\s]+/, '').trim();
+          const obj = ((tx.match(/Objective:\s*(.*)$/i) || [])[1] || '').trim();
+          const key = code || name;
+          const x = mos.get(key) || { code, name, obj };
+          if (m[1] === 'Major Order Start') { x.start = t; x.name = name || x.name; x.obj = obj || x.obj; if (disp && disp.planet) x.planets = disp.planet.map(p => p[1]).filter(i => i !== 0); }
+          else { x.end = t; x.result = m[1] === 'Major Order Won' ? 'won' : 'lost'; x.name = x.name || name; x.obj = x.obj || obj; }
+          mos.set(key, x);
+        }
+      }
+      hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
+    }
+  } catch (e) { console.log('::warning::war log not reachable: ' + String(e).slice(0, 200)); }
+}
+const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null,
+  orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
+// our own call joins the community log entry that started within 3 hours of it
+for (const c of archive.watched) {
+  const m = archive.orders.find(x => x.start && Math.abs(x.start - c.start) < 3 * H);
+  if (m) { m.call = c.first || c.d1 || null; m.worst = c.worst || null; m.watchedId = c.id; if (!m.result && c.result) m.result = c.result; if (!m.end && c.result) m.end = c.exp; }
+  else archive.orders.push({ code: null, name: c.title, obj: '', start: c.start, end: c.result ? c.exp : null, result: c.result || null, call: c.first || c.d1 || null, worst: c.worst || null, watchedId: c.id, ours: true });
+}
+archive.orders.sort((a, b) => (b.start || b.end || 0) - (a.start || a.end || 0));
+
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
 // the page's plan B: the war as this snapshot saw it, in the community API's shapes
@@ -273,6 +347,7 @@ for (const i of named) {
   if (pts.length) progress.planets[i] = thin(pts);
 }
 fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));
+fs.writeFileSync(path.join(outDir, 'archive.json'), JSON.stringify(archive));
 const progDay = thin(hist.samples.filter(s => now - s.t < 26 * H && s.prog).map(s => [s.t, s.prog])).map(([t, prog]) => ({ t, prog }));
 fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 2, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H), prog: progDay }));
 console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, source ${src}, ${alerts.length} alerts`);
