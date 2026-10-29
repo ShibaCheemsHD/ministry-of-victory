@@ -14,6 +14,7 @@ const require = createRequire(import.meta.url);
 const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
+import { loadHs } from './hs.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -101,11 +102,14 @@ if (src === 'community') {
   const ds = await get('/api/v1/dispatches', 2).catch(() => []);
   for (const d of ds || []) {
     const msg = txt(d && d.message);
+    const mr = /major order (won|complete|accomplished|success)|major order (failed|lost)/i.exec(String(msg).slice(0, 120));
+    if (mr && !(hist.moNews || []).some(x => x.id === d.id)) (hist.moNews ||= []).push({ id: d.id, t: Date.parse(d.published) || now, won: !!mr[1] });
     if (!/strategic opportunity/i.test(msg) || (hist.so || []).some(x => x.id === d.id)) continue;
     (hist.so ||= []).push({ id: d.id, t: Date.parse(d.published) || now, msg: String(msg).slice(0, 800) });
   }
 }
 hist.so = (hist.so || []).filter(x => now - x.t < 8 * 24 * H);
+hist.moNews = (hist.moNews || []).filter(x => now - x.t < 30 * 24 * H);
 
 const planets = {};
 for (const c of campaigns || []) if (c && c.planet) planets[c.planet.index] = c.planet;
@@ -146,7 +150,7 @@ for (const a of assignments || []) {
   const tasks = (a.tasks || []).map(tk => ({ type: tk.type, values: tk.values, valueTypes: tk.valueTypes }));
   const was = hist.orders[id];
   if (was && was.key !== key) hist.edits.push({ kind: 'edited', order: id, t: now, diff: was.tasks ? E.taskDiff(was.tasks, tasks) : null });
-  hist.orders[id] = { key, start, title: txt(a.title), exp: Date.parse(a.expiration) || null, seen: now, tasks };
+  hist.orders[id] = { key, start, title: txt(a.title), brief: String(txt(a.briefing) || txt(a.description) || '').slice(0, 600), exp: Date.parse(a.expiration) || null, seen: now, tasks };
 }
 for (const [id, o] of Object.entries(hist.orders)) if (now - o.seen > 3 * 24 * H) delete hist.orders[id];
 hist.edits = hist.edits.filter(e => (e.ref === 'briefing' && hist.orders[e.order]) || now - e.t < 3 * 24 * H);
@@ -172,6 +176,13 @@ const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
   const pageSamples = hist.samples.map(sm => ({ ...asPage(sm), prog: sm.prog || {} }));
   const RANKV = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5, failed: 6, unknown: -1 };
   hist.calls ||= {};
+  // orders seen before this record existed: keep them too, with their last progress
+  for (const [id, o] of Object.entries(hist.orders)) {
+    if (hist.calls[id]) continue;
+    const sm = [...hist.samples].reverse().find(x => x.prog && Object.keys(x.prog).some(k => k.startsWith(id + ':')));
+    hist.calls[id] = { id, title: o.title, brief: o.brief, start: o.start, exp: o.exp, firstSeen: hist.samples.find(x => x.prog && Object.keys(x.prog).some(k => k.startsWith(id + ':')))?.t || o.seen, tasks: o.tasks,
+      prog: sm ? sm.prog[Object.keys(sm.prog).find(k => k.startsWith(id + ':'))] : null, last: sm ? { t: sm.t } : null };
+  }
   for (const a of assignments || []) {
     const id = String(a.id), o = hist.orders[id]; if (!o) continue;
     let res;
@@ -180,7 +191,7 @@ const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
     const early = res.tasks.some(r => r.early);
     const snap = { t: now, v: res.verdict, need, early, age: +((now - o.start) / H).toFixed(1) };
     const c = hist.calls[id] ||= { id, title: o.title, start: o.start, exp: o.exp, firstSeen: now, tasks: o.tasks };
-    c.title = o.title; c.exp = o.exp; c.tasks = o.tasks;
+    c.title = o.title; c.brief = o.brief || c.brief; c.exp = o.exp; c.tasks = o.tasks;
     if (res.verdict !== 'unknown' && !early) {
       if (!c.first && snap.age >= 3) c.first = { ...snap, late: (c.firstSeen - o.start) / H > 6 };
       if (!c.d1 && snap.age >= 24) c.d1 = snap;
@@ -195,8 +206,14 @@ const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
     if (c.exp && now < c.exp - 5 * 60e3 && now - (c.last?.t || 0) < 30 * 60e3) continue;
     const parsed = (c.tasks || []).map((tk, i) => E.parseTask(tk, (c.prog || [])[i]));
     const won = parsed.length && parsed.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1);
-    c.result = c.exp && (c.last?.t || 0) < c.exp - 30 * 60e3 && !won ? 'won?' : won ? 'won' : 'lost';
-    if (c.result === 'won?') c.result = 'won';   // gone before the deadline: Super Earth closed it as done
+    // Super Earth's own word first: a "MAJOR ORDER WON/FAILED" dispatch around the moment it went
+    const lastT = c.last?.t || c.exp || now;
+    const word = (hist.moNews || []).filter(x => x.t >= lastT - 2 * H && x.t <= lastT + 6 * H).sort((x, y) => Math.abs(x.t - lastT) - Math.abs(y.t - lastT))[0];
+    if (word) c.result = word.won ? 'won' : 'lost';
+    else if (won || (c.exp && lastT < c.exp - 30 * 60e3)) c.result = 'won';   // gone before the deadline: Super Earth closed it as done
+    else if (now - lastT > 12 * H) c.result = 'lost';   // no word after half a day: the counters at the deadline decide
+    else continue;   // wait a little for the dispatch
+    c.resultBy = word ? 'news' : 'progress';
   }
 }
 
@@ -292,7 +309,7 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 2) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 4) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
     if (r.ok) {
@@ -316,8 +333,10 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 2
       // rebuild the day-one call of past liberation orders from the same log (planet states at launch)
       try {
         const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
-        if (rr.ok) hist.retroV = 2, hist.retro = buildRetro(j, await rr.json(), E).map(x => x.skip ? { code: x.code, start: x.start, result: x.result, skip: x.skip }
-          : { code: x.code, start: x.start, result: x.result, v: x.v, need: x.need, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
+        // exact objectives and progress of past orders (helldiversstats.com): the first time, all of them
+        try { await loadHs(hist, now, { maxNew: hist.hs ? 8 : 60 }); } catch (e) { console.log('::warning::helldiversstats: ' + String(e).slice(0, 200)); }
+        if (rr.ok) hist.retroV = 4, hist.retro = buildRetro(j, await rr.json(), E, hist.hs).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
+          : { code: x.code, start: x.start, end: x.end || null, result: x.result, v: x.v, need: x.need, cap: x.cap ?? null, span: x.span ?? null, goals: x.goals || null, facts: x.facts || null, src: x.src || 'log', hsId: x.hsId || null, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
       } catch (e) { console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }
@@ -325,17 +344,11 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 2
 }
 const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
-// rebuilt calls join their order (only lost ones are judged: a won order was winnable by definition)
-for (const r of hist.retro || []) {
-  if (r.result !== 'lost') continue;
-  const m = archive.orders.find(x => (r.code && x.code === r.code) || (x.start && Math.abs(x.start - r.start) < 60e3));
-  if (m) { if (r.skip) m.noRetro = r.skip; else m.retro = r; }
-}
 // our own call joins the community log entry that started within 3 hours of it
 for (const c of archive.watched) {
   const m = archive.orders.find(x => x.start && Math.abs(x.start - c.start) < 3 * H);
-  if (m) { m.call = c.first || c.d1 || null; m.worst = c.worst || null; m.watchedId = c.id; if (!m.result && c.result) m.result = c.result; if (!m.end && c.result) m.end = c.exp; }
-  else archive.orders.push({ code: null, name: c.title, obj: '', start: c.start, end: c.result ? c.exp : null, result: c.result || null, call: c.first || c.d1 || null, worst: c.worst || null, watchedId: c.id, ours: true });
+  if (m) { m.tasks = m.tasks || c.tasks; m.call = c.first || c.d1 || null; m.worst = c.worst || null; m.watchedId = c.id; if (!m.result && c.result) m.result = c.result; if (!m.end && c.result) m.end = c.exp; }
+  else archive.orders.push({ code: null, name: c.title, brief: c.brief || hist.hs?.[c.id]?.brief || null, tasks: c.tasks, obj: '', start: c.start, end: c.result ? (c.last?.t && c.last.t < c.exp ? c.last.t : c.exp) : null, result: c.result || null, call: c.first || c.d1 || null, worst: c.worst || null, watchedId: c.id, ours: true });
 }
 // orders this recorder saw that the community log doesn't have yet (it can lag by days)
 for (const [id, o] of Object.entries(hist.orders)) {
@@ -346,6 +359,13 @@ for (const [id, o] of Object.entries(hist.orders)) {
   let result = null;
   if (!live && prog) { const ps = (o.tasks || []).map((tk, i) => E.parseTask(tk, prog[i])); result = ps.length && ps.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1) ? 'won' : (o.exp && now >= o.exp - 30 * 60e3 ? 'lost' : 'won'); }
   archive.orders.push({ code: null, name: o.title, obj: '', start: o.start, end: live ? null : o.exp, result, watchedId: id, ours: true });
+}
+// rebuilt checks join their order (only lost ones are judged: a won order was winnable by definition)
+for (const r of hist.retro || []) {
+  if (r.result !== 'lost') continue;
+  const m = archive.orders.find(x => (r.hsId && x.watchedId === r.hsId) || (r.code && x.code === r.code) || (x.start && Math.abs(x.start - r.start) < (r.hsId ? 3 * H : 60e3)));
+  if (m && !m.result) { m.result = r.result; m.end = m.end || r.end || null; }   // the war log can lag by days
+  if (m && !m.retro) { if (r.skip) { m.noRetro = m.noRetro || r.skip; if (r.facts && Object.keys(r.facts).length) m.facts = r.facts; } else { m.retro = r; delete m.noRetro; } }
 }
 archive.orders.sort((a, b) => (b.start || b.end || 0) - (a.start || a.end || 0));
 

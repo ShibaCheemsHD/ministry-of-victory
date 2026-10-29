@@ -45,7 +45,7 @@ export async function loadHs(hist, now, { maxNew = 8 } = {}) {
       // every point of the first 30 hours (the day-one checks), then one an hour
       const keep = []; let lastKept = 0;
       for (const p of pts) if (p[0] <= start + 30 * H || p[0] - lastKept >= H || p === pts[pts.length - 1]) { keep.push(p); lastKept = p[0]; }
-      hist.hs[id] = { id, kind: String(x.title || ''), brief: String(x.brief || '').slice(0, 600), start, last, exp, tasks, pts: keep, complete: tasks.length > 0 };
+      hist.hs[id] = { id, kind: String(x.title || ''), flags: Number(x.flags) || 0, brief: String(x.brief || '').slice(0, 600), start, last, exp, tasks, pts: keep, complete: tasks.length > 0 };
     } catch (e) { console.log('::warning::helldiversstats ' + id + ': ' + String(e).slice(0, 160)); }
   }
   return fetched;

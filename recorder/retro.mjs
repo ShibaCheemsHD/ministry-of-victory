@@ -11,7 +11,7 @@ const H = 3.6e6;
 const OWNER = { 1: 'Humans', 2: 'Terminids', 3: 'Automaton', 4: 'Illuminate' };
 const tOf = (s) => Date.parse(String(s).slice(0, 16).replace(' ', 'T') + ':00Z');
 
-export function buildRetro(hist, resort, E) {
+export function buildRetro(hist, resort, E, hs = null) {
   const ev = hist.events || [];
   const times = ev.map(e => tOf(e.time));
   // everyone online at an event index (the last count at or before it)
@@ -171,6 +171,139 @@ export function buildRetro(hist, resort, E) {
     out.push({ ...base, hours: +((deadline - mo.start) / H).toFixed(1), anyOf, loose, count: mo.count || null, pool, fac: pool === 'faction' ? mo.fac : null, partial: !!(mo.mixed || ctrl || (mo.src !== 'disp' && named.length < (mo.planets || []).length)),
       v, need: need != null ? +need.toFixed(3) : null, players: N, C: Math.round(cap.C), calib: cap.n,
       targets: shown.map(p => ({ i: p.index, n: p.name, hp: p.health, max: p.maxHealth, r: p.regenPerSecond, pl: p.statistics.playerCount, o: p.currentOwner })) });
+  }
+
+  // Orders whose exact objectives and progress over time are on record (helldiversstats.com, since May
+  // 2026): kill, extraction, mission and operation counts get the check the Ministry makes live: the pace
+  // of the first day (24 hours in; 3 hours for orders shorter than a day and a half) against what was
+  // left. Liberation objectives in them are judged frozen at launch, as above.
+  const RANKV = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5 };
+  const COUNTER = new Set([1, 2, 3, 4, 5, 6, 7, 9, 10]);
+  for (const o of Object.values(hs || {})) {
+    if (!o.complete || !o.tasks?.length || !o.pts?.length) continue;
+    // the war log's entry for it: the Major Order that started within 3 hours
+    const mo = [...mos.values()].find(m => m.start && Math.abs(m.start - o.start) < 3 * H);
+    const code = mo?.code || null;
+    if (out.some(x => !x.skip && ((code && x.code === code) || Math.abs(x.start - o.start) < 3 * H))) continue;   // already rebuilt from the log
+    const ts = o.tasks.map(tk => E.parseTask(tk, 0));
+    // its result when the war log hasn't caught up: every objective done at the last reading, or it ran out
+    const lastP = o.pts[o.pts.length - 1];
+    const allDone = lastP && ts.every((t, i) => (Number(lastP[1 + i]) || 0) >= (t.goal && COUNTER.has(t.type) ? t.goal : 1));
+    // (gone well before its deadline: Super Earth closes an order as soon as it is done)
+    const hsResult = allDone ? 'won' : o.exp - o.last < 20 * 60e3 ? 'lost' : 'won';
+    const base = { code, name: mo?.name || null, start: mo?.start || o.start, end: mo?.end || o.exp, result: mo?.result || hsResult, src: 'hs', hsId: o.id };
+    const cIdx = ts.map((t, i) => COUNTER.has(t.type) && t.goal ? i : -1).filter(i => i >= 0);
+    const lIdx = ts.map((t, i) => t.type === 11 ? i : -1).filter(i => i >= 0);
+    const other = ts.length - cIdx.length - lIdx.length;
+    const idx = out.findIndex(x => x.skip && ((code && x.code === code) || Math.abs(x.start - base.start) < 3 * H));
+    const skip = (why) => { if (idx >= 0) out[idx] = { ...out[idx], skip: why }; else out.push({ ...base, skip: why }); };
+    if (!cIdx.length && !lIdx.length) { skip('defend'); continue; }
+    // players and strength at launch come from the war log: only liberation objectives need them
+    const t0 = o.start + 5 * 60e3, N0 = playersAt(t0), cap = lIdx.length ? capacityAt(o.start) : null;
+    if (lIdx.length && (!N0 || !cap) && !cIdx.length) { skip('data'); continue; }
+    const deadline = o.exp, hoursAll = (deadline - o.start) / H;
+    const anyOf = (o.flags === 2 || o.flags === 3) && ts.length > 1;
+    const parts = [];   // [{ k: task index, v, need?, pace? }]
+    // liberation objectives, frozen at launch: all of them together (or the easiest, for a choice)
+    if (lIdx.length && N0 && cap) {
+      const planets = {}, held = lIdx.filter(k => { const st = enemyAt(ts[k].planetIndex, t0); if (st) planets[ts[k].planetIndex] = asPlanet(ts[k].planetIndex, st, t0); return !!st; });
+      if (!held.length) parts.push({ k: lIdx[0], v: 'done' });
+      else try {
+        const ctx = { planets, N: N0, now: t0, C: cap.C, dssIdx: null, hod: null, settings: { ...E.DEFAULTS }, samples: [], sectorOf: null, startMs: o.start };
+        const a = { id: o.id, tasks: held.map(k => o.tasks[k]), progress: held.map(() => 0), expiration: new Date(deadline).toISOString(), flags: anyOf ? 2 : 1 };
+        let r = E.analyzeAssignment(a, ctx);
+        if (r.anyOf) { const sub = E.analyzeAssignment({ ...a, flags: 1, tasks: [a.tasks[r.pick]], progress: [0] }, ctx); if (sub) r = { ...r, liberation: sub.liberation, verdict: sub.verdict }; }
+        const L = r.liberation;
+        parts.push({ k: held[0], v: L ? L.verdict : r.verdict, need: L && isFinite(L.seqNeed) ? L.seqNeed : null, planets: Object.values(planets) });
+      } catch { }
+    }
+    // counters: could the Helldivers' best day, kept up from start to finish, have reached the goal?
+    // (what they managed is the fairest measure of what was possible; the first hours undersell it)
+    if (cIdx.length) {
+      const span = hoursAll >= 36 ? 24 : Math.max(3, hoursAll / 2);
+      for (const k of cIdx) {
+        const goal = ts[k].goal, ser = o.pts.map(p => [p[0], Number(p[1 + k]) || 0]);
+        const fin = ser[ser.length - 1];
+        if (!fin || (fin[0] - o.start) / H < span) continue;
+        if (fin[1] >= goal) { parts.push({ k, v: 'done', cap: 1 }); continue; }
+        let best = 0, j = 0;
+        for (let i = 0; i < ser.length; i++) {
+          while (j < ser.length - 1 && ser[j][0] < ser[i][0] + span * H) j++;
+          const dt = (ser[j][0] - ser[i][0]) / H;
+          if (dt >= span * 0.9) best = Math.max(best, (ser[j][1] - ser[i][1]) / dt);
+        }
+        if (!(best > 0)) continue;
+        const cap = best * hoursAll / goal;
+        // their best day, every day: comfortably enough / only just (a record pace all the way) / short / not half
+        parts.push({ k, v: cap >= 1.3 ? 'ontrack' : cap >= 1 ? 'hard' : cap >= 0.5 ? 'nearly_impossible' : 'impossible', cap, best, span });
+      }
+    }
+    const judged = parts.filter(p => RANKV[p.v] != null);
+    if (!judged.length) { skip('data'); continue; }
+    // the objective that decides it: the hardest (the easiest, for a choice); on a tie, the tightest margin
+    const tight = (p) => p.cap != null ? -p.cap : p.need != null ? p.need : 0;
+    const pickBy = (arr) => arr.reduce((w, p) => { const d = RANKV[p.v] - RANKV[w.v] || tight(p) - tight(w); return (anyOf ? d < 0 : d > 0) ? p : w; });
+    const worst = pickBy(judged);
+    const final = o.pts[o.pts.length - 1];
+    const entry = { ...base, hours: +hoursAll.toFixed(1), anyOf, partial: other > 0 || judged.length < parts.length, v: worst.v === 'done' ? 'ontrack' : worst.v,
+      need: worst.need != null ? +worst.need.toFixed(3) : null, cap: worst.cap != null ? +worst.cap.toFixed(3) : null, span: worst.span || null,
+      players: N0 || null, C: cap ? Math.round(cap.C) : null,
+      goals: cIdx.map(k => ({ k, type: ts[k].type, goal: ts[k].goal, f: ts[k].faction, item: ts[k].itemId, enemy: ts[k].enemyId, got: final ? final[1 + k] || 0 : null,
+        cap: (parts.find(p => p.k === k) || {}).cap ?? null })),
+      targets: parts.flatMap(p => p.planets || []).map(q => ({ i: q.index, n: q.name, hp: q.health, max: q.maxHealth, r: q.regenPerSecond, pl: q.statistics.playerCount, o: q.currentOwner })),
+      tasks: o.tasks, brief: o.brief };
+    if (idx >= 0) out[idx] = entry; else out.push(entry);
+  }
+
+  // Defend and hold orders depend on the attacks the enemy launches during the order, so there is no
+  // day-one forecast. What the war log does show: how many attacks came (a "defend 8" order with only
+  // 5 attacks launched could never be won) and which planets fell.
+  const attacks = [];   // { i, f, start, end, won }
+  {
+    const open = new Map();
+    for (let k = 0; k < ev.length; k++) for (const l of ev[k].log || []) {
+      const m = /^(defense|invasion) (start|won|lost)$/.exec(l.type || ''); if (!m) continue;
+      const i = (l.planet || [])[0]?.[1]; if (i == null) continue;
+      const key = m[1] + ':' + i;
+      if (m[2] === 'start') { const a = { i, f: OWNER[l.faction] || null, start: times[k], end: null, won: null, kind: m[1] }; attacks.push(a); open.set(key, a); }
+      else { const a = open.get(key); if (a && a.end == null) { a.end = times[k]; a.won = m[2] === 'won'; open.delete(key); } }
+    }
+  }
+  const flips = [];   // planets taken by the enemy: { i, t }
+  for (const [k, l] of Object.entries(P)) { let prev = null; for (const x of l) { if (prev === 'Humans' && x.owner && x.owner !== 'Humans') flips.push({ i: Number(k), t: x.t }); prev = x.owner; } }
+  const WORDN = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const facOf = (txt) => (FAC_WORD.find(([re]) => re.test(txt)) || [])[1] || null;
+  for (const mo of mos.values()) {
+    if (mo.result !== 'lost' || !mo.start || !mo.end) continue;
+    const at = out.findIndex(x => (mo.code && x.code === mo.code) || (x.start && Math.abs(x.start - mo.start) < 60e3));
+    if (at >= 0 && !out[at].skip) continue;   // already checked
+    const hsO = Object.values(hs || {}).find(o => Math.abs(o.start - mo.start) < 3 * H);
+    const ts = hsO ? hsO.tasks.map(tk => E.parseTask(tk, 0)) : [];
+    // how many defenses it asked for, and against whom: the exact objective, else the title ("Repel 14 Illuminate Invasions")
+    let need = null, fac = null;
+    const dt = ts.find(t => t.type === 12);
+    if (dt) { need = dt.goal; fac = dt.faction; }
+    else { const m = /\b(?:defend|repel)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i.exec(mo.name || ''); if (m) { need = Number(m[1]) || WORDN[m[1].toLowerCase()]; fac = facOf(mo.name || '') || OWNER[mo.fac] || null; } }
+    const facts = {};
+    const live = (a) => a.start < mo.end && (a.end == null || a.end > mo.start) && (!fac || a.f === fac);
+    if (need) {
+      const came = attacks.filter(live), won = came.filter(a => a.won && a.end <= mo.end + 30 * 60e3).length;
+      facts.attacks = { need, came: came.length, won, f: fac };
+    }
+    // planets lost during the order: the ones it named (to hold), else any
+    const holdI = [...ts.filter(t => t.type === 13 && t.planetIndex != null).map(t => t.planetIndex), ...(mo.src !== 'disp' ? mo.planets || [] : [])];
+    const fell = flips.filter(x => x.t > mo.start && x.t <= mo.end + 30 * 60e3 && holdI.includes(x.i));
+    if (holdI.length) facts.held = { n: [...new Set(holdI)].length, fell: [...new Map(fell.map(x => [x.i, { i: x.i, n: hist.galaxystatic?.[x.i]?.name || '#' + x.i, t: x.t }])).values()] };
+    const base = { code: mo.code, name: mo.name, start: mo.start, end: mo.end, result: mo.result };
+    // too few attacks to ever reach the goal: lost by design, not by the Helldivers
+    if (facts.attacks) {
+      const r = facts.attacks.came / facts.attacks.need;
+      const entry = { ...base, src: 'attacks', hours: +((mo.end - mo.start) / H).toFixed(1), v: r < 1 ? 'impossible' : r < 1.25 ? 'hard' : 'ontrack', need: null, cap: null,
+        partial: ts.length > 1 || /\band\b|\//.test((mo.name || '') + ' ' + (mo.obj || '')), facts, hsId: hsO?.id || null };
+      if (at >= 0) out[at] = entry; else out.push(entry);
+      continue;
+    }
+    if (at >= 0) out[at] = { ...out[at], facts }; else out.push({ ...base, skip: 'type', facts, hsId: hsO?.id || null });
   }
   return out.sort((x, y) => y.start - x.start);
 }
