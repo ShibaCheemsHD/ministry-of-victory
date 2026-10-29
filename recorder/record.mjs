@@ -95,6 +95,17 @@ try {
 }
 const now = Date.now();
 
+// Strategic Opportunity dispatches, kept for a week: a goal cut right after one was earned, not hand-made
+if (src === 'community') {
+  const ds = await get('/api/v1/dispatches', 2).catch(() => []);
+  for (const d of ds || []) {
+    const msg = txt(d && d.message);
+    if (!/strategic opportunity/i.test(msg) || (hist.so || []).some(x => x.id === d.id)) continue;
+    (hist.so ||= []).push({ id: d.id, t: Date.parse(d.published) || now, msg: String(msg).slice(0, 800) });
+  }
+}
+hist.so = (hist.so || []).filter(x => now - x.t < 8 * 24 * H);
+
 const planets = {};
 for (const c of campaigns || []) if (c && c.planet) planets[c.planet.index] = c.planet;
 const named = new Set();
@@ -247,7 +258,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, official: !!status, alerts, effects, orders: hist.orders }));
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
 const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };
