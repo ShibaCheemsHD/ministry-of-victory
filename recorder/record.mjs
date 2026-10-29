@@ -292,7 +292,7 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 2) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
     if (r.ok) {
@@ -302,7 +302,7 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro) {
         const disp = (e.log || []).find(l => l.type === 'Dispatch' && /major order/i.test(l.text || ''));
         for (const l of e.log || []) {
           const m = /^(Major Order Start|Major Order Won|Major Order Lost)$/.exec(l.type || ''); if (!m) continue;
-          const tx = String(l.text || '').replace(/^Major Order \|\s*/, '');
+          const tx = String(l.text || '').replace(/^\s*(Major|Minor) Order\s*\|\s*/i, '');
           const code = (tx.match(/A\d+-\d+-\d+/) || [null])[0];
           const name = tx.replace(/A\d+-\d+-\d+\s*/, '').replace(/\s*is\s*(issued|won|failed).*$/i, '').replace(/^[-\s]+/, '').trim();
           const obj = ((tx.match(/Objective:\s*(.*)$/i) || [])[1] || '').trim();
@@ -316,7 +316,8 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro) {
       // rebuild the day-one call of past liberation orders from the same log (planet states at launch)
       try {
         const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
-        if (rr.ok) hist.retro = buildRetro(j, await rr.json(), E).map(x => ({ code: x.code, start: x.start, result: x.result, v: x.v, need: x.need, hours: x.hours, anyOf: x.anyOf, players: x.players, C: x.C, targets: x.targets }));
+        if (rr.ok) hist.retroV = 2, hist.retro = buildRetro(j, await rr.json(), E).map(x => x.skip ? { code: x.code, start: x.start, result: x.result, skip: x.skip }
+          : { code: x.code, start: x.start, result: x.result, v: x.v, need: x.need, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
       } catch (e) { console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }
@@ -328,7 +329,7 @@ const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanetta
 for (const r of hist.retro || []) {
   if (r.result !== 'lost') continue;
   const m = archive.orders.find(x => (r.code && x.code === r.code) || (x.start && Math.abs(x.start - r.start) < 60e3));
-  if (m) m.retro = r;
+  if (m) { if (r.skip) m.noRetro = r.skip; else m.retro = r; }
 }
 // our own call joins the community log entry that started within 3 hours of it
 for (const c of archive.watched) {
