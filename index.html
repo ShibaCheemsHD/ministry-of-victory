@@ -1261,6 +1261,7 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
 .stale-bar b { color: var(--fg); }
 .live.warn { background: var(--warn); animation: none; box-shadow: none; }
 #stale:empty { display: none; }
+.boot.out { pointer-events: none; }
 </style>
 </head>
 <body>
@@ -4948,12 +4949,12 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   }
   document.addEventListener('pointerover', (e) => {
     const inGlobe = e.target.closest && e.target.closest('[data-globe]'), inCard = e.target.closest && e.target.closest('.pc-wrap');
-    if ((inGlobe || inCard) && e.pointerType === 'mouse') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 120); }
+    if ((inGlobe || inCard) && e.pointerType !== 'touch') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 120); }
   });
   document.addEventListener('pointerout', (e) => {
     const from = e.target.closest && (e.target.closest('[data-globe]') || e.target.closest('.pc-wrap'));
     const to = e.relatedTarget && e.relatedTarget.closest && (e.relatedTarget.closest('[data-globe]') || e.relatedTarget.closest('.pc-wrap'));
-    if (from && !to && e.pointerType === 'mouse') { clearTimeout(pcTimer); pcTimer = setTimeout(() => closeCard(false), 260); }
+    if (from && !to && e.pointerType !== 'touch') { clearTimeout(pcTimer); pcTimer = setTimeout(() => closeCard(false), 260); }
   });
   document.addEventListener('click', (e) => {
     const g = e.target.closest('[data-globe]');
