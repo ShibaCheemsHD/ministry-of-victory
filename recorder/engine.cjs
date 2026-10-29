@@ -10,7 +10,7 @@ const ENGINE = (() => {
 
   // Defaults measured on "Honour the Fallen" (Oct 2026): 100% of the playerbase
   // deals ~90k HP/h to one planet, DSS adds ~10%, HOD measured ~1.3x.
-  // capacity: HP/h at a 50% share, 2026 median of the war archive. dssBonus: 0, the archive shows no
+  // capacity: HP/h that everyone online would deal on one planet (damage grows in step with the share), 2026 median of the war archive. dssBonus: 0, the archive shows no
   // extra damage on the DSS planet (0.98-0.99x per share in 2024, 2025 and 2026).
   const DEFAULTS = { capacity: 100000, dssBonus: 0, hodMult: 1.3, recordShare: 0.77 };
 
@@ -460,17 +460,29 @@ const ENGINE = (() => {
         const primary = rates.day || (rates.sinceStart && rates.sinceStart.hours >= 12 ? rates.sinceStart
           : (rates.recent && rates.recent.hours >= 0.25 ? rates.recent : rates.sinceStart));
         const projection = primary ? t.progress + primary.rate * H : null;
-        let verdict = 'unknown';
+        let verdict = 'unknown', needShare = null;
+        // where it counts: its planet, its enemy's front, or everywhere (kills of any enemy)
+        const fac = t.faction && t.faction !== 'Humans' ? t.faction : null;
+        let here = 0;
+        if (t.planetIndex != null) here = planets[t.planetIndex]?.statistics?.playerCount || 0;
+        else if (fac) for (const q of Object.values(planets)) { const f = q.event ? q.event.faction : (isEnemy(q) ? q.currentOwner : null); if (f === fac) here += q.statistics?.playerCount || 0; }
+        const frontShare = !N ? null : t.planetIndex == null && !fac ? 1 : here / N;
         if (remaining <= 0) verdict = 'done';
         else if (primary && primary.rate > 0) {
           const ratio = needed / primary.rate;
-          verdict = ratio <= 1 ? 'ontrack' : ratio <= 1.25 ? 'effort' : ratio <= 2 ? 'hard' : ratio <= 4 ? 'nearly_impossible' : 'impossible';
+          if (ratio <= 1) verdict = 'ontrack';
+          else if (frontShare > 0) {
+            // the pace needed, as a share of everyone online at today's pace per Helldiver: the same
+            // scale as a liberation (players can move here from other fronts)
+            needShare = frontShare * ratio;
+            verdict = needShare <= 0.6 ? 'effort' : needShare <= settings.recordShare ? 'record' : needShare <= 1 ? 'nearly_impossible' : 'impossible';
+          } else verdict = ratio <= 1.25 ? 'effort' : ratio <= 2 ? 'hard' : ratio <= 4 ? 'nearly_impossible' : 'impossible';
         }
         // the first hours of an order: players are still arriving, and the pace measured on a short
         // stretch says little. Never call it (nearly) impossible on less than 3 hours of pace.
         const early = !!(primary && primary.kind !== 'day' && (primary.hours || 0) < 3 && remaining > 0);
         if (early && (verdict === 'nearly_impossible' || verdict === 'impossible')) verdict = 'hard';
-        Object.assign(r, { counter: true, rates, remaining, needed, primary, projection, verdict, early });
+        Object.assign(r, { counter: true, rates, remaining, needed, primary, projection, verdict, early, needShare, frontShare });
       } else if (t.type === TASK.DEFEND_COUNT || t.type === TASK.LIBERATE_COUNT) {
         r.counter = true; r.simpleCount = true;
         r.verdict = t.goal && t.progress >= t.goal ? 'done' : 'unknown';
@@ -934,7 +946,7 @@ const ENGINE = (() => {
     const need = shareFor(e.health / hEvent / (1 + settings.dssBonus), C);
     const eta = rate > 0 ? e.health / rate : Infinity;
     const outlastsMO = hEvent > H; // the attack ends after the MO: planet is still ours at MO end
-    let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.5 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
+    let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.6 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
     if (outlastsMO) verdict = 'done';
     return { hoursToEnd: hEvent, share, rate, observed: obs, need, eta, verdict, outlastsMO, progress: 1 - e.health / e.maxHealth };
   }
@@ -971,10 +983,15 @@ const ENGINE = (() => {
       if (!r.counter || r.simpleCount || r.verdict === 'done' || r.task.planetIndex != null) continue;
       const f = r.task.faction, now = res.fronts && res.fronts.players ? res.fronts.players[f] || 0 : 0;
       const rate = r.primary?.rate;
+      // kills of any enemy: every Helldiver counts, so the share needed is the pace needed over the pace now
+      if (!f && N && rate > 0) { front['*'] = Math.max(front['*'] || 0, Math.min(5, r.needed / rate)); continue; }
       if (!f || !N || !now || !(rate > 0)) { if (r.verdict === 'unknown' || !(rate > 0)) unknown = true; continue; }
       front[f] = Math.max(front[f] || 0, (now * r.needed / rate) / N);
     }
-    const total = Object.values(place).reduce((a, x) => a + x, 0) + Object.values(front).reduce((a, x) => a + x, 0);
+    // per faction, players on a planet of that faction also count for its kills: the larger need wins
+    const facs = new Set([...Object.keys(place), ...Object.keys(front).filter(f => f !== '*')]);
+    let byFac = 0; for (const f of facs) byFac += Math.max(place[f] || 0, front[f] || 0);
+    const total = Math.max(byFac, front['*'] || 0);
     return { place, front, total, unknown };
   }
   function crossOrders(list, recordShare) {
@@ -984,10 +1001,12 @@ const ENGINE = (() => {
     const facs = new Set(live.flatMap(x => [...Object.keys(x.need.place), ...Object.keys(x.need.front)]));
     let total = 0;
     for (const f of facs) {
+      if (f === '*') continue;
       const place = live.reduce((a, x) => a + (x.need.place[f] || 0), 0);
       const front = Math.max(0, ...live.map(x => x.need.front[f] || 0));
       total += Math.max(place, front);
     }
+    total = Math.max(total, ...live.map(x => x.need.front['*'] || 0));
     const anyUnknown = live.some(x => x.need.unknown);
     const feasible = live.filter(x => !x.need.unknown && x.need.total <= recordShare);
     // best bet when we can't have everything: the cheapest order that can still be won, more medals breaking ties

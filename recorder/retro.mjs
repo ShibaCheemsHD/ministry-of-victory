@@ -11,7 +11,7 @@ const H = 3.6e6;
 const OWNER = { 1: 'Humans', 2: 'Terminids', 3: 'Automaton', 4: 'Illuminate' };
 const tOf = (s) => Date.parse(String(s).slice(0, 16).replace(' ', 'T') + ':00Z');
 
-export function buildRetro(hist, resort, E, hs = null) {
+export function buildRetro(hist, resort, E, hs = null, live = null) {
   const ev = hist.events || [];
   const times = ev.map(e => tOf(e.time));
   // everyone online at an event index (the last count at or before it)
@@ -33,8 +33,10 @@ export function buildRetro(hist, resort, E, hs = null) {
     P[idx] = out;
   }
   const maxHp = {}; for (const [k, l] of Object.entries(P)) maxHp[k] = Math.max(0, ...l.map(s => s.hp || 0));
-  const stateAt = (idx, t) => { const l = P[idx]; if (!l) return null; let s = null; for (const x of l) { if (x.t > t) break; s = x; } return s; };
-  const playersAt = (t) => { let lo = 0, hi = times.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (times[m] <= t) { k = m; lo = m + 1; } else hi = m - 1; } return k >= 0 ? allAt[k] : null; };
+  const stateAt = (idx, t) => { const l = P[idx]; if (!l || !l.length || l[0].t > t) return null; let lo = 0, hi = l.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (l[m].t <= t) lo = m; else hi = m - 1; } return l[lo]; };
+  const logEnd = times.length ? times[times.length - 1] : 0;
+  // everyone online at t (nothing past the end of the log: its last count would be stale)
+  const playersAt = (t) => { if (t > logEnd + 2 * H) return null; let lo = 0, hi = times.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (times[m] <= t) { k = m; lo = m + 1; } else hi = m - 1; } return k >= 0 ? allAt[k] : null; };
 
   // strength of the playerbase: HP per hour that 100% of the players would deal (the engine's C),
   // from successive health readings on enemy planets in the week before t
@@ -173,10 +175,30 @@ export function buildRetro(hist, resort, E, hs = null) {
       targets: shown.map(p => ({ i: p.index, n: p.name, hp: p.health, max: p.maxHealth, r: p.regenPerSecond, pl: p.statistics.playerCount, o: p.currentOwner })) });
   }
 
+  // Share of everyone online fighting where an objective counts at time t: on its planet, on its enemy's
+  // planets, or everywhere. From the war log, or past its end from the recorder's own snapshots (live).
+  const shareAt = (t, f, idx) => {
+    if (t <= logEnd + 2 * H) {
+      const all = playersAt(t); if (!all) return null;
+      if (idx != null) { const st = stateAt(String(idx), t); return st ? (st.pl || 0) / all : null; }
+      if (!f) return 1;
+      let n = 0; for (const k of Object.keys(P)) { const st = stateAt(k, t); if (st && st.owner === f && st.pl) n += st.pl; }
+      return n / all;
+    }
+    const sm = (live?.samples || []).filter(x => x.N && Math.abs(x.t - t) <= 20 * 60e3).sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t))[0];
+    if (!sm) return null;
+    if (idx != null) return sm.pl?.[idx] ? (sm.pl[idx][1] || 0) / sm.N : null;
+    if (!f) return 1;
+    let n = 0; for (const [k, v] of Object.entries(sm.pl || {})) { const fk = v[4] ? live?.factions?.[k] : v[6]; if (fk === f) n += v[1] || 0; }
+    return n / sm.N;
+  };
+  // average of that share over a stretch (every 2 hours)
+  const shareOver = (t0, t1, f, idx) => { const v = []; for (let t = t0; t <= t1; t += 2 * H) { const x = shareAt(t, f, idx); if (x != null) v.push(x); } return v.length >= Math.max(1, Math.floor((t1 - t0) / (4 * H))) ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+
   // Orders whose exact objectives and progress over time are on record (helldiversstats.com, since May
-  // 2026): kill, extraction, mission and operation counts get the check the Ministry makes live: the pace
-  // of the first day (24 hours in; 3 hours for orders shorter than a day and a half) against what was
-  // left. Liberation objectives in them are judged frozen at launch, as above.
+  // 2026): kill, extraction, mission and operation counts are judged on the Helldivers' best 24 hours
+  // (half the order, for orders shorter than a day and a half) kept up from start to finish, against the
+  // goal. Liberation objectives in them are judged frozen at launch, as above.
   const RANKV = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5 };
   const COUNTER = new Set([1, 2, 3, 4, 5, 6, 7, 9, 10]);
   for (const o of Object.values(hs || {})) {
@@ -184,7 +206,6 @@ export function buildRetro(hist, resort, E, hs = null) {
     // the war log's entry for it: the Major Order that started within 3 hours
     const mo = [...mos.values()].find(m => m.start && Math.abs(m.start - o.start) < 3 * H);
     const code = mo?.code || null;
-    if (out.some(x => !x.skip && ((code && x.code === code) || Math.abs(x.start - o.start) < 3 * H))) continue;   // already rebuilt from the log
     const ts = o.tasks.map(tk => E.parseTask(tk, 0));
     // its result when the war log hasn't caught up: every objective done at the last reading, or it ran out
     const lastP = o.pts[o.pts.length - 1];
@@ -195,8 +216,10 @@ export function buildRetro(hist, resort, E, hs = null) {
     const cIdx = ts.map((t, i) => COUNTER.has(t.type) && t.goal ? i : -1).filter(i => i >= 0);
     const lIdx = ts.map((t, i) => t.type === 11 ? i : -1).filter(i => i >= 0);
     const other = ts.length - cIdx.length - lIdx.length;
-    const idx = out.findIndex(x => x.skip && ((code && x.code === code) || Math.abs(x.start - base.start) < 3 * H));
-    const skip = (why) => { if (idx >= 0) out[idx] = { ...out[idx], skip: why }; else out.push({ ...base, skip: why }); };
+    // the exact objectives win over what the war log let us guess: replace a log-based check of the same order
+    const idx = out.findIndex(x => (code && x.code === code) || Math.abs(x.start - base.start) < 3 * H);
+    // nothing to judge from the record: keep a check the war log allowed, else say why
+    const skip = (why) => { if (idx >= 0) { if (out[idx].skip) out[idx] = { ...out[idx], skip: why }; } else out.push({ ...base, skip: why }); };
     if (!cIdx.length && !lIdx.length) { skip('defend'); continue; }
     // players and strength at launch come from the war log: only liberation objectives need them
     const t0 = o.start + 5 * 60e3, N0 = playersAt(t0), cap = lIdx.length ? capacityAt(o.start) : null;
@@ -226,31 +249,58 @@ export function buildRetro(hist, resort, E, hs = null) {
         const fin = ser[ser.length - 1];
         if (!fin || (fin[0] - o.start) / H < span) continue;
         if (fin[1] >= goal) { parts.push({ k, v: 'done', cap: 1 }); continue; }
-        let best = 0, j = 0;
+        let best = 0, bw = null, j = 0;
         for (let i = 0; i < ser.length; i++) {
           while (j < ser.length - 1 && ser[j][0] < ser[i][0] + span * H) j++;
           const dt = (ser[j][0] - ser[i][0]) / H;
-          if (dt >= span * 0.9) best = Math.max(best, (ser[j][1] - ser[i][1]) / dt);
+          if (dt >= span * 0.9) { const rt = (ser[j][1] - ser[i][1]) / dt; if (rt > best) { best = rt; bw = [ser[i][0], ser[j][0]]; } }
         }
         if (!(best > 0)) continue;
         const cap = best * hoursAll / goal;
-        // their best day, every day: comfortably enough / only just (a record pace all the way) / short / not half
-        parts.push({ k, v: cap >= 1.3 ? 'ontrack' : cap >= 1 ? 'hard' : cap >= 0.5 ? 'nearly_impossible' : 'impossible', cap, best, span });
+        // At that best-day pace per Helldiver, what share of everyone online would the goal take, start to
+        // finish? Same scale as a liberation (60% winnable, 77% our best turnout, over 100% impossible).
+        // The share is of the Helldivers where the objective counts (its planet, its enemy's front, or all).
+        const sh = shareOver(bw[0], bw[1], ts[k].faction && ts[k].faction !== 'Humans' ? ts[k].faction : null, ts[k].planetIndex);
+        const need = sh != null && sh > 0 ? sh / cap : null;
+        const vN = need == null ? null : need <= 0.6 ? 'effort' : need <= E.DEFAULTS.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';
+        // no player counts for that stretch: fall back on the pace alone (their best day, every day)
+        const vC = cap >= 1.3 ? 'ontrack' : cap >= 1 ? 'hard' : cap >= 0.5 ? 'nearly_impossible' : 'impossible';
+        parts.push({ k, v: vN || vC, need, share: sh, cap, best, span, f: ts[k].faction || null, count: true });
       }
     }
+    // objectives the record can't judge (liberate N worlds, holds) that the war log did: keep that check as one more part
+    const logged = idx >= 0 && !out[idx].skip && out[idx].src !== 'hs' && other > 0 ? out[idx] : null;
+    if (logged) parts.push({ k: -1, v: logged.v, need: logged.need, planetsT: logged.targets || [] });
     const judged = parts.filter(p => RANKV[p.v] != null);
     if (!judged.length) { skip('data'); continue; }
     // the objective that decides it: the hardest (the easiest, for a choice); on a tie, the tightest margin
     const tight = (p) => p.cap != null ? -p.cap : p.need != null ? p.need : 0;
     const pickBy = (arr) => arr.reduce((w, p) => { const d = RANKV[p.v] - RANKV[w.v] || tight(p) - tight(w); return (anyOf ? d < 0 : d > 0) ? p : w; });
-    const worst = pickBy(judged);
+    let worst = pickBy(judged);
+    // all objectives at once (not a choice): the players they need add up across enemies, while kills on a
+    // front overlap with liberating that front's planets, and kills of any enemy overlap with everything
+    const open = judged.filter(p => p.v !== 'done');
+    if (!anyOf && open.length > 1 && open.every(p => p.need != null)) {
+      const facOf = (p) => p.count ? p.f || '*' : (p.planets || []).length && new Set(p.planets.map(q => q.currentOwner)).size === 1 ? p.planets[0].currentOwner : 'lib';
+      const by = {}; for (const p of open) { const f = facOf(p); by[f] = Math.max(by[f] || 0, p.need); }
+      const tot = Math.max(Object.entries(by).filter(([f]) => f !== '*').reduce((a, [, x]) => a + x, 0), by['*'] || 0);
+      const v = tot <= 0.6 ? 'effort' : tot <= E.DEFAULTS.recordShare ? 'record' : tot <= 1 ? 'nearly_impossible' : 'impossible';
+      worst = { ...worst, v, need: tot, cap: null, combined: true };
+    } else if (!anyOf && open.length > 1 && open.some(p => p.need == null) && open.every(p => p.count)) {
+      // player counts missing for some of them: a share for only part of the order would undersell it,
+      // so all of them are judged on the pace alone (the tightest one decides)
+      const k0 = open.reduce((w, p) => p.cap < w.cap ? p : w);
+      const vC = k0.cap >= 1.3 ? 'ontrack' : k0.cap >= 1 ? 'hard' : k0.cap >= 0.5 ? 'nearly_impossible' : 'impossible';
+      worst = { ...k0, v: vC, need: null };
+    }
     const final = o.pts[o.pts.length - 1];
-    const entry = { ...base, hours: +hoursAll.toFixed(1), anyOf, partial: other > 0 || judged.length < parts.length, v: worst.v === 'done' ? 'ontrack' : worst.v,
-      need: worst.need != null ? +worst.need.toFixed(3) : null, cap: worst.cap != null ? +worst.cap.toFixed(3) : null, span: worst.span || null,
+    const entry = { ...base, hours: +hoursAll.toFixed(1), anyOf, partial: (other > 0 && !logged) || judged.length < parts.length, v: worst.v === 'done' ? 'ontrack' : worst.v,
+      need: worst.need != null ? +worst.need.toFixed(3) : null, cap: worst.need == null && worst.cap != null ? +worst.cap.toFixed(3) : null, span: worst.span || null, combined: !!worst.combined,
+      counts: !!(worst.count || worst.combined),
       players: N0 || null, C: cap ? Math.round(cap.C) : null,
       goals: cIdx.map(k => ({ k, type: ts[k].type, goal: ts[k].goal, f: ts[k].faction, item: ts[k].itemId, enemy: ts[k].enemyId, got: final ? final[1 + k] || 0 : null,
-        cap: (parts.find(p => p.k === k) || {}).cap ?? null })),
-      targets: parts.flatMap(p => p.planets || []).map(q => ({ i: q.index, n: q.name, hp: q.health, max: q.maxHealth, r: q.regenPerSecond, pl: q.statistics.playerCount, o: q.currentOwner })),
+        cap: (parts.find(p => p.k === k) || {}).cap ?? null, need: (parts.find(p => p.k === k) || {}).need ?? null })),
+      targets: [...parts.flatMap(p => p.planets || []).map(q => ({ i: q.index, n: q.name, hp: q.health, max: q.maxHealth, r: q.regenPerSecond, pl: q.statistics.playerCount, o: q.currentOwner })), ...parts.flatMap(p => p.planetsT || [])],
       tasks: o.tasks, brief: o.brief };
     if (idx >= 0) out[idx] = entry; else out.push(entry);
   }
@@ -285,9 +335,10 @@ export function buildRetro(hist, resort, E, hs = null) {
     if (dt) { need = dt.goal; fac = dt.faction; }
     else { const m = /\b(?:defend|repel)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i.exec(mo.name || ''); if (m) { need = Number(m[1]) || WORDN[m[1].toLowerCase()]; fac = facOf(mo.name || '') || OWNER[mo.fac] || null; } }
     const facts = {};
-    const live = (a) => a.start < mo.end && (a.end == null || a.end > mo.start) && (!fac || a.f === fac);
+    // an attack counts if it was decided while the order ran (one still going at the deadline can't count)
+    const live = (a) => a.end != null && a.end > mo.start && a.end <= mo.end + 30 * 60e3 && (!fac || a.f === fac);
     if (need) {
-      const came = attacks.filter(live), won = came.filter(a => a.won && a.end <= mo.end + 30 * 60e3).length;
+      const came = attacks.filter(live), won = came.filter(a => a.won).length;
       facts.attacks = { need, came: came.length, won, f: fac };
     }
     // planets lost during the order: the ones it named (to hold), else any
