@@ -309,7 +309,7 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 4) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 5) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
     if (r.ok) {
@@ -332,11 +332,13 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 4
       }
       // rebuild the day-one call of past liberation orders from the same log (planet states at launch)
       try {
-        const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
-        // exact objectives and progress of past orders (helldiversstats.com): the first time, all of them
+        // exact objectives and progress of past orders (helldiversstats.com): the first time, all of them.
+        // (Before the war log download: its time limit also covers reading the body.)
         try { await loadHs(hist, now, { maxNew: hist.hs ? 8 : 60 }); } catch (e) { console.log('::warning::helldiversstats: ' + String(e).slice(0, 200)); }
-        if (rr.ok) hist.retroV = 4, hist.retro = buildRetro(j, await rr.json(), E, hist.hs).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
+        const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
+        if (rr.ok) hist.retro = buildRetro(j, await rr.json(), E, hist.hs).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
           : { code: x.code, start: x.start, end: x.end || null, result: x.result, v: x.v, need: x.need, cap: x.cap ?? null, span: x.span ?? null, goals: x.goals || null, facts: x.facts || null, src: x.src || 'log', hsId: x.hsId || null, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
+        if (rr.ok) hist.retroV = 5;
       } catch (e) { console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }
