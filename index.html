@@ -1343,6 +1343,50 @@ a { text-underline-offset: 3px; }
   .tab { flex: 1 1 auto; padding: 10px 6px 16px; font-size: 11px; letter-spacing: .02em; }
   .tab[aria-selected="true"]::after { left: 6px; right: 6px; }
 }
+
+/* ---------- war map (rail) ---------- */
+.map-card { display: grid; gap: 10px; }
+.war-map { position: relative; aspect-ratio: 1; margin: 0 -4px; }
+.war-map svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.war-map .mr { fill: none; stroke: rgba(255, 255, 255, .07); stroke-width: .6; }
+.war-map .mr:first-child { fill: rgba(255, 255, 255, .018); stroke: rgba(255, 255, 255, .12); }
+.war-map .mw { stroke: rgba(255, 255, 255, .13); stroke-width: .7; }
+.war-map .ma { stroke: var(--c); stroke-width: 1.1; stroke-dasharray: 3 2.4; opacity: .9; animation: maFlow 1.6s linear infinite; }
+@keyframes maFlow { to { stroke-dashoffset: -10.8; } }
+.war-map .se { fill: var(--f-human); opacity: .9; }
+.war-map .mp { cursor: pointer; outline: none; }
+.war-map .mp .hit { fill: transparent; }
+.war-map .mp .dot { fill: var(--c); stroke: #0c0c0e; stroke-width: .8; transition: transform 160ms var(--ease-out); }
+.war-map .mp .ring { fill: none; stroke: rgba(255, 255, 255, .7); stroke-width: .8; }
+.war-map .mp .br { fill: none; stroke: var(--yellow); stroke-width: 1.2; }
+.war-map .mp .lbl { fill: var(--fg); font: 700 7.5px var(--ui); text-anchor: middle; letter-spacing: .04em; text-transform: uppercase; paint-order: stroke; stroke: #0c0c0e; stroke-width: 2.4px; pointer-events: none; }
+.war-map .mp .pulse { fill: none; stroke: var(--c); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: mpPulse 2.2s var(--ease-out) infinite; }
+@keyframes mpPulse { from { transform: scale(1); opacity: .9; } to { transform: scale(2.6); opacity: 0; } }
+.war-map:not(.all) .mp:not(.rel):not(.focus) .dot { opacity: .55; }
+.war-map .mp.hot .dot, .war-map .mp:focus-visible .dot { transform: scale(1.35); opacity: 1; }
+.war-map .mp:focus-visible .hit { stroke: var(--yellow); stroke-width: 1; }
+.war-map .mdss path { fill: var(--info); }
+.map-tip { position: absolute; z-index: 5; display: grid; gap: 1px; padding: 7px 10px; min-width: 120px; background: rgba(14, 14, 16, .97); border: 1px solid #4a4d54; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); font-size: 12px; color: var(--muted); pointer-events: none; white-space: nowrap; }
+.map-tip b { font: 700 13px var(--ui); color: var(--fg); text-transform: uppercase; letter-spacing: .03em; }
+.map-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.map-key span { display: inline-flex; align-items: center; gap: 6px; }
+.map-key i { width: 10px; height: 10px; display: inline-block; }
+.map-key .k-ring { border: 1px solid rgba(255, 255, 255, .8); border-radius: 50%; }
+.map-key .k-br { border: 1.5px solid var(--yellow); clip-path: polygon(0 0, 40% 0, 40% 15%, 15% 15%, 15% 40%, 0 40%, 0 0, 100% 0, 100% 40%, 85% 40%, 85% 15%, 60% 15%, 60% 0, 100% 0, 100% 100%, 60% 100%, 60% 85%, 85% 85%, 85% 60%, 100% 60%, 100% 100%, 0 100%, 0 60%, 15% 60%, 15% 85%, 40% 85%, 40% 100%, 0 100%); }
+.map-key .k-ev { border: 1px solid var(--f-automaton); border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 113, 113, .25); }
+.calm .war-map .ma, .calm .war-map .mp .pulse { animation: none; }
+@media (prefers-reduced-motion: reduce) { .war-map .ma, .war-map .mp .pulse { animation: none; } }
+@media (max-width: 980px) and (min-width: 641px) { .map-card { max-width: 460px; } }
+
+/* ---------- live counters ---------- */
+.tick-wrap { white-space: nowrap; color: var(--muted); }
+.tick-wrap .live { width: 6px; height: 6px; margin-right: 5px; vertical-align: 1px; }
+.tick { font-family: var(--ui); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--fg); }
+
+.empty-wrap { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+@media (max-width: 860px) { .empty-wrap { grid-template-columns: minmax(0, 1fr); } }
+.map-tip[hidden] { display: none; }
+.area-rail > .map-card { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -2545,6 +2589,8 @@ const TEXT = {
     pace: 'We make <b>{have}</b> an hour ({basis}). We need <b>{need}</b>.', paceRec: 'We make <b>{have}</b> an hour ({basis}), <b>{rec}</b> in the last hour. We need <b>{need}</b>.', slow: '{x}× too slow',
     basis: { start: 'average', day: 'last 24 h', recent: 'last hour' },
     players: '<b>{have}</b> of all players are there now · it needs <b>{need}</b>', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on the planets' },
+  map: { title: 'War map', aria: 'Galactic map of the planets being fought over', kOrder: 'In this order', kNow: 'What to do now', kAttack: 'Under attack',
+    tipP: '{n} Helldivers', tipL: '{p}% liberated', tipD: 'defense {p}%' },
   pc: {
     open: 'Planet briefing: conditions, enemies and what to bring', close: 'Close', held: '{f} controlled', ours: 'Super Earth controlled',
     lib: 'Liberated', defended: 'Defended', players: 'Helldivers', regen: 'Enemy regen', falls: 'Falls', late: 'not in time',
@@ -3814,6 +3860,53 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     return `<div class="fwhy">${meters.slice(0, 3).map(m => m.html).join('')}
       ${doneN ? `<p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p>` : ''}</div>`;
   }
+  /* ---------- war map: the fronts as the game's galaxy map draws them ---------- */
+  // Every planet being fought over, at its real galactic position (Super Earth in the centre), in its
+  // owner's colour and sized by its Helldivers. The order's planets get a white ring, the planets of
+  // "what to do now" yellow brackets; attacks are dashed, supply lines faint. Hover or tap a planet.
+  const FAC_VAR = { Terminids: 'var(--f-terminid)', Automaton: 'var(--f-automaton)', Illuminate: 'var(--f-illuminate)', Humans: 'var(--f-human)' };
+  function mapHTML(res) {
+    const P = Object.values(last.planets || {}).filter(p => p && p.position && isFinite(p.position.x) && isFinite(p.position.y));
+    if (P.length < 3) return '';
+    const rel = res ? orderPlanets(res) : new Set();
+    const cp = res ? cardPlanets({ res }) : null;
+    const focus = new Set(cp ? (cp.list || [cp.planet]).map(p => Number(p.index)) : []);
+    const byIdx = new Map(P.map(p => [Number(p.index), p]));
+    const X = (p) => (p.position.x * 100).toFixed(1), Y = (p) => (-p.position.y * 100).toFixed(1);
+    const maxP = Math.max(1, ...P.map(p => p.statistics?.playerCount || 0));
+    const lines = [];
+    for (const p of P) {
+      for (const w of p.waypoints || []) { const q = byIdx.get(Number(w)); if (q && Number(p.index) < Number(w)) lines.push(`<line class="mw" x1="${X(p)}" y1="${Y(p)}" x2="${X(q)}" y2="${Y(q)}"/>`); }
+      for (const tIdx of p.attacking || []) { const q = byIdx.get(Number(tIdx)); if (q) lines.push(`<line class="ma" style="--c:${FAC_VAR[factionOfPlanet(p)] || 'var(--fg)'}" x1="${X(p)}" y1="${Y(p)}" x2="${X(q)}" y2="${Y(q)}"/>`); }
+    }
+    const order = [...P].sort((a, b) => (focus.has(Number(a.index)) - focus.has(Number(b.index))) || (rel.has(Number(a.index)) - rel.has(Number(b.index))));
+    const dots = order.map(p => {
+      const i = Number(p.index), owner = p.event ? (p.event.faction || factionOfPlanet(p)) : factionOfPlanet(p);
+      const r = (2.2 + Math.sqrt((p.statistics?.playerCount || 0) / maxP) * 5).toFixed(1);
+      const isF = focus.has(i), isR = rel.has(i);
+      const lib = p.event && p.event.maxHealth ? 1 - p.event.health / p.event.maxHealth : p.maxHealth ? 1 - p.health / p.maxHealth : 0;
+      const tip = `${plain(planetName(p))}|${plain(facName(owner) || '')}|${people(p.statistics?.playerCount || 0)}|${p.event ? 'def' : 'lib'}|${(lib * 100).toFixed(1)}`;
+      return `<g class="mp ${isF ? 'focus' : ''} ${isR ? 'rel' : ''} ${p.event ? 'ev' : ''}" style="--c:${FAC_VAR[owner] || 'var(--fg)'}" transform="translate(${X(p)} ${Y(p)})" data-mp="${i}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(plain(planetName(p)))}">
+        <circle class="hit" r="${Math.max(7, +r + 3)}"/>${p.event ? `<circle class="pulse" r="${r}"/>` : ''}${isR ? `<circle class="ring" r="${(+r + 2.6).toFixed(1)}"/>` : ''}
+        ${isF ? `<path class="br" d="M${-r - 6} ${-r - 2}v-4h4M${+r + 6} ${-r - 2}v-4h-4M${-r - 6} ${+r + 2}v4h4M${+r + 6} ${+r + 2}v4h-4"/>` : ''}
+        <circle class="dot" r="${r}"/>${cp && Number(cp.planet.index) === i ? `<text class="lbl" y="${-r - 9}">${esc(plain(planetName(p)))}</text>` : ''}</g>`;
+    }).join('');
+    const dss = last.dssIdx != null && byIdx.get(Number(last.dssIdx));
+    return `<section class="panel br rail-card map-card">
+      <span class="label">${esc(t('map.title'))}</span>
+      <div class="war-map ${res ? '' : 'all'}">
+        <svg viewBox="-112 -112 224 224" role="group" aria-label="${esc(t('map.aria'))}">
+          <circle class="mr" r="100"/><circle class="mr" r="75"/><circle class="mr" r="50"/><circle class="mr" r="25"/>
+          <g class="mlines">${lines.join('')}</g>
+          <path class="se" d="M0 -4L4 0L0 4L-4 0Z"/>
+          ${dots}
+          ${dss ? `<g class="mdss" transform="translate(${X(dss)} ${Y(dss)})"><path d="M0 -16l3 3-3 3-3-3z"/></g>` : ''}
+        </svg>
+        <div class="map-tip" hidden></div>
+      </div>
+      <p class="map-key"><span><i class="k-ring"></i>${esc(t('map.kOrder'))}</span><span><i class="k-br"></i>${esc(t('map.kNow'))}</span><span><i class="k-ev"></i>${esc(t('map.kAttack'))}</span></p>
+    </section>`;
+  }
   function railHTML(res, a) {
     const v = res.verdict;
     const alert = v === 'impossible' || v === 'nearly_impossible' || v === 'failed';
@@ -3833,6 +3926,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
           ${medals ? `<div class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></div>` : ''}
         </div>
       </section>
+      ${mapHTML(res)}
       ${brief || desc ? `<section class="panel br rail-card brief-card">
         <span class="label">${t('brief')}</span>
         <div class="text ${open ? 'open' : ''}" id="brief-${esc(a.id)}"><p>${brief}</p>${desc ? `<p style="margin-top:8px">${desc}</p>` : ''}</div>
@@ -3901,7 +3995,10 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
         const pf = r.projection != null && tk.goal ? Math.min(1, r.projection / tk.goal) : null;
         const proj = r.projection != null && tk.goal ? pct(r.projection / tk.goal) : null;
         bar = `<div class="bar">${pf != null && pf > frac ? `<div class="proj" style="left:${frac * 100}%;width:${(pf - frac) * 100}%"></div>` : ''}${barFill(key, frac)}<div class="goal"></div></div>`;
-        line = `<b>${pct(frac)}</b> · ${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj ? S('cWait') : r.verdict === 'ontrack' ? S('cOk', { proj }) : S('cBehind', { proj })}`;
+        const rate = r.rates && (r.rates.recent || r.primary) ? (r.rates.recent || r.primary).rate : null;
+        const live = r.verdict !== 'done' && !res.ended && tk.goal && rate > 0
+          ? `<span class="tick-wrap"><i class="live"></i><span class="tick" data-tick="${tk.progress}" data-rate="${(rate / 3600).toFixed(3)}" data-goal="${tk.goal}" data-t0="${last.now}">${fmt(tk.progress)}</span> / ${big(tk.goal)}</span> · ` : '';
+        line = `<b>${pct(frac)}</b> · ${live}${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj ? S('cWait') : r.verdict === 'ontrack' ? S('cOk', { proj }) : S('cBehind', { proj })}`;
       } else {
         const frac = tk.goal ? Math.min(1, tk.progress / tk.goal) : null;
         if (frac != null) bar = `<div class="bar">${barFill(key, frac)}<div class="goal"></div></div>`;
@@ -4671,7 +4768,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     $('intel').innerHTML = '';
     const view = $('view');
     if (!entry) {
-      view.innerHTML = `<div class="empty panel br"><div class="empty-ico">${ICON.dots.replace('class="ico"', 'style="width:40px;height:40px"')}</div><p>${esc(t('noOrders'))}</p></div>`;
+      view.innerHTML = `<div class="empty-wrap"><div class="empty panel br"><div class="empty-ico">${ICON.dots.replace('class="ico"', 'style="width:40px;height:40px"')}</div><p>${esc(t('noOrders'))}</p></div>${mapHTML(null)}</div>`;
       document.title = 'Ministry of Victory';
       return;
     }
@@ -4802,6 +4899,15 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const u = t('dhms'), p2 = (n) => String(n).padStart(2, '0');
     return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>${p2(sec)}<span>${u[3]}</span>`;
   }
+  // live counters: between refreshes, objectives count up at the pace just measured
+  function tickCounters() {
+    const now = Date.now();
+    document.querySelectorAll('.tick[data-tick]').forEach(el => {
+      const v = Math.min(Number(el.dataset.goal), Number(el.dataset.tick) + Number(el.dataset.rate) * (now - Number(el.dataset.t0)) / 1000);
+      el.textContent = fmt(Math.floor(v));
+    });
+  }
+  setInterval(tickCounters, 250);
   function tick() {
     document.querySelectorAll('[data-exp]').forEach(el => {
       const ms = Number(el.dataset.exp) - Date.now();
@@ -4989,9 +5095,16 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   // planet card: opens on hover (mouse) or tap, stays while the pointer is over it, pinned by a click
   let pcTimer = 0;
   function openCard(pin) {
-    const wrap = document.querySelector('.directive .pc-wrap'); if (!wrap || !last) return;
-    const entry = last.results.find(x => String(x.a.id) === String(ui.order)); if (!entry) return;
-    const cp = cardPlanets(entry); if (!cp) return;
+    if (!last) return;
+    const forced = ui.pcForce != null && last.planets[ui.pcForce];
+    let wrap = document.querySelector('.directive .pc-wrap');
+    let entry = last.results.find(x => String(x.a.id) === String(ui.order));
+    if ((!wrap || !entry) && forced) {   // no order on screen: the war map still opens planet cards
+      wrap = document.querySelector('.pc-wrap.free') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'pc-wrap free', hidden: true }));
+      entry = entry || { res: { tasks: [], id: 'none' }, a: {} };
+    }
+    if (!wrap || !entry) return;
+    const cp = forced ? { planet: forced, list: null } : cardPlanets(entry); if (!cp) return;
     wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list);
     wrap.hidden = false; wrap.classList.add('open');
     if (!store.get('pcSeen', false)) { store.set('pcSeen', true); document.querySelector('[data-globe]')?.classList.remove('g-new'); }
@@ -5003,7 +5116,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   // desktop: beside the globe, over the side column when it fits there, never over the headline;
   // phones get a bottom sheet from the stylesheet
   function placeCard() {
-    const wrap = document.querySelector('.directive .pc-wrap.open'), g = document.querySelector('[data-globe]');
+    const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : document.querySelector('[data-globe]');
     if (!wrap || !g) return;
     if (window.innerWidth <= 760) { wrap.style.left = wrap.style.top = ''; wrap.removeAttribute('data-side'); return; }
     const r = g.getBoundingClientRect(), gap = 14, vw = window.innerWidth, vh = window.innerHeight;
@@ -5023,10 +5136,27 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   window.addEventListener('resize', placeSoon);
   function closeCard(force) {
     if (ui.pcPinned && !force) return;
-    ui.pcPinned = false;
-    const wrap = document.querySelector('.directive .pc-wrap'); if (wrap) { wrap.hidden = true; wrap.classList.remove('open'); }
+    ui.pcPinned = false; ui.pcForce = null; ui.pcAnchor = null;
+    document.querySelectorAll('.pc-wrap').forEach(wrap => { wrap.hidden = true; wrap.classList.remove('open'); });
     const g = document.querySelector('[data-globe]'); if (g) g.setAttribute('aria-expanded', 'false');
   }
+  // war map: tooltip on hover/focus, click opens the planet card for that planet
+  function mapTip(g) {
+    const wrap = g.closest('.war-map'), tip = wrap && wrap.querySelector('.map-tip'); if (!tip) return;
+    const [name, owner, players, kind, lib] = (g.dataset.tip || '').split('|');
+    tip.innerHTML = `<b>${esc(name)}</b><span>${esc(owner)}</span><span>${esc(fill(t('map.tipP'), { n: players }))} · ${esc(fill(t(kind === 'def' ? 'map.tipD' : 'map.tipL'), { p: lib }))}</span>`;
+    const wr = wrap.getBoundingClientRect(), gr = g.getBoundingClientRect();
+    tip.hidden = false;
+    const x = gr.left + gr.width / 2 - wr.left, y = gr.top - wr.top;
+    tip.style.left = Math.max(4, Math.min(wr.width - tip.offsetWidth - 4, x - tip.offsetWidth / 2)) + 'px';
+    tip.style.top = (y - tip.offsetHeight - 8 < 0 ? gr.bottom - wr.top + 8 : y - tip.offsetHeight - 8) + 'px';
+    wrap.querySelectorAll('.mp.hot').forEach(x => x.classList.remove('hot')); g.classList.add('hot');
+  }
+  function mapTipOff(wrap) { const tip = wrap && wrap.querySelector('.map-tip'); if (tip) tip.hidden = true; wrap && wrap.querySelectorAll('.mp.hot').forEach(x => x.classList.remove('hot')); }
+  document.addEventListener('pointerover', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTip(g); });
+  document.addEventListener('pointerout', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.mp') === g)) mapTipOff(g.closest('.war-map')); });
+  document.addEventListener('focusin', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTip(g); });
+  document.addEventListener('focusout', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTipOff(g.closest('.war-map')); });
   document.addEventListener('pointerover', (e) => {
     const inGlobe = e.target.closest && e.target.closest('[data-globe]'), inCard = e.target.closest && e.target.closest('.pc-wrap');
     if ((inGlobe || inCard) && e.pointerType !== 'touch') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 120); }
@@ -5040,6 +5170,8 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
     const g = e.target.closest('[data-globe]');
     if (g) { if (ui.pcPinned) closeCard(true); else openCard(true); return; }
     if (e.target.closest('[data-pcclose]')) { closeCard(true); return; }
+    const mp = e.target.closest('.mp[data-mp]');
+    if (mp) { mapTipOff(mp.closest('.war-map')); ui.pcForce = mp.dataset.mp; ui.pcAnchor = 'map'; openCard(true); return; }
     const tq = e.target.closest('[data-tipq]'); if (tq) { toast(tq.dataset.tipq); return; }
     const tab = e.target.closest('[data-pcplanet]');
     if (tab) { ui.pcPlanet = tab.dataset.pcplanet; openCard(ui.pcPinned); return; }
@@ -5047,6 +5179,7 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.querySelector('.pc-wrap.open')) { closeCard(true); return; }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.mp[data-mp]')) { e.preventDefault(); ui.pcForce = e.target.dataset.mp; ui.pcAnchor = 'map'; openCard(true); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-globe]')) { e.preventDefault(); if (ui.pcPinned) closeCard(true); else openCard(true); }
   });
   // charts: crosshair follows the pointer (mouse, pen or finger)
