@@ -292,7 +292,7 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
     if (r.ok) {
