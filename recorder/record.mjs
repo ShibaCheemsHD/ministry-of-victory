@@ -324,6 +324,16 @@ for (const c of archive.watched) {
   if (m) { m.call = c.first || c.d1 || null; m.worst = c.worst || null; m.watchedId = c.id; if (!m.result && c.result) m.result = c.result; if (!m.end && c.result) m.end = c.exp; }
   else archive.orders.push({ code: null, name: c.title, obj: '', start: c.start, end: c.result ? c.exp : null, result: c.result || null, call: c.first || c.d1 || null, worst: c.worst || null, watchedId: c.id, ours: true });
 }
+// orders this recorder saw that the community log doesn't have yet (it can lag by days)
+for (const [id, o] of Object.entries(hist.orders)) {
+  if (archive.orders.some(x => x.watchedId === id || (x.start && o.start && Math.abs(x.start - o.start) < 3 * H))) continue;
+  const lastProg = [...hist.samples].reverse().find(sm => sm.prog && Object.keys(sm.prog).some(k => k.startsWith(id + ':')));
+  const prog = lastProg ? lastProg.prog[Object.keys(lastProg.prog).find(k => k.startsWith(id + ':'))] : null;
+  const live = (assignments || []).some(a => String(a.id) === id);
+  let result = null;
+  if (!live && prog) { const ps = (o.tasks || []).map((tk, i) => E.parseTask(tk, prog[i])); result = ps.length && ps.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1) ? 'won' : (o.exp && now >= o.exp - 30 * 60e3 ? 'lost' : 'won'); }
+  archive.orders.push({ code: null, name: o.title, obj: '', start: o.start, end: live ? null : o.exp, result, watchedId: id, ours: true });
+}
 archive.orders.sort((a, b) => (b.start || b.end || 0) - (a.start || a.end || 0));
 
 fs.mkdirSync(outDir, { recursive: true });
