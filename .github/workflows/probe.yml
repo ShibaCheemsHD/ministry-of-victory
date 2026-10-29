@@ -2,6 +2,11 @@
 name: Probe the game API
 on:
   workflow_dispatch:
+    inputs:
+      urls:
+        description: 'Extra pages to save (space separated)'
+        required: false
+        default: ''
 permissions:
   contents: write
 jobs:
@@ -13,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe"
+      - run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && URLS="${{ inputs.urls }}" node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
       - run: |
           cd "$RUNNER_TEMP/probe"
           git init -q -b probe
