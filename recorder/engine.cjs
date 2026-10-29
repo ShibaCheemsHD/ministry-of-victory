@@ -466,7 +466,11 @@ const ENGINE = (() => {
           const ratio = needed / primary.rate;
           verdict = ratio <= 1 ? 'ontrack' : ratio <= 1.25 ? 'effort' : ratio <= 2 ? 'hard' : ratio <= 4 ? 'nearly_impossible' : 'impossible';
         }
-        Object.assign(r, { counter: true, rates, remaining, needed, primary, projection, verdict });
+        // the first hours of an order: players are still arriving, and the pace measured on a short
+        // stretch says little. Never call it (nearly) impossible on less than 3 hours of pace.
+        const early = !!(primary && primary.kind !== 'day' && (primary.hours || 0) < 3 && remaining > 0);
+        if (early && (verdict === 'nearly_impossible' || verdict === 'impossible')) verdict = 'hard';
+        Object.assign(r, { counter: true, rates, remaining, needed, primary, projection, verdict, early });
       } else if (t.type === TASK.DEFEND_COUNT || t.type === TASK.LIBERATE_COUNT) {
         r.counter = true; r.simpleCount = true;
         r.verdict = t.goal && t.progress >= t.goal ? 'done' : 'unknown';
@@ -591,10 +595,12 @@ const ENGINE = (() => {
       const short = recs.find(x => x.kind === 'cntShort' && x.to === tk.faction);
       const proj = worst.projection != null && tk.goal ? worst.projection / tk.goal : null;
       const base = { task: worst, verdict: worst.verdict, score: sev(worst.verdict), proj };
-      if (move || short) {
+      // rankMoves folds the shortfall into the move to the same front (move.short)
+      const shortN = short ? short.players : (move && move.short) || 0;
+      if (move || shortN) {
         const now = res.fronts?.players?.[tk.faction] || 0;
         cands.push({ ...base, kind: 'front', faction: tk.faction, from: move ? move.from : [], aheadFrom: move ? move.aheadFrom : [], idleFrom: move ? move.idleFrom : [], move: move ? move.players : 0,
-          short: short ? short.players : 0, now, need: now + (move ? move.players : 0) + (short ? short.players : 0), tie: 3 });
+          short: shortN, now, need: now + (move ? move.players : 0) + shortN, tie: 3 });
       } else if (tk.itemId && tk.type === TASK.KILL) {
         cands.push({ ...base, kind: 'weapon', item: tk.itemId, faction: tk.faction, tie: 2 });
       } else {
