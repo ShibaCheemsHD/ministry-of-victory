@@ -166,13 +166,21 @@ for (const i of Object.keys(hist.names)) if (!hist.samples.some(s => s.pl[i])) d
 const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, planets: Object.fromEntries(Object.entries(s.pl).map(([i, v]) => [i, { h: v[0], p: v[1] }])) });
 const cal = E.calibrateK(hist.samples.map(asPage), planets, now, 0, 1);
 const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
+// The impact multiplier falls as more missions are played, so impact x players online stays nearly flat
+// through the day (930-1240 over 29-31 Oct 2026, while players online went from 27k to 77k). Its mean over
+// the last day is the war's strength for any forecast longer than a few hours; the value of the moment
+// would make a forecast made at the daily low too gloomy and one made at the peak too rosy.
+const impN24 = (() => {
+  const w = hist.samples.filter(sm => sm.imp && sm.N && now - sm.t <= 24 * H);
+  return w.length >= 6 && (w[w.length - 1].t - w[0].t) >= 12 * H ? w.reduce((a, sm) => a + sm.imp * sm.N, 0) / w.length : null;
+})();
 
 // The Ministry's call on every order it watches: the forecast after the first 3 hours (the "day-one
 // call"), after 24 hours, the worst it ever looked, and the last one. Kept for good: this is the
 // record that says whether an order was winnable from the start.
 {
   const N0 = war?.statistics?.playerCount || 0, imp0 = Number(war?.impactMultiplier) || 0;
-  const C = imp0 && N0 ? K * imp0 * N0 * 3600 : E.DEFAULTS.capacity;
+  const C = impN24 ? K * impN24 * 3600 : imp0 && N0 ? K * imp0 * N0 * 3600 : E.DEFAULTS.capacity;
   const pageSamples = hist.samples.map(sm => ({ ...asPage(sm), prog: sm.prog || {} }));
   const RANKV = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5, failed: 6, unknown: -1 };
   hist.calls ||= {};
@@ -305,7 +313,7 @@ for (const a of assignments || []) {
 
 const found = E.scanHistory(hist.samples, { K, inf, hodMult: E.DEFAULTS.hodMult, factionOf: (i) => hist.factions?.[i] || null });
 const alerts = [...found, ...hist.edits, ...hist.effAlerts].filter(a => a.ref === 'briefing' || now - a.t < 3 * 24 * H).map(a => ({ ...a, name: a.idx != null ? hist.names[a.idx] || null : null }));
-hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf = inf;
+hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf = inf; hist.impN24 = impN24;
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
@@ -377,7 +385,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
 const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };

@@ -53,9 +53,12 @@ const ENGINE = (() => {
       .sort((a, b) => a.hp - b.hp || a.regen - b.regen);
     const rh = queue.reduce((a, r) => a + r.hp, 0);
     const rr = queue.reduce((a, r) => a + r.regen, 0);
-    const work = rh + Math.max(0, p.health - 1.5 * rh);
+    // the capture bonus is 1.5x the region's full HP (wiki: a City adds 400k to the planet and knocks
+    // 600k off it when taken), whatever is left of the region when the fight starts
+    const bonus = 1.5 * queue.reduce((a, r) => a + r.max, 0);
+    const work = rh + Math.max(0, p.health - bonus);
     // work at full enemy health: a planet left waiting regenerates back towards this
-    const full = rh + Math.max(0, p.maxHealth - 1.5 * rh);
+    const full = queue.reduce((a, r) => a + r.max, 0) + Math.max(0, p.maxHealth - bonus);
     // regen working against us right now: regions already damaged, or the next one in line
     const hurt = queue.filter(q => q.hp < q.max);
     const activeRegen = queue.length ? (hurt.length ? hurt.reduce((a, q) => a + q.regen, 0) : queue[0].regen) : regen;
@@ -929,7 +932,7 @@ const ENGINE = (() => {
     const first = order[0];
     const busy = q.filter(x => x.players >= 100).length;
     return { region: first.name, hp: first.hp, regen: first.ownRegen ?? first.regen, hours: time(first),
-      knock: p.maxHealth ? Math.min(1, (1.5 * first.hp) / p.maxHealth) : null,
+      knock: p.maxHealth ? Math.min(1, (1.5 * (first.max || first.hp)) / p.maxHealth) : null,
       order: order.map(x => x.name), spread: busy >= 2 ? busy : 0 };
   }
 
