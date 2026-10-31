@@ -16,6 +16,7 @@ import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
 import { liberationBacktest, countBacktest, liveAccuracy } from './accuracy.mjs';
+import { measure, logStation } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -149,8 +150,8 @@ for (const [i, p] of Object.entries(planets)) {
   sample.pl[i] = [ev ? ev.health : p.health, p.statistics?.playerCount || 0, ev ? 0 : (p.regenPerSecond || 0), ev ? ev.maxHealth : p.maxHealth,
     ev ? (ev.id ?? 1) : 0, (p.regions || []).filter(r => r && r.isAvailable && (r.health || 0) > 0).length, p.currentOwner, ev ? (Date.parse(ev.endTime) || 0) : 0,
     p.statistics?.missionsWon ?? null,
-    // regions (cities): [id, HP left, full HP, open?] so the capture bonus can be measured on our own data
-    (p.regions || []).length ? p.regions.map(r => [r.id ?? r.name, Math.round(r.health || 0), r.maxHealth || 0, r.isAvailable ? 1 : 0]) : null];
+    // regions (cities): [id, HP left, full HP, open?, regen/s, players] so captures and city damage can be measured
+    (p.regions || []).length ? p.regions.map(r => [r.id ?? r.name, Math.round(r.health || 0), r.maxHealth || 0, r.isAvailable ? 1 : 0, r.regenPerSecond ?? null, r.players ?? null]) : null];
   hist.names[i] = txt(p.name) || hist.names[i];
   if (ev && ev.faction) (hist.factions ||= {})[i] = ev.faction;
 }
@@ -182,52 +183,9 @@ const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, pla
 const cal = E.calibrateK(hist.samples.map(asPage), planets, now, 0, 1);
 const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
 
-// Our own measurements of what the game doesn't publish, kept for good (the war log can't show them):
-//  - damage per Helldiver (in units of K) on the DSS planet, with and without Heavy Ordnance, and on the
-//    other planets while Heavy Ordnance runs: the engine's dssBonus / hodMult / hodOther
-//  - each region capture: how much planet health went with it, against the region's full HP (wiki: 1.5x)
-{
-  const M = hist.measure ||= { last: 0, kv: { base: [], dss: [], hodDss: [], hodOther: [] }, caps: [] };
-  const cap = (a, n = 3000) => { if (a.length > n) a.splice(0, a.length - n); };
-  const S = hist.samples;
-  for (let k = 1; k < S.length; k++) {
-    const a = S[k - 1], b = S[k];
-    if (b.t <= M.last) continue;
-    const dt = (b.t - a.t) / 1000;
-    if (dt <= 0 || dt > 35 * 60 || !a.imp || !a.N) continue;
-    for (const [i, v] of Object.entries(a.pl || {})) {
-      const w = b.pl?.[i]; if (!w) continue;
-      const [h0, p0, r0, m0, e0, g0, o0] = v, [h1, , , m1, e1, g1, o1] = w;
-      // a region taken between the two snapshots: open before, gone or closed after, same owner
-      if (v[9] && w[9] && !e0 && o0 === o1 && o0 !== 'Humans') {
-        for (const rg of v[9]) {
-          const after = w[9].find(x => x[0] === rg[0]);
-          if (rg[3] && rg[1] > 0 && rg[2] > 0 && (!after || !after[3] || after[1] <= 0) && rg[1] < 0.35 * rg[2])
-            M.caps.push({ t: b.t, i: Number(i), id: rg[0], max: rg[2], left: rg[1], drop: h0 - h1, regen: (r0 || 0) * dt, players: p0, imp: a.imp, dt });
-        }
-      }
-      // damage per Helldiver: planets being liberated, no event, no open region, not full, same owner
-      if (e0 || e1 || g0 || g1 || o0 !== o1 || o0 === 'Humans' || m0 !== m1 || h0 >= 0.995 * m0 || h1 <= 0 || p0 < 300) continue;
-      const gross = (h0 - h1) + (r0 || 0) * dt;
-      if (gross <= 0) continue;
-      const kv = gross / (p0 * a.imp * dt) / K;
-      if (!isFinite(kv) || kv > 20) continue;
-      const onDss = String(a.dss) === String(i);
-      M.kv[a.hod ? (onDss ? 'hodDss' : 'hodOther') : (onDss ? 'dss' : 'base')].push(+kv.toFixed(4));
-    }
-  }
-  M.last = S.length ? S[S.length - 1].t : M.last;
-  Object.values(M.kv).forEach(x => cap(x)); cap(M.caps, 500);
-  const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[x.length >> 1] : null; };
-  const base = med(M.kv.base);
-  hist.measured = {
-    dss: M.kv.dss.length >= 20 && base ? { n: M.kv.dss.length, x: +(med(M.kv.dss) / base).toFixed(3) } : { n: M.kv.dss.length },
-    hodDss: M.kv.hodDss.length >= 10 && base ? { n: M.kv.hodDss.length, x: +(med(M.kv.hodDss) / base).toFixed(3) } : { n: M.kv.hodDss.length },
-    hodOther: M.kv.hodOther.length >= 20 && base ? { n: M.kv.hodOther.length, x: +(med(M.kv.hodOther) / base).toFixed(3) } : { n: M.kv.hodOther.length },
-    // planet health lost with a capture, beyond what the players there would have dealt anyway, per full region HP
-    regionBonus: M.caps.length ? { n: M.caps.length, x: +med(M.caps.map(c => (c.drop + c.regen - (base ? base * K * c.players * c.imp * c.dt : 0)) / c.max)).toFixed(3) } : { n: 0 },
-  };
-}
+// Our own measurements of what the game doesn't publish (DSS, Heavy Ordnance, city captures): recorder/measure.mjs
+measure(hist, K);
+logStation(hist, st, now);
 // The impact multiplier falls as more missions are played, so impact x players online stays nearly flat
 // through the day (930-1240 over 29-31 Oct 2026, while players online went from 27k to 77k). Its mean over
 // the last day is the war's strength for any forecast longer than a few hours; the value of the moment

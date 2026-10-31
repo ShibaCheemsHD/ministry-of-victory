@@ -39,7 +39,7 @@
     const vc = SH_VC[res.verdict] || '#a8aebd';
     const left = Date.parse(a.expiration) - (last ? last.now : Date.now());
     // a bare "MAJOR ORDER" title says nothing: name it after what it asks, as the archive does
-    const title = orderName({ name: plain(clean(txt(a.title) || '')), tasks: a.tasks, brief: txt(a.briefing) }).toUpperCase();
+    const title = orderName({ name: plain(clean(txt(a.title) || '')), tasks: a.tasks, brief: txt(a.briefing) }, true).toUpperCase();
     const n = last.results.length, k = last.results.indexOf(entry) + 1;
     const stamp = new Date(last.now).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     // two passes: measure the height, then draw

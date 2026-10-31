@@ -63,10 +63,17 @@
   // an order's name for the record: the game's title, or (when that is just "MAJOR ORDER") what it asked
   const TASK_OBJ = { 1: 'Extraction', 2: 'Samples', 3: 'Eradicate', 4: 'Objectives', 5: 'Missions', 6: 'Equipment', 7: 'Missions', 9: 'Operations', 10: 'Donation', 11: 'Liberate', 12: 'Defend', 13: 'Hold', 14: 'Liberate', 15: 'Liberate' };
   const noItem = (s) => s.replace(new RegExp(` ${t('with')} ${t('item')} #\\d+`, 'g'), ' ' + t('ar.withW'));
-  function orderName(o) {
+  // short: for a headline (the share image), where the objectives are listed just below anyway
+  function orderName(o, short = false) {
     const nm = String(o.name || '').replace(/^\s*(major|minor) order\s*[|:\-–]\s*/i, '').trim();
     if (nm && !/^(major|minor) order$/i.test(nm)) return titleCase(nm);
     const ts = (o.tasks || []).map(tk => ENGINE.parseTask(tk, 0));
+    if (short && ts.length > 1) {
+      const long = orderName({ ...o, name: '' });
+      if (long.length <= 44) return long;
+      const fronts = new Set(ts.map(tk => tk.faction).filter(f => f && f !== 'Humans')).size;
+      return ts.every(tk => tk.type === 3) && fronts > 1 ? fill(t('ar.killFronts'), { n: fronts }) + (ts.some(tk => tk.itemId) ? ' ' + t('ar.withW') : '') : fill(t('ar.nObj'), { n: ts.length });
+    }
     if (ts.length && ts.every(tk => tk.type === 3)) {
       // "Kill 150M Terminids · 32.5M Illuminate · 50M Automatons"
       const w = ts.some(tk => tk.itemId) ? ' ' + t('ar.withW') : '';
@@ -140,7 +147,12 @@
       const cell = (m) => `<div role="cell">${m && m.n ? `<b>${pct(m.within25)}</b><small>${esc(fill(t('acc.miss'), { h: fmt(m.medErrH, 1) }))}</small>` : '—'}</div>`;
       const row = (hz, m, p) => `<div role="row"><div class="acc-l" role="rowheader">${esc(fill(t('acc.hz'), { h: hz }))}</div>${cell(m)}${cell(p)}</div>`;
       const liveN = live ? Object.values(live.lib || {}).reduce((a, x) => a + (x.n || 0), 0) + (live.cnt?.n || 0) + (live.verdicts || []).length : 0;
-      const meas = (k, lbl, wiki) => { const x = M[k] || { n: 0 }; return `<li><span>${esc(t(lbl))}</span><b>${x.x != null ? '×' + fmt(x.x, 2) : esc(fill(t('acc.wait'), { n: x.n || 0 }))}</b><small>${esc(wiki)}</small></li>`; };
+      const meas = (k, lbl, wiki) => {
+        const x = M[k] || { n: 0 };
+        // Heavy Ordnance never switched on since recording began: say so, rather than "waiting (0 so far)"
+        const v = x.x != null ? '×' + fmt(x.x, 2) : k.startsWith('hod') && M.seen && !M.seen.hod ? t('acc.noHod') : fill(t('acc.wait'), { n: x.n || 0 });
+        const on = x.kind ? ' · ' + t('acc.on.' + x.kind) : '';
+        return `<li><span>${esc(t(lbl))}</span><b>${esc(v)}</b><small>${esc(wiki + on)}</small></li>`; };
       return `<section class="ar-acc" aria-labelledby="acc-t">
         <span class="label">${esc(t('acc.kicker'))}</span>
         <h3 id="acc-t">${esc(t('acc.title'))}</h3>

@@ -62,7 +62,7 @@
       </ul>` : ''}
       ${weapons.length || permits.length ? `<span class="label pc-sec">${esc(t('pc.order'))}</span><ul class="pc-list">
         ${weapons.map(w => row(ICON.target, esc(w), esc(t('pc.reqS')), '', '')).join('')}
-        ${permits.map(e => row(ICON.plus, esc(itemKnown(valOf(e.v, 4)) || fxName(e.id) || t('aStratagem')), esc(t('pc.freeS')), '', '')).join('')}
+        ${permits.map(e => row(ICON.plus, esc(itemKnown(valOf(e.v, 4)) || fxName(e.id) || capFirst(t('in.fx.permitAny'))), esc(t('pc.freeS')), '', '')).join('')}
       </ul>` : ''}
       <p class="pc-foot">${esc(t('pc.foot'))}</p>
     </div>`;

@@ -142,11 +142,11 @@
       case 48: case 89: return L.noAttack;
       case 49: return fill(L.attackUp, { x: signed(pctv || 0) });
       case 92: return L.demil;
-      case 32: return fill(L.permit, { item: esc(itemKnown(item) || t('aStratagem')) });
+      case 32: return itemKnown(item) ? fill(L.permit, { item: esc(itemKnown(item)) }) : L.permitAny;
       case 72: return pctv - 100 > 0 ? fill(foeName ? L.spawnMore : L.spawnMoreAny, { foe: foeName, x: boost(pctv) }) : fill(L.spawnLess, { foe: foeName || L.someFoe });
       case 40: return foeName ? fill(L.division, { foe: foeName }) : L.divisionAny;
       case 21: return L.extract;
-      case 36: return fill(L.cooldown, { item: esc(itemKnown(item) || t('aStratagem')), x: signed(pctv || 0) });
+      case 36: return fill(itemKnown(item) ? L.cooldown : L.cooldownAny, { item: esc(itemKnown(item) || ''), x: signed(pctv || 0) });
       default: return L.other;
     }
   }
@@ -292,7 +292,7 @@
             <details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)}</p></details></div></div></article>`;
     };
     const cmd = events.filter(x => x.kind !== 'news');
-    const counts = [cmd.length ? fill(t(cmd.length === 1 ? 'it.n1' : 'it.n'), { n: cmd.length }) : null, active.length ? fill(t('it.nActive'), { n: active.length }) : null, ns.length ? fill(t('it.nNews'), { n: ns.length }) : null].filter(Boolean);
+    const counts = [cmd.length ? fill(t(cmd.length === 1 ? 'it.n1' : 'it.n'), { n: cmd.length }) : null, active.length ? fill(t(active.length === 1 ? 'it.nActive1' : 'it.nActive'), { n: active.length }) : null, ns.length ? fill(t(ns.length === 1 ? 'it.nNews1' : 'it.nNews'), { n: ns.length }) : null].filter(Boolean);
     const quiet = !cmd.length && !active.length;
     return `<div class="intel-tab">
       <div class="it-head"><div><h3>${esc(t('it.title'))}</h3>${counts.length ? `<p>${counts.join(' · ')}</p>` : ''}</div>

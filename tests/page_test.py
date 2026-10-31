@@ -6,7 +6,7 @@ import os, re, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
-BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{4,}%|\b1 (times|planets|missions|attacks|objectives|operations|extractions)\b|about 0 needed|\b0 Helldivers needed|#\d{6,}')
+BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{4,}%|\b1 (times|planets|missions|attacks|objectives|operations|extractions)\b|\b1 (?!news\b|less\b|plus\b|bonus\b|status\b|gas\b)[a-z]{2,}s\b|stratagem: a stratagem|about 0 needed|\b0 Helldivers needed|#\d{6,}')
 SCENARIOS = ['default', 'done', 'steady', 'impossible', 'none', 'fail', 'apidown', 'libn', 'measure', 'win', 'last', 'ended', 'edited',
              'regions', 'sector', 'intel', 'sniper', 'sniperlost', 'anyof', 'newmo'] + [f'type&t={t}' for t in (1, 2, 4, 5, 6, 7, 9, 10, 15, 16)]
 FUZZ = int(sys.argv[1]) if len(sys.argv) > 1 else 25
@@ -23,6 +23,9 @@ def run(br, query, width):
     pg.goto(f'{PAGE}?s={query}'); pg.wait_for_timeout(1600)
     label = f'{query} @{width}'
     check(pg, label + ' home', errs)
+    # no empty band between the order of the day and the tabs (the side rail used to stretch the first row; desktop only)
+    gap = pg.evaluate("() => { const d = document.querySelector('.area-dir'), t = document.querySelector('.area-tabs'); return d && t && innerWidth > 980 ? t.getBoundingClientRect().top - d.getBoundingClientRect().bottom : null; }")
+    if gap is not None and gap > 40: errs.append(f'empty band of {round(gap)}px under the order of the day')
     tabs = pg.locator('[data-otab]:visible')
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)

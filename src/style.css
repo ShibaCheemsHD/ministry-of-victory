@@ -159,13 +159,13 @@ button { cursor: pointer; }
 @media (max-width: 640px) { .cross { grid-template-columns: 1fr; } }
 
 /* ---------- order layout ---------- */
-.order { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "dir rail" "tabs rail"; align-items: start; }
+.order { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "dir rail" "tabs rail"; grid-template-rows: auto 1fr; align-items: start; }
 .area-dir { grid-area: dir; min-width: 0; }
 .area-rail { grid-area: rail; min-width: 0; display: grid; gap: 14px; position: sticky; top: 86px; }
 .area-tabs { grid-area: tabs; min-width: 0; display: grid; gap: 0; scroll-margin-top: 96px; }
 .sim { scroll-margin-top: 96px; }
 @media (max-width: 980px) {
-  .order { grid-template-columns: minmax(0, 1fr); grid-template-areas: "dir" "rail" "tabs"; }
+  .order { grid-template-columns: minmax(0, 1fr); grid-template-areas: "dir" "rail" "tabs"; grid-template-rows: none; }
   .area-rail { position: static; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
 .order.anim .directive { animation: rise .5s var(--ease) both; }
@@ -617,9 +617,9 @@ footer { font-size: 12px; color: var(--dim); max-width: 1240px; margin: 0 auto; 
 .hint .ico { width: 16px; height: 16px; color: var(--yellow); flex: 0 0 auto; }
 .hint p { flex: 1; font-size: 14px; }
 .hint .icon-btn { height: 30px; min-width: 30px; border-color: transparent; background: transparent; color: var(--muted); }
-.order.has-hint { grid-template-areas: "hint hint" "dir rail" "tabs rail"; }
+.order.has-hint { grid-template-areas: "hint hint" "dir rail" "tabs rail"; grid-template-rows: auto auto 1fr; }
 .order > .hint { grid-area: hint; }
-@media (max-width: 980px) { .order.has-hint { grid-template-areas: "hint" "dir" "rail" "tabs"; } }
+@media (max-width: 980px) { .order.has-hint { grid-template-areas: "hint" "dir" "rail" "tabs"; grid-template-rows: none; } }
 
 /* all-orders strip: one line until opened */
 details.cross { display: block; padding: 0; border-left-width: 3px; }

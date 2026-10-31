@@ -95,7 +95,7 @@
   const reduced = () => settings.motion === 'reduced' || mq.matches;
 
   /* ---------- enemy / item names (best effort) ---------- */
-  const names = { enemies: store.get('names.enemies', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };
+  const names = { enemies: store.get('names.enemies', null), enemy1: store.get('names.enemy1', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };
   async function loadNames(force = false) {
     const age = Date.now() - store.get('names.t', 0);
     if (names.enemies && names.items && age < (force ? 15 * 60e3 : 24 * 3600e3)) return;
@@ -105,7 +105,8 @@
         fetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(NAMES.strats).then(r => r.ok ? r.text() : null).catch(() => null),
       ]);
-      if (enemyList) { names.enemies = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.plural || v.name])); store.set('names.enemies', names.enemies); }
+      if (enemyList) { names.enemies = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.plural || v.name])); store.set('names.enemies', names.enemies);
+        names.enemy1 = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.name || v.plural])); store.set('names.enemy1', names.enemy1); }
       if (itemList) { names.items = Object.fromEntries(Object.entries(itemList).map(([k, v]) => [k, v.name])); store.set('names.items', names.items); }
       if (py) {
         const block = py.split('STRATAGEM_ID_DICT')[1] || '';
@@ -120,6 +121,8 @@
   const itemKnown = (id) => id ? (names.items?.[id] || names.strats?.[id] || null) : null;
   const itemName = (id) => id ? (itemKnown(id) || t('itemAny')) : null;
   const enemyName = (id) => id ? (names.enemies?.[id] || t('enemyAny')) : null;
+  const enemyOne = (id) => id ? (names.enemy1?.[id] || enemyName(id)) : null;
+  const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   const unknownNames = (results) => results.some(({ res }) => res.tasks.some(r =>
     (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || (r.task.enemyId && !names.enemies?.[r.task.enemyId])));
 

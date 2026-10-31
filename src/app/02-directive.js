@@ -49,7 +49,9 @@
     const diff = tk.minDifficulty ? ` (${fill(t('minDiff'), { d: tk.minDifficulty })})` : '';
     switch (tk.type) {
       case 3: {
-        const target = tk.enemyId ? esc(enemyName(tk.enemyId)) : (fac ? facPlural(fac) : t('enemies'));
+        // "Kill 1 Terminid", not "Kill 1 Terminids"
+        const one = tk.goal === 1;
+        const target = tk.enemyId ? esc(one ? enemyOne(tk.enemyId) : enemyName(tk.enemyId)) : fac ? (one ? facName(fac) : facPlural(fac)) : t(one ? 'enemy' : 'enemies');
         const item = tk.itemId ? ` ${t('with')} ${esc(itemName(tk.itemId))}` : '';
         return `${t('kill')} ${n} ${target}${item}${where}${diff}`;
       }

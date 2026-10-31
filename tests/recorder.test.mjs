@@ -58,3 +58,31 @@ test('a MAJOR ORDER WON dispatch is read as Super Earth\'s word', () => {
   assert.deepEqual(hist.moNews.map(x => x.won), [true]);
   assert.deepEqual(hist.so.map(x => x.id), [2]);
 });
+
+// 31 Oct 2026: after two days of recording, every DSS measurement was still 0, because only liberation
+// planets without cities were measured and the DSS sat on a defense, then on a planet with cities.
+import { measure } from '../recorder/measure.mjs';
+test('DSS and city planets are measured too, each against plain planets of the same kind', () => {
+  const t0 = Date.UTC(2026, 9, 31), step = 600e3, samples = [];
+  for (let k = 0; k < 40; k++) {
+    const pl = {
+      // plain liberation planets
+      1: [5e6 - k * 6000, 20000, 10, 6e6, 0, 0, 'Automaton', 0, 0, null],
+      2: [5e6 - k * 3000, 10000, 10, 6e6, 0, 0, 'Terminids', 0, 0, null],
+      // defenses: 3 plain, 4 under the DSS (same damage per Helldiver)
+      3: [1.5e6 - k * 6000, 20000, 0, 1.9e6, 77, 0, 'Humans', 0, 0, null],
+      4: [1.5e6 - k * 9000, 30000, 0, 1.9e6, 78, 0, 'Humans', 0, 0, null],
+      5: [1.5e6 - k * 3000, 10000, 0, 1.9e6, 79, 0, 'Humans', 0, 0, null],
+      // a planet with one open city: the city takes the damage, the planet heals
+      6: [2.4e6 + k * 3000, 30000, 12.5, 3.2e6, 0, 1, 'Automaton', 0, 0, [[0, 2e5, 2e5, 0, 0.5, 0], [3, 9e5 - k * 4400, 1e6, 1, 2.78, 18000]]],
+    };
+    samples.push({ t: t0 + k * step, N: 100000, imp: 0.01, dss: 4, hod: false, pl });
+  }
+  const hist = { samples };
+  const m = measure(hist, 0.027);
+  assert.equal(m.dss.kind, 'def');
+  assert.ok(Math.abs(m.dss.x - 1) < 0.05, 'same damage per Helldiver: no bonus, got ' + m.dss.x);
+  assert.ok(hist.measure.kv.reg.base.length > 0, 'the city planet is measured');
+  assert.ok(hist.measure.kv.lib.base.length > 0 && hist.measure.kv.def.base.length > 0);
+  assert.equal(m.seen.hod, 0);
+});
