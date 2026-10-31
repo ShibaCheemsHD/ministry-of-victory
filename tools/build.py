@@ -38,7 +38,7 @@ out += '<script>\nconst GAME = ' + json.dumps(game, ensure_ascii=False, separato
 # the page's code lives in src/app/*.js, in order; together they make one closure (shared helpers and state)
 parts = sorted(f for f in os.listdir(S('app')) if f.endswith('.js'))
 app = "/* Ministry of Victory - user interface (built from src/app/) */\n(() => {\n  'use strict';\n" + ''.join(read(S('app', f)) for f in parts) + '})();\n'
-for code in (read(S('engine.js')), read(S('i18n.js')), read(S('i18n.it.js')), app):
+for code in (read(S('engine.js')), read(S('i18n.js')), app):
     out += '<script>\n' + code + '\n</script>\n'
 out += '</body>\n</html>\n'
 

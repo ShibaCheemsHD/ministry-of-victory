@@ -1,11 +1,11 @@
-/* Ministry of Victory - interface texts, English (the reference; src/i18n.it.js has the Italian) */
+/* Ministry of Victory - interface texts (English only) */
 const TEXT = {
   tagline: 'Major Order tactical terminal',
   boot: ['> CONNECTING TO THE GALACTIC WAR NETWORK', '> READING ACTIVE ORDERS', '> ANALYZING REGEN AND DEPLOYED FORCES', '> COMPUTING STRATEGY'],
   bootOk: 'OK', bootReady: '> READY. FOR SUPER EARTH.', bootFail: '> UNSTABLE UPLINK', bootWait: '> THE API IS SLOW: STILL LOADING IN THE BACKGROUND', skip: 'Skip',
   players: 'Helldivers online', dss: 'DSS', hod: 'Heavy Ordnance', none: 'none', active: 'active until', inactive: 'not active',
   refresh: 'Refresh now', updatedAt: 'Updated at {t}', nextIn: 'next refresh in {s}s', loading: 'Refreshing…',
-  info: 'How it works', settings: 'Settings', offline: 'No signal', sLang: 'Language', facWhat: '{f} {what}', ordersAria: 'Major Orders', and: 'and',
+  info: 'How it works', settings: 'Settings', offline: 'No signal', facWhat: '{f} {what}', ordersAria: 'Major Orders', and: 'and',
   u: { k: 'k', M: 'M', B: 'B', d: 'd', h: 'h', min: 'min' },
   tips: {
     hz: {
@@ -381,6 +381,5 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
 <dt>New orders</dt><dd>The page checks the API every minute. When Super Earth issues a new Major Order, or changes the current one, everything on the page is worked out again from the new objectives.</dd>
 <dt>Copy for Discord</dt><dd>Copies the order of the day as text ready to paste on Discord, Reddit or in chat.</dd>
 <dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> to <kbd>4</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
-<dt>Language</dt><dd>English or Italian, from Settings. The game's own texts (order titles, briefings, news, names of planets, enemies and weapons) stay in English, as the API gives them.</dd>
 </dl>
 <p>Limits: the effect of the DSS and Heavy Ordnance isn't public. Measured on the war log since 2025, the DSS alone adds nothing visible, and Heavy Ordnance makes its planet count about 1.8 times while every other planet drops to about 0.7 (the war's total damage barely moves). the region capture bonus and how planet regen works against it are estimated, weapon-only kill counts can't be turned into a number of players, and the Game Master can change regen at any time.</p>`;

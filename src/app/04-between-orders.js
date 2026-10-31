@@ -108,7 +108,7 @@
   // Intel feed: one short line per event, grouped by day like a war log. The order's own start and
   // end come from the game data; a dispatch can be opened to read it in full, never cut off.
   function feedRow(r) {
-    const tm = new Date(r.t).toLocaleTimeString(LANG === 'en' ? 'en-GB' : LOCALE, { hour: '2-digit', minute: '2-digit' });
+    const tm = new Date(r.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     const head = `<span class="fd-time">${esc(tm)}</span><span class="fd-ico">${ICON[NEWS_ICON[r.k]]}</span><span class="fd-txt"><b>${r.title}</b>${r.sub ? `<span class="fd-sub">${r.sub}</span>` : ''}</span>`;
     return r.body
       ? `<li class="nk-${r.k}"><details class="fd-more"><summary>${head}${ICON.chev}</summary><p>${clean(r.body)}</p></details></li>`

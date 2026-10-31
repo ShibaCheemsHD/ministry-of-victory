@@ -17,31 +17,21 @@
     set(k, v) { try { localStorage.setItem('mocheck.' + k, JSON.stringify(v)); } catch {} },
   };
 
-  /* ---------- texts + formatting (English, Italian) ---------- */
-  // ?lang= in the address, then the choice saved in Settings, then the browser's language
-  const LANGS = { en: TEXT, it: TEXT_IT };
-  const LANG = (() => {
-    const q = new URLSearchParams(location.search).get('lang'); if (LANGS[q]) return q;
-    const s = store.get('lang', null); if (LANGS[s]) return s;
-    return /^it(-|$)/i.test((navigator.language || '').trim()) ? 'it' : 'en';
-  })();
-  const DICT = LANGS[LANG];
+  /* ---------- texts + formatting (English only) ---------- */
   const look = (o, k) => k.split('.').reduce((o2, p) => o2?.[p], o);
   const t = (k) => {
-    let v = look(DICT, k);
-    // a text the translation lacks falls back to English; the test page lists both kinds of gap
-    if (v == null && DICT !== TEXT) { v = look(TEXT, k); if (window.__mockLog) (window.__missingT ||= new Set()).add(LANG + ':' + k); }
+    const v = look(TEXT, k);
+    // the test page lists every text the code asks for and the dictionary doesn't have
     if (v == null && window.__mockLog) (window.__missingT ||= new Set()).add(k);
     return v ?? k;
   };
   // an optional text: null when there is none (never logged as missing)
-  const tHas = (k) => look(DICT, k) ?? look(TEXT, k) ?? null;
-  // dates: Italian, or the browser's own English variant if it has one, otherwise en-GB (24-hour clock)
-  const LOCALE = LANG === 'it' ? 'it-IT' : (() => { const n = (navigator.language || '').trim(); return /^en(-|$)/i.test(n) ? n : 'en-GB'; })();
+  const tHas = (k) => look(TEXT, k) ?? null;
+  // the browser's own English variant if it has one, otherwise en-GB (24-hour clock)
+  const LOCALE = (() => { const n = (navigator.language || '').trim(); return /^en(-|$)/i.test(n) ? n : 'en-GB'; })();
   const locale = () => LOCALE;
-  // numbers in the page's language (36,000 in English, 36.000 in Italian), whatever the browser's region
-  const NUM = LANG === 'it' ? 'it-IT' : 'en-US';
-  const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString(NUM, { maximumFractionDigits: d, minimumFractionDigits: min });
+  // numbers always in English format (36,000), whatever the browser's region
+  const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: min });
   const plainCap = (s) => String(s).replace(/<[^>]+>/g, '');
   const pct = (x, d = 0) => (x == null || !isFinite(x)) ? '—' : fmt(x * 100, d) + '%';
   // a projection of the goal: past three times it, the exact figure means nothing
@@ -80,14 +70,10 @@
   const clean = (s) => esc(String(s ?? '').replace(/<\/?i(=\d+)?>/g, ''));
   // API texts are requested in English; if an object with every language ever comes back, take English
   const txt = (m) => m && typeof m === 'object' ? (m['en-US'] || m['en-GB'] || m.en || Object.values(m)[0] || '') : (m || '');
-  const ELIDE = { il: "l'", al: "all'", del: "dell'", dal: "dall'", nel: "nell'", sul: "sull'" };
-  const fill = (str, params) => {
-    const s = String(str).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
-    return LANG === 'it' ? s.replace(/\b(il|al|del|dal|nel|sul) (?=(<b>)?(8|11(?!\d)))/g, (_, a) => ELIDE[a]) : s;
-  };
+  const fill = (str, params) => String(str).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
   const listJoin = (a) => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' ' + t('and') + ' ' + a[a.length - 1];
   const facName = (f) => esc(t('fac')[f] || f || '');
-  // "Terminid kills" / "uccisioni Terminid": the word order is the language's
+  // "Terminid kills"
   const facWhat = (f, type) => fill(t('facWhat'), { f: f && f !== 'Humans' ? facName(f) : '', what: t('what')[type] || t('what')[0] }).replace(/\s+/g, ' ').trim();
   const facPlural = (f) => esc(t('facPl')[f] || t('fac')[f] || f || '');
   const planetName = (p) => p ? esc(txt(p.name) || ('#' + p.index)) : '—';
@@ -96,7 +82,7 @@
   const clock = (hoursFromNow) => {
     const d = new Date((last ? last.now : Date.now()) + hoursFromNow * 3.6e6);
     // the share image is read all over the world: UTC there
-    if (clockUTC) return d.toLocaleString(LANG === 'en' ? 'en-GB' : LOCALE, { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
+    if (clockUTC) return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     return d.toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   };
 

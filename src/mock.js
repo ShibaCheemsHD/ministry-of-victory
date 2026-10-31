@@ -235,7 +235,7 @@
     if (body == null) return new Response('not found',{status:404});
     return new Response(typeof body==='string'?body:JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
   };
-  try { const lang = localStorage.getItem('mocheck.lang'); localStorage.clear(); if (lang) localStorage.setItem('mocheck.lang', lang); if (q.get('motion')) localStorage.setItem('mocheck.settings', JSON.stringify({motion:q.get('motion')})); } catch {}
+  try { localStorage.clear(); if (q.get('motion')) localStorage.setItem('mocheck.settings', JSON.stringify({motion:q.get('motion')})); } catch {}
   if (window.__mockScenario === 'intel') try {
     // 45 minutes of history this browser "saw" before the jump
     const M=60e3, imp=0.0191*56000/82873, samples=[];
