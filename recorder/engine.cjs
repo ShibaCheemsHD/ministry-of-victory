@@ -38,8 +38,9 @@ const ENGINE = (() => {
   // with a straight line (median miss 1.3h vs 1.7h on a 12h horizon), so the curve stays linear.
   // C is the playerbase capacity measured at a 50% share (HP per hour), the typical MO focus.
   const SHARE_EXP = 1.0, SHARE_REF = 0.5;
-  const dmg = (share, C) => share > 0 ? C * SHARE_REF * Math.pow(share / SHARE_REF, SHARE_EXP) : 0;
-  const shareFor = (gross, C) => gross > 0 ? SHARE_REF * Math.pow(gross / (C * SHARE_REF), 1 / SHARE_EXP) : 0;
+  const dmg = (share, C) => share > 0 && C > 0 ? C * SHARE_REF * Math.pow(share / SHARE_REF, SHARE_EXP) : 0;
+  // no measured strength (C 0 or missing): any damage needed is out of reach rather than NaN
+  const shareFor = (gross, C) => !(gross > 0) ? 0 : !(C > 0) ? Infinity : SHARE_REF * Math.pow(gross / (C * SHARE_REF), 1 / SHARE_EXP);
 
   const isEnemy = (p) => p && p.currentOwner && p.currentOwner !== 'Humans';
 
@@ -667,7 +668,8 @@ const ENGINE = (() => {
   function recommend(res, ctx) {
     const { planets, N, dssIdx, hod, settings, C } = ctx;
     const recs = [];
-    const players = (share) => Math.round((share * N) / 100) * 100;
+    // a head count needs both: a finite share and players online (else null: "unknown", never NaN)
+    const players = (share) => N > 0 && isFinite(share) ? Math.round((share * N) / 100) * 100 : null;
     const H = res.hoursLeft;
 
     if (res.tasks.length && res.tasks.every(r => r.verdict === 'done')) {
@@ -873,7 +875,7 @@ const ENGINE = (() => {
         case 'libRegion': m.level = 'helps'; m.effect = r.knock != null ? { kind: 'region', knock: r.knock } : null; break;
         case 'libHod': m.level = 'tip'; break;
         case 'defSend': m.level = r.hours < 24 || (RANK[r.verdict] ?? 0) >= 3 ? 'critical' : 'high';
-          m.effect = { kind: 'gap', more: Math.max(0, r.players - r.nowPlayers), hours: r.hours }; break;
+          m.effect = r.players != null ? { kind: 'gap', more: Math.max(0, r.players - r.nowPlayers), hours: r.hours } : null; break;
         case 'defWait': m.level = 'tip'; break;
         case 'libNFocus': m.level = r.verdict === 'impossible' ? 'high' : 'critical';
           m.effect = r.players != null ? { kind: 'gap', more: Math.max(0, r.players - r.nowPlayers) } : null; break;
@@ -1063,7 +1065,86 @@ const ENGINE = (() => {
     return { left, pool, rank, pick, natural, frontShare, seqNeed, verdict, first: rank[0] };
   }
 
+  /* ---------- Super Earth's dispatches: what each one announces ----------
+     Judged on the headline only ("MAJOR ORDER WON", "NEW STRATEGIC OPPORTUNITY"): story text in the
+     body mentions victories, defeats and weapons all the time and says little about the news itself.
+     Tested on every dispatch since February 2024 (tests/dispatch.test.mjs). */
+  function splitDispatch(msg) {
+    const s = String(msg || '').replace(/\r/g, '');
+    const tag = /^\s*<i=\d+>([^<]*)<\/i>\s*/.exec(s);
+    if (tag) return { title: tag[1].replace(/\s+/g, ' ').trim(), body: s.slice(tag[0].length).replace(/<[^>]+>/g, '').trim() };
+    const plainS = s.replace(/<[^>]+>/g, '').trim();
+    // no tag: a headline is a short run in capitals, on its own line or ended by a full stop / colon
+    const m = /^([^\n]{3,90}?)(?:\n|[.:!]\s+|\s{2,})([\s\S]*)$/.exec(plainS);
+    if (m) {
+      const head = m[1].trim(), letters = head.replace(/[^A-Za-z]/g, '');
+      const caps = letters.length ? letters.replace(/[^A-Z]/g, '').length / letters.length : 0;
+      if (caps >= 0.8 && letters.length >= 3) return { title: head, body: m[2].trim() };
+    }
+    // all on one line: "NEW MAJOR ORDER The Illuminate have..." (a run of capitals, then a sentence)
+    const run = /^((?:[A-Z0-9][A-Z0-9'’,&\/"()\-–—%]*\s+){1,9}?[A-Z0-9][A-Z0-9'’,&\/"()\-–—%]*)\s+(?=[A-Z][a-z])/.exec(plainS);
+    if (run && run[1].replace(/[^A-Z]/g, '').length >= 4) return { title: run[1].trim(), body: plainS.slice(run[0].length).trim() };
+    return { title: '', body: plainS };
+  }
+  const DK = {
+    soWon: /\b(seized|won|success\w*|secured|complete[sd]?|achieved|accomplished)\b/i,
+    soLost: /\b(lost|failed|failure|missed|expired)\b/i,
+    loss: /\b(failed|failure|lost|has fallen|have fallen|fallen|fell|overrun|defeated|evacuat\w+|collapsed|abandoned)\b/i,
+    win: /\b(won|succeeded|successful|success|complete[d]?|accomplished|achieved|fulfilled|met|liberated|defended|secured|held|seized|victory|victorious|repelled|rescued|reclaimed|captured)\b/i,
+    order: /\b(major order|new orders?|operation order|directive|imperative|orders? (issued|received))\b/i,
+    gear: /\b(arsenal|stratagems?|warbond|equipment|weapons?|armou?r|boosters?|capes?|cooldown|requisition)\b/i,
+    threat: /\b(attacks?|attacked|invasion|invaded|incursions?|offensive|counter-?attack|surge|outbreak|sighted|rampage|threat\w*|siege|advance\w*|spread\w*|escalat\w+|emergency|alert|intercepted|detected|incoming|under fire)\b/i,
+  };
+  // kind: so (opportunity won) | solost | win | loss | order | gear | threat | info; so: won | lost | new | null
+  function dispatchKind(title, body) {
+    let h = String(title || '').trim();
+    if (!h) { const first = String(body || '').split(/(?<=[.!?])\s/)[0] || ''; h = first.length <= 140 ? first : ''; }
+    if (/strategic opportunity/i.test(h)) {
+      const so = DK.soLost.test(h) ? 'lost' : DK.soWon.test(h) ? 'won' : 'new';
+      return { kind: so === 'won' ? 'so' : so === 'lost' ? 'solost' : 'order', so };
+    }
+    for (const k of ['loss', 'win', 'order', 'gear', 'threat']) if (DK[k].test(h)) return { kind: k, so: null };
+    return { kind: 'info', so: null };
+  }
+  // Super Earth's word on a Major Order: "MAJOR ORDER WON" / "MAJOR ORDER FAILED" in the headline
+  function moOutcome(msg) {
+    const { title, body } = splitDispatch(msg);
+    const h = title || (String(body).split(/(?<=[.!?])\s/)[0] || '');
+    if (!/\bmajor order\b/i.test(h) || /\bnew major order\b/i.test(h)) return null;
+    if (DK.loss.test(h)) return 'lost';
+    if (DK.win.test(h)) return 'won';
+    return null;
+  }
+
+  // The launch briefing's kill counts per faction ("kill 300,000,000 Terminids, 65,000,000 Illuminates"):
+  // what the order asked for when it was announced. Only numbers governed by a kill verb count:
+  // "acquire 60,000,000 Automaton samples and kill 35,000,000 Radicals" gives nothing for Automatons.
+  const BRIEF_FAC = { terminid: 'Terminids', automaton: 'Automaton', illuminate: 'Illuminate' };
+  function briefingGoals(text0) {
+    const said = {};
+    const text = String(text0 || '').replace(/<[^>]+>/g, '');
+    for (const m of text.matchAll(/(\d[\d,.]*)\s*(?:million\s+)?(Terminids?|Automatons?|Illuminates?)(?!\s+(?:samples?|data|intel|resources?|sites?|structures?|outposts?|ships?|planets?|worlds?))/gi)) {
+      const before = text.slice(Math.max(0, m.index - 80), m.index);
+      const verbs = [...before.matchAll(/\b(kill|eliminat\w*|eradicat\w*|destroy|terminat\w*|neutrali[sz]\w*|decommission\w*|acquire|extract|collect|complete|liberate|hold|defend|deliver|capture|secure)\b/gi)];
+      const v = verbs.length ? verbs[verbs.length - 1][1].toLowerCase() : '';
+      if (!/^(kill|elimin|eradic|destroy|termin|neutral|decomm)/.test(v)) continue;
+      const f = BRIEF_FAC[m[2].toLowerCase().replace(/s$/, '')];
+      const n = Number(m[1].replace(/[,.]/g, ''));
+      if (f && !(f in said) && n > 0) said[f] = n;
+    }
+    return said;
+  }
+  // goals that differ between the launch text and the order as it stands (faction-wide kill counts only)
+  function briefingDiff(text, tasks) {
+    const said = briefingGoals(text), diff = [];
+    (tasks || []).forEach((tk, i) => {
+      const pt = parseTask(tk, 0);
+      if (pt.type === TASK.KILL && pt.faction && !pt.enemyId && said[pt.faction] && pt.goal && said[pt.faction] !== pt.goal) diff.push({ i: i + 1, kind: 'goal', from: said[pt.faction], to: pt.goal });
+    });
+    return diff;
+  }
+
   return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
-    observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK };
+    observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

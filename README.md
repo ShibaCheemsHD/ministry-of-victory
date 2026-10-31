@@ -19,7 +19,14 @@ The page refreshes itself every minute.
 - Live data: the community API at [api.helldivers2.dev](https://api.helldivers2.dev) ([helldivers-2/api](https://github.com/helldivers-2/api)).
 - Enemy and weapon names: [Galactic Wide Web](https://github.com/Stonemercy/Galactic-Wide-Web) and [helldivers-2/json](https://github.com/helldivers-2/json), loaded at runtime.
 
-Estimates are based on observed galactic war behavior (for example, about 90,000 HP per hour with every player on one planet, measured on *Honour the Fallen*, October 2026). They are not official numbers: the Game Master can change regen at any time.
+Estimates are based on observed galactic war behavior, measured on the community war log ([CrossWaveOmega/helldiversplanettable](https://github.com/CrossWaveOmega/helldiversplanettable)) and on the site's own recordings: about 100,000 HP per hour with every player on one planet, no visible DSS bonus, Heavy Ordnance about x1.8 on its planet and x0.7 everywhere else. They are not official numbers: the Game Master can change regen at any time.
+
+## Working on it
+
+- `src/`: the page (`app.js`, `i18n.js`, `style.css`, `body.html`), the forecast engine (`engine.js`) and the mock API used by the tests (`mock.js`).
+- `recorder/`: the GitHub Action that records the war every 10 minutes and writes the `data` branch.
+- `python3 tools/build.py` builds `index.html` (minified) and `recorder/engine.cjs` from `src/`, plus `build/test.html` (readable, mock API).
+- Tests: `node --test tests/*.test.mjs` (engine maths, reading of the game's texts on real headlines, the recorder on a real snapshot) and `python3 tests/page_test.py` (every scenario and random data in a real browser). They run on every push (`.github/workflows/test.yml`); a bug that reached the site gets a regression test.
 
 ## Disclaimer
 

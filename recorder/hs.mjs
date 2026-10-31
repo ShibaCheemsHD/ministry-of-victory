@@ -12,12 +12,17 @@ async function fetchText(u) {
 }
 // the site's times are written as UTC but are its server's clock, 5 hours behind (checked against the
 // game's own expiry and the war log on every order from May to October 2026)
-const OFFSET = 5 * H;
+// If they ever fix their clock, the orders this recorder watched itself (exact start from the game) say so:
+// the offset is re-measured on them, and 5 hours is only the fallback.
+let OFFSET = 5 * H;
 const at = (s) => Date.parse(String(s).replace(/Z$/, '') + 'Z') + OFFSET;
 
 export async function loadHs(hist, now, { maxNew = 8 } = {}) {
   hist.hs ||= {};
   const list = JSON.parse(await fetchText(`${BASE}/api/v1/historical-major-orders?limit=500`));
+  const offs = (list.items || []).map(x => { const o = hist.orders?.[String(x.orderId32)]; const raw = Date.parse(String(x.firstSeenAt).replace(/Z$/, '') + 'Z');
+    return o && o.start && isFinite(raw) ? o.start - raw : null; }).filter(v => v != null && Math.abs(v) < 24 * H).sort((a, b) => a - b);
+  if (offs.length) OFFSET = offs[offs.length >> 1];
   let fetched = 0;
   for (const x of list.items || []) {
     const id = String(x.orderId32);

@@ -102,9 +102,12 @@ if (src === 'community') {
   const ds = await get('/api/v1/dispatches', 2).catch(() => []);
   for (const d of ds || []) {
     const msg = txt(d && d.message);
-    const mr = /major order (won|complete|accomplished|success)|major order (failed|lost)/i.exec(String(msg).slice(0, 120));
-    if (mr && !(hist.moNews || []).some(x => x.id === d.id)) (hist.moNews ||= []).push({ id: d.id, t: Date.parse(d.published) || now, won: !!mr[1] });
-    if (!/strategic opportunity/i.test(msg) || (hist.so || []).some(x => x.id === d.id)) continue;
+    // Super Earth's word, read from the headline only ("MAJOR ORDER WON"; a story that mentions an old
+    // failed order doesn't count): the same reading as the page, tested on every dispatch since 2024
+    const mo = E.moOutcome(msg);
+    if (mo && !(hist.moNews || []).some(x => x.id === d.id)) (hist.moNews ||= []).push({ id: d.id, t: Date.parse(d.published) || now, won: mo === 'won' });
+    const sp = E.splitDispatch(msg);
+    if (!E.dispatchKind(sp.title, sp.body).so || (hist.so || []).some(x => x.id === d.id)) continue;
     (hist.so ||= []).push({ id: d.id, t: Date.parse(d.published) || now, msg: String(msg).slice(0, 800) });
   }
 }
@@ -151,7 +154,7 @@ for (const a of assignments || []) {
   const tasks = (a.tasks || []).map(tk => ({ type: tk.type, values: tk.values, valueTypes: tk.valueTypes }));
   const was = hist.orders[id];
   if (was && was.key !== key) hist.edits.push({ kind: 'edited', order: id, t: now, diff: was.tasks ? E.taskDiff(was.tasks, tasks) : null });
-  hist.orders[id] = { key, start, title: txt(a.title), brief: String(txt(a.briefing) || txt(a.description) || '').slice(0, 600), exp: Date.parse(a.expiration) || null, seen: now, tasks };
+  hist.orders[id] = { key, start, title: txt(a.title), brief: String(txt(a.briefing) || txt(a.description) || '').slice(0, 600), exp: Date.parse(a.expiration) || null, seen: now, tasks, flags: Number(a.flags) || 0 };
 }
 for (const [id, o] of Object.entries(hist.orders)) if (now - o.seen > 3 * 24 * H) delete hist.orders[id];
 hist.edits = hist.edits.filter(e => (e.ref === 'briefing' && hist.orders[e.order]) || now - e.t < 3 * 24 * H);
@@ -200,7 +203,7 @@ const impN24 = (() => {
     const early = res.tasks.some(r => r.early);
     const snap = { t: now, v: res.verdict, need, early, age: +((now - o.start) / H).toFixed(1) };
     const c = hist.calls[id] ||= { id, title: o.title, start: o.start, exp: o.exp, firstSeen: now, tasks: o.tasks };
-    c.title = o.title; c.brief = o.brief || c.brief; c.exp = o.exp; c.tasks = o.tasks;
+    c.title = o.title; c.brief = o.brief || c.brief; c.exp = o.exp; c.tasks = o.tasks; c.flags = o.flags;
     if (res.verdict !== 'unknown' && !early) {
       if (!c.first && snap.age >= 3) c.first = { ...snap, late: (c.firstSeen - o.start) / H > 6 };
       if (!c.d1 && snap.age >= 24) c.d1 = snap;
@@ -211,15 +214,22 @@ const impN24 = (() => {
   }
   // an order that is gone: done if every objective reached its goal in the last progress seen
   for (const c of Object.values(hist.calls)) {
-    if (c.result || (assignments || []).some(a => String(a.id) === c.id)) continue;
+    // listed again (a gap in the API's list): it isn't over, whatever was concluded meanwhile
+    if ((assignments || []).some(a => String(a.id) === c.id)) { if (c.result && c.resultBy !== 'news') { delete c.result; delete c.resultBy; } continue; }
+    if (c.result) continue;
     if (c.exp && now < c.exp - 5 * 60e3 && now - (c.last?.t || 0) < 30 * 60e3) continue;
     const parsed = (c.tasks || []).map((tk, i) => E.parseTask(tk, (c.prog || [])[i]));
-    const won = parsed.length && parsed.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1);
+    // every objective done (any one, for an "Option 1 / Option 2" order)
+    const doneT = (p) => p.goal ? p.progress >= p.goal : p.progress >= 1;
+    const won = parsed.length && (c.flags === 2 || c.flags === 3 ? parsed.some(doneT) : parsed.every(doneT));
     // Super Earth's own word first: a "MAJOR ORDER WON/FAILED" dispatch around the moment it went
     const lastT = c.last?.t || c.exp || now;
     const word = (hist.moNews || []).filter(x => x.t >= lastT - 2 * H && x.t <= lastT + 6 * H).sort((x, y) => Math.abs(x.t - lastT) - Math.abs(y.t - lastT))[0];
     if (word) c.result = word.won ? 'won' : 'lost';
-    else if (won || (c.exp && lastT < c.exp - 30 * 60e3)) c.result = 'won';   // gone before the deadline: Super Earth closed it as done
+    else if (won) c.result = 'won';
+    // gone well before the deadline with no word: Super Earth closes an order as soon as it is done, but an
+    // empty list from the API looks the same for a while, so give it 6 hours
+    else if (c.exp && lastT < c.exp - 30 * 60e3 && now - lastT > 6 * H) c.result = 'won';
     else if (now - lastT > 12 * H) c.result = 'lost';   // no word after half a day: the counters at the deadline decide
     else continue;   // wait a little for the dispatch
     c.resultBy = word ? 'news' : 'progress';
@@ -292,30 +302,12 @@ if (!hist.episode || now - hist.episode.t > H) {
   const ep = await official('Episode/801');
   if (ep && Array.isArray(ep.episodes)) hist.episode = { t: now, phases: ep.episodes.flatMap(e => e.phases || []).map(ph => ({ title: ph.introTitle || '', intro: ph.introMessage || '' })) };
 }
-const FAC = { terminid: 'Terminids', automaton: 'Automaton', illuminate: 'Illuminate' };
 for (const a of assignments || []) {
   const ge = (status?.globalEvents || []).find(g => String(g.assignmentId32) === String(a.id) && g.title);
   const ph = ge && (hist.episode?.phases || []).find(x => x.title === ge.title);
   if (!ph) continue;
-  // only kill counts: "kill 300,000,000 Terminids", not "acquire 60,000,000 Automaton samples"
-  // (Interrogation Enhancement, 30 Oct 2026: a sample count was once read as a raised kill goal)
-  const said = {};
-  const text = ph.intro.replace(/<[^>]+>/g, '');
-  for (const m of text.matchAll(/(\d[\d,.]*)\s*(?:million\s+)?(Terminids?|Automatons?|Illuminates?)(?!\s+(?:samples?|data|intel|resources?))/gi)) {
-    const before = text.slice(Math.max(0, m.index - 80), m.index);
-    // the verb of this clause must be a kill, and no other order verb may stand between it and the number
-    const verbs = [...before.matchAll(/\b(kill|eliminat\w*|eradicat\w*|destroy|terminat\w*|neutrali[sz]\w*|decommission\w*|acquire|extract|collect|complete|liberate|hold|defend|deliver)\b/gi)];
-    const v = verbs.length ? verbs[verbs.length - 1][1].toLowerCase() : '';
-    if (!/^(kill|elimin|eradic|destroy|termin|neutral|decomm)/.test(v)) continue;
-    const f = FAC[m[2].toLowerCase().replace(/s$/, '')];
-    if (f && !(f in said)) said[f] = Number(m[1].replace(/[,.]/g, ''));
-  }
-  const diff = [];
-  (a.tasks || []).forEach((tk, i) => {
-    const pt = E.parseTask(tk, 0);
-    // a kill of one enemy type ("Radicals") isn't the faction-wide count the text gives
-    if (pt.type === 3 && pt.faction && !pt.enemyId && said[pt.faction] && pt.goal && said[pt.faction] !== pt.goal) diff.push({ i: i + 1, kind: 'goal', from: said[pt.faction], to: pt.goal });
-  });
+  // what the launch text asked for vs the order today (engine.js briefingDiff, tested in tests/)
+  const diff = E.briefingDiff(ph.intro, a.tasks);
   const sig = JSON.stringify(diff);
   // what the launch text says today wins: an earlier reading that no longer holds is dropped
   hist.edits = hist.edits.filter(e => !(e.ref === 'briefing' && e.order === String(a.id) && e.sig !== sig));
@@ -379,7 +371,11 @@ for (const [id, o] of Object.entries(hist.orders)) {
   const prog = lastProg ? lastProg.prog[Object.keys(lastProg.prog).find(k => k.startsWith(id + ':'))] : null;
   const live = (assignments || []).some(a => String(a.id) === id);
   let result = null;
-  if (!live && prog) { const ps = (o.tasks || []).map((tk, i) => E.parseTask(tk, prog[i])); result = ps.length && ps.every(p => p.goal ? p.progress >= p.goal : p.progress >= 1) ? 'won' : (o.exp && now >= o.exp - 30 * 60e3 ? 'lost' : 'won'); }
+  // the recorder's own conclusion when it has one (Super Earth's word, or the counters at the deadline)
+  const c = hist.calls?.[id];
+  if (!live && c?.result) result = c.result;
+  else if (!live && prog) { const ps = (o.tasks || []).map((tk, i) => E.parseTask(tk, prog[i])); const dn = (p) => p.goal ? p.progress >= p.goal : p.progress >= 1;
+    result = ps.length && (o.flags === 2 || o.flags === 3 ? ps.some(dn) : ps.every(dn)) ? 'won' : o.exp && now >= o.exp - 30 * 60e3 ? 'lost' : null; }
   archive.orders.push({ code: null, name: o.title, obj: '', start: o.start, end: live ? null : o.exp, result, watchedId: id, ours: true });
 }
 // rebuilt checks join their order (only lost ones are judged: a won order was winnable by definition)
