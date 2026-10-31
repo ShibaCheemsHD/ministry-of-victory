@@ -159,11 +159,11 @@
         <p class="sb-sub">${esc(t('acc.sub'))}</p>
         <div class="acc-grid">
           ${L ? `<div class="acc-card"><h4>${esc(t('acc.libT'))}</h4>
-            <div class="acc-t" role="table" aria-label="${esc(t('acc.libT'))}"><div role="row"><div role="columnheader"><span class="sr-only">${esc(t('acc.hzH'))}</span></div><div class="acc-h" role="columnheader">${esc(t('acc.model'))}</div><div class="acc-h" role="columnheader">${esc(t('acc.pace'))}</div></div>${[6, 12, 24].map(hz => row(hz, L.model?.[hz], L.pace?.[hz])).join('')}</div>
-            <p class="ar-small">${esc(fill(t('acc.libN'), { n: L.planets }))}</p></div>` : ''}
+            <div class="acc-t" role="table" aria-label="${esc(t('acc.libT'))}"><div role="row"><div role="columnheader"><span class="sr-only">${esc(t('acc.hzH'))}</span></div><div class="acc-h" role="columnheader">${esc(t(L.v2 ? 'acc.now' : 'acc.model'))}</div><div class="acc-h" role="columnheader">${esc(t(L.v2 ? 'acc.before' : 'acc.pace'))}</div></div>${[6, 12, 24].map(hz => L.v2 ? row(hz, L.v2[hz], L.old?.[hz]) : row(hz, L.model?.[hz], L.pace?.[hz])).join('')}</div>
+            <p class="ar-small">${esc(fill(t(L.v2 ? 'acc.libN2' : 'acc.libN'), { n: L.planets }))}</p></div>` : ''}
           ${C && C.n ? `<div class="acc-card"><h4>${esc(t('acc.cntT'))}</h4>
             <p class="acc-big"><b>${pct(C.calledRight)}</b> ${esc(fill(t('acc.cntRight'), { n: C.n }))}</p>
-            <p class="ar-small">${esc(fill(t('acc.cntNote'), { w: C.missedWins, l: C.missedLosses, e: C.medErrPts }))}</p></div>` : ''}
+            <p class="ar-small">${esc(fill(t('acc.cntNote'), { w: C.missedWins, l: C.missedLosses, e: C.medErrPts }))}${C.old ? ' ' + esc(fill(t('acc.cntOld'), { p: pct(C.old.calledRight), e: C.old.medErrPts })) : ''}</p></div>` : ''}
           <div class="acc-card"><h4>${esc(t('acc.liveT'))}</h4>
             ${liveN ? `<ul class="acc-live">${[6, 12, 24].filter(hz => live.lib?.[hz]?.n).map(hz => `<li>${esc(fill(t('acc.liveLib'), { h: hz, n: live.lib[hz].n, p: pct(live.lib[hz].within25), m: fmt(live.lib[hz].medErrH, 1) }))}</li>`).join('')}
               ${live.cnt?.n ? `<li>${esc(fill(t('acc.liveCnt'), { n: live.cnt.n, p: pct(live.cnt.calledRight) }))}</li>` : ''}

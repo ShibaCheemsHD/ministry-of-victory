@@ -37,7 +37,7 @@
       }
       if (prog && prog.orders) { recordProgress = prog; saveRecap(); }
       if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
-        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], w: v[8] ?? null }])), prog: x.prog || {} }))
+        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] ?? null, w: v[8] ?? null }])), prog: x.prog || {} }))
         // older progress only (no planets), so a full day of pace is known on a first visit
         .concat((recent.prog || []).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
       return true;
@@ -413,7 +413,7 @@
 
       const imp = Number(war?.impactMultiplier) || null;
       const sample = { t: now, N, imp, dss: dssIdx, hod: !!hod, planets: {}, prog: {} };
-      for (const [i, p] of Object.entries(planets)) sample.planets[i] = { h: p.event ? p.event.health : p.health, p: p.statistics?.playerCount || 0, w: p.statistics?.missionsWon ?? null };
+      for (const [i, p] of Object.entries(planets)) sample.planets[i] = { h: p.event ? p.event.health : p.health, p: p.statistics?.playerCount || 0, r: p.event ? 0 : (p.regenPerSecond || 0), w: p.statistics?.missionsWon ?? null };
       for (const a of assignments || []) sample.prog[orderKey(a)] = a.progress;
       await recP;
       samples = mergeRecord(samples.filter(s => now - s.t < KEEP_MS));

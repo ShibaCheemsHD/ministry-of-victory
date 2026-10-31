@@ -100,3 +100,39 @@ test('more time or stronger players never raise the share needed', () => {
     if (isFinite(a) && a > 0) assert.ok(E.sequentialHours(w, a, C, 0, null) <= H * 1.001);
   }
 });
+
+// Forecast v2 (November 2026): fitted on the war log of 2024-25, checked on 2026 (recorder/accuracy.mjs).
+test('fall forecast: players keep arriving on a planet with few of them', () => {
+  const pw = E.planetWork(P(5e5, 1e6, 10000));
+  // 20% of everyone, 100k HP/h at 100%: 50 h at a flat share, 24.7 h with arrivals (integrated by hand)
+  near(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.2, 1e5, 1, [], 0).eta, 24.67, 2e-3);
+  // 60% or more: nobody is left to arrive, the plain answer
+  near(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.6, 1e5, 1, [], 0).eta, 5e5 / (6e4 - 1e4));
+  // stuck now and still stuck 6 hours from now: it doesn't fall
+  assert.equal(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.05, 1e5, 1, [], 0).eta, Infinity);
+});
+
+test('fall forecast: the planet\'s own pace, with the regen in force at the time', () => {
+  const H = 3.6e6, now = 10 * H;
+  // 6 h at 30% of 100k players: the planet lost 30k/h gross while regen was 20k/h, so net 10k/h,
+  // then Command dropped the regen to 0: its own strength is 100k/h at 100%, like everyone's
+  const samples = Array.from({ length: 7 }, (_, k) => ({ t: now - (6 - k) * H, N: 1e5, planets: { 7: { h: 6e5 - k * 1e4, p: 3e4, r: 20000 / 3600 } } }));
+  const lc = E.localC(samples, 7, now, 0, 1e6);
+  near(lc.C, 1e5);
+  const f = E.forecastFall({ index: 7, maxHealth: 1e6 }, E.planetWork(P(5.4e5, 1e6, 0)), 0.3, 1e5, 1, samples, now);
+  assert.ok(f.local > 0 && f.global > 0 && f.band.lo < f.eta && f.eta < f.band.hi);
+});
+
+test('counts: players freed by a finished objective move to the others', () => {
+  const H = 3.6e6, now = Date.UTC(2026, 9, 31), start = now - 30 * H, exp = now + 48 * H;
+  // A: 90 of 100 done, 1/h -> done in 10 h. B: 30 of 120, 1/h -> alone it reaches 78 by the deadline;
+  // with A's players from hour 10 it goes 2/h: 30 + 10 + 2 x 38 = 116, still short but much closer
+  const task = (goal) => ({ type: 3, values: [2, 0, goal], valueTypes: [1, 2, 3] });
+  const a = { id: 1, expiration: new Date(exp).toISOString(), tasks: [task(100), task(120)], progress: [90, 30] };
+  const samples = [0, 12, 24].map(h => ({ t: now - 24 * H + h * H, prog: { 1: [66 + h, 6 + h] } }));
+  const res = E.analyzeAssignment(a, { planets: {}, N: 1e5, now, C: 1e5, dssIdx: null, hod: null, settings: E.DEFAULTS, samples, startMs: start });
+  const B = res.tasks[1];
+  near(B.freed.plain, 30 + 48);
+  near(B.projection, 116, 0.02);
+  assert.notEqual(B.verdict, 'ontrack');
+});

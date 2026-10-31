@@ -195,6 +195,81 @@ const ENGINE = (() => {
     return { net: dh / dt, span: dt };
   }
 
+  /* ---------- when will a planet fall? (forecast v2, Nov 2026) ----------
+     Fitted on the war log (CrossWaveOmega) of 2024-25, every reading in the 48 h before each liberation, and
+     checked on 2026, which it never saw (recorder/accuracy.mjs replays it): within 25% of the real fall time
+     6 / 12 / 24 h ahead 81% / 76% / 62% of the time, against 72% / 65% / 52% for what the page showed before
+     (the last 90 minutes' pace when it had one, else players there x everyone's strength).
+     1. The planet's own strength: HP it lost over the last 6 h per share of players on it, pulled 30%
+        towards everyone's strength. It carries what the global figure can't: the DSS, Joel's multipliers,
+        the planet's difficulty, the faction.
+     2. Players keep arriving: a planet with few of them gains more, s(t) = s0 (1 + a min(t, 48)/24) with
+        a = 1.5 max(0, 1 - s0/0.6); one already holding 60% of everyone stays as it is.
+     3. Within 10 h the planet's own strength decides, past 36 h everyone's, in between a blend.
+     Knowing the future player counts exactly would still leave it at about 80% / 74% / 78%: the rest is
+     what nobody can know in advance (Joel, sudden surges, the war log's own 1-2 h resolution). */
+  const FC = { shrink: 0.3, a0: 1.5, smax: 0.6, cap: 48, near: 10, far: 36, window: 6 };
+  // HP/h the planet's fighters would deal with everyone online there (the planet's own C), from the samples
+  // Samples may carry a player count without a health reading (h null): they still tell the share in between.
+  function localC(samples, idx, now, regenH, maxH) {
+    const pts = (samples || []).filter(s => s.N && s.planets && s.planets[idx] && now - s.t <= FC.window * 3.6e6 && s.t <= now);
+    const hp = pts.filter(s => s.planets[idx].h != null);
+    if (hp.length < 2) return null;
+    const t0 = hp[0].t, t1 = hp[hp.length - 1].t;
+    let g = 0, w = 0, span = 0;
+    for (let i = 1; i < hp.length; i++) {
+      const A = hp[i - 1].planets[idx], B = hp[i].planets[idx], dt = (hp[i].t - hp[i - 1].t) / 3.6e6;
+      if (dt <= 0 || dt > 8) return null;
+      const step = A.h - B.h;
+      // faster than 3% of the planet in 10 minutes: an intervention, not damage
+      if (maxH && Math.abs(step) / Math.max(dt, 1 / 6) > 0.18 * maxH) return null;
+      // the regen in force then (Command changes it often), else today's
+      g += step + (A.r != null ? A.r * 3600 : regenH) * dt; span += dt;
+    }
+    // share of everyone online over the same stretch, from every sample with a player count
+    const sp = pts.filter(s => s.t <= t1 && s.planets[idx].p != null);
+    for (let i = 0; i < sp.length; i++) {
+      const a = Math.max(sp[i].t, t0), b = Math.min(i + 1 < sp.length ? sp[i + 1].t : t1, t1);
+      if (b > a) w += (sp[i].planets[idx].p / sp[i].N) * (b - a) / 3.6e6;
+    }
+    return span >= 1 && w > 0 && g > 0 ? { C: g / w, hours: span } : null;
+  }
+  // average share over the next T hours, relative to now (point 2 above)
+  function growth(s0, T) {
+    const a = FC.a0 * Math.max(0, 1 - s0 / FC.smax);
+    if (!a || !(T > 0)) return 1;
+    const c = FC.cap, area = T <= c ? T * T / 2 : c * c / 2 + c * (T - c);
+    return Math.min(1 + a * area / (24 * T), s0 > 0 ? 1 / s0 : 1);
+  }
+  // hours to finish with gross damage g0 HP/h at today's share s0, players arriving as above
+  function etaGrowing(pw, g0, s0) {
+    const a = FC.a0 * Math.max(0, 1 - s0 / FC.smax);
+    // still losing ground 6 hours from now, even with the new arrivals: it doesn't fall
+    if (!isFinite(hoursFor(pw, g0 * (1 + a * 0.25)))) return Infinity;
+    let lo = 0.01, hi = 5000;
+    if (hoursFor(pw, g0 * growth(s0, hi)) > hi) return Infinity;
+    for (let k = 0; k < 50; k++) { const m = Math.sqrt(lo * hi); if (hoursFor(pw, g0 * growth(s0, m)) > m) lo = m; else hi = m; }
+    return hi;
+  }
+  // How sure: 8 times out of 10 the real fall lands inside this range (spread of the misses on the war log,
+  // 2024-26, by how far ahead the forecast looks; shorter forecasts tend to run early, longer ones late).
+  const BAND = [[8, 0.71, 1.98], [16, 0.84, 1.83], [Infinity, 0.54, 1.52]];
+  const fallBand = (T) => { if (!isFinite(T) || !(T > 0)) return null; const b = BAND.find(x => T < x[0]); return { lo: T * b[1], hi: T * b[2] }; };
+  function forecastFall(p, pw, share, C, mult, samples, now) {
+    const f = forecastCore(p, pw, share, C, mult, samples, now);
+    return { ...f, band: fallBand(f.eta) };
+  }
+  function forecastCore(p, pw, share, C, mult, samples, now) {
+    const Tg = C > 0 && share > 0 ? etaGrowing(pw, dmg(share, C) * mult, share) : Infinity;
+    const lc = !pw.hasRegions && C > 0 ? localC(samples, p.index, now, pw.regen, p.maxHealth) : null;
+    if (!lc || !(share > 0)) return { eta: Tg, global: Tg, local: null, localC: null };
+    const c = Math.exp((1 - FC.shrink) * Math.log(lc.C) + FC.shrink * Math.log(C * mult));
+    const Tl = etaGrowing(pw, dmg(share, c), share);
+    if (!isFinite(Tl) || !isFinite(Tg)) return { eta: isFinite(Tl) ? Tl : Tg, global: Tg, local: Tl, localC: lc.C };
+    const T = Math.sqrt(Tl * Tg), w = T <= FC.near ? 1 : T >= FC.far ? 0 : (FC.far - T) / (FC.far - FC.near);
+    return { eta: Math.exp(w * Math.log(Tl) + (1 - w) * Math.log(Tg)), global: Tg, local: Tl, localC: lc.C };
+  }
+
   // Live calibration of capacity C from samples of planets under liberation.
   // Damage constant K, measured live: the game weighs every player by the war's impact multiplier,
   // so on a planet  gross HP/s = players x impactMultiplier x K  (x DSS / HOD boosts).
@@ -412,6 +487,41 @@ const ENGINE = (() => {
   /* Verdict codes, from best to worst: done, ontrack, effort/focus, hard/record, nearly_impossible, impossible (unknown = not enough data) */
   const RANK = { done: 0, ontrack: 1, effort: 2, focus: 2, hard: 3, record: 3, nearly_impossible: 4, impossible: 5, failed: 6, unknown: 1.5 };
 
+  // a count objective's verdict from how many times faster it must go (ratio), and the share of everyone
+  // online on its front: the pace needed as a share of everyone, the same scale as a liberation
+  function countVerdict(ratio, frontShare, settings) {
+    if (ratio <= 1) return { verdict: 'ontrack', needShare: null };
+    if (frontShare > 0) {
+      const needShare = frontShare * ratio;
+      return { needShare, verdict: needShare <= 0.6 ? 'effort' : needShare <= settings.recordShare ? 'record' : needShare <= 1 ? 'nearly_impossible' : 'impossible' };
+    }
+    return { needShare: null, verdict: ratio <= 1.25 ? 'effort' : ratio <= 2 ? 'hard' : ratio <= 4 ? 'nearly_impossible' : 'impossible' };
+  }
+  // Several count objectives in one order: when one is done, its players move to those left. Replayed on
+  // helldiversstats.com (every count objective since May 2026, a day in), splitting the freed players evenly
+  // over the objectives still open called 24 of 29 right instead of 22, and halved the miss on the lost ones
+  // two days in (26 -> 14 points). Projections follow it; a verdict only ever gets better from it.
+  function freedPlayers(counters, H, settings) {
+    const live = counters.filter(r => r.remaining > 0 && r.primary && r.primary.rate > 0);
+    if (live.length < 2 || !(H > 0)) return;
+    const st = live.map(r => ({ r, got: r.task.progress, rate: r.primary.rate, goal: r.task.goal }));
+    const n0 = st.length, step = Math.max(0.25, H / 400);
+    for (let t = 0; t < H; t += step) {
+      const open = st.filter(x => x.got < x.goal);
+      if (!open.length) break;
+      const m = n0 / open.length, dt = Math.min(step, H - t);
+      for (const x of open) x.got += x.rate * m * dt;
+    }
+    for (const x of st) {
+      const r = x.r;
+      if (!(x.got > r.projection + 1)) continue;
+      r.freed = { projection: x.got, plain: r.projection };
+      r.projection = x.got;
+      const eff = (x.got - r.task.progress) / H;   // the average pace this projection stands for
+      const v = countVerdict(r.needed / eff, r.frontShare, settings);
+      if ((RANK[v.verdict] ?? 1) < (RANK[r.verdict] ?? 1)) { r.verdict = v.verdict; r.needShare = v.needShare; }
+    }
+  }
   function analyzeAssignment(a, ctx) {
     const { planets, N, now, C, dssIdx, hod, settings, samples, startMs } = ctx;
     const hLeft = (new Date(a.expiration).getTime() - now) / 3.6e6;
@@ -433,10 +543,12 @@ const ENGINE = (() => {
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
           const obs = observedNet(samples, p.index, now, p.maxHealth);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
-          const net = obs ? obs.net : modelNet;
-          const eta = net > 0 ? pw.work / net : Infinity;
+          // on a planet with open cities its own health can rise while a city falls: the pace is no guide there
+          const net = obs && !pw.hasRegions ? obs.net : modelNet;
+          const fc = forecastFall(p, pw, share, C, mult, samples, now);
+          const eta = fc.eta;
           Object.assign(r, {
-            pw, share, onDss, mult, observed: obs, modelNet, net, eta,
+            pw, share, onDss, mult, observed: obs, modelNet, net, eta, fc,
             breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C),
             aloneShare: shareFor((pw.work / Math.max(H, 0.01) + pw.regen) / (1 + settings.dssBonus), C),
           });
@@ -451,8 +563,9 @@ const ENGINE = (() => {
           const onDss = dssIdx === p.index;
           const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
-          const net = obs ? obs.net : modelNet;
-          Object.assign(r, { pw, share, onDss, mult, observed: obs, modelNet, net, eta: net > 0 ? pw.work / net : Infinity, holdLost: true,
+          const net = obs && !pw.hasRegions ? obs.net : modelNet;
+          const fc = forecastFall(p, pw, share, C, mult, samples, now);
+          Object.assign(r, { pw, share, onDss, mult, observed: obs, modelNet, net, eta: fc.eta, fc, holdLost: true,
             breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C),
             aloneShare: shareFor((pw.work / Math.max(H, 0.01) + pw.regen) / (1 + settings.dssBonus), C) });
           libTargets.push(r);
@@ -477,16 +590,7 @@ const ENGINE = (() => {
         else if (fac) for (const q of Object.values(planets)) { const f = q.event ? q.event.faction : (isEnemy(q) ? q.currentOwner : null); if (f === fac) here += q.statistics?.playerCount || 0; }
         const frontShare = !N ? null : t.planetIndex == null && !fac ? 1 : here / N;
         if (remaining <= 0) verdict = 'done';
-        else if (primary && primary.rate > 0) {
-          const ratio = needed / primary.rate;
-          if (ratio <= 1) verdict = 'ontrack';
-          else if (frontShare > 0) {
-            // the pace needed, as a share of everyone online at today's pace per Helldiver: the same
-            // scale as a liberation (players can move here from other fronts)
-            needShare = frontShare * ratio;
-            verdict = needShare <= 0.6 ? 'effort' : needShare <= settings.recordShare ? 'record' : needShare <= 1 ? 'nearly_impossible' : 'impossible';
-          } else verdict = ratio <= 1.25 ? 'effort' : ratio <= 2 ? 'hard' : ratio <= 4 ? 'nearly_impossible' : 'impossible';
-        }
+        else if (primary && primary.rate > 0) ({ verdict, needShare } = countVerdict(needed / primary.rate, frontShare, settings));
         // the first hours of an order: players are still arriving, and the pace measured on a short
         // stretch says little. Never call it (nearly) impossible on less than 3 hours of pace.
         const early = !!(primary && primary.kind !== 'day' && (primary.hours || 0) < 3 && remaining > 0);
@@ -505,6 +609,8 @@ const ENGINE = (() => {
       }
       res.tasks.push(r);
     });
+    // a lone option of an "any one of these" order shares nobody: only real multi-objective orders
+    if (!ctx.single) freedPlayers(res.tasks.filter(r => r.counter && !r.simpleCount && !r.early), H, settings);
 
     // Group verdict for liberation targets
     if (libTargets.length) {
@@ -700,7 +806,8 @@ const ENGINE = (() => {
         const variant = lib.winnableNow ? 'win' : fullPossible ? 'more' : 'partial';
         const planSegs = fullPossible ? lib.plan.segs : (lib.partial.plan ? lib.partial.plan.segs : []);
         recs.push({ kind: 'libFocus', prio: 2, variant, planet: focus.planet, share: focusShare, players: players(focusShare),
-          hours: first ? first.end - first.start : null, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
+          // the last planet left, everyone on the order already on it: the planet's own forecast says when
+          hours: planSegs.length <= 1 && lib.winnableNow && isFinite(focus.eta) ? focus.eta : first ? first.end - first.start : null, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
           remaining: planSegs.length });
         if (planSegs.length > 1) {
           recs.push({ kind: 'libOrder', prio: 3, partial: !fullPossible, segs: planSegs.map(s => ({ planet: s.target.planet, start: s.start, end: s.end })), H });
@@ -1145,6 +1252,6 @@ const ENGINE = (() => {
   }
 
   return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
-    observedNet, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
+    observedNet, localC, growth, forecastFall, fallBand, FC, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

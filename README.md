@@ -7,6 +7,7 @@ Open the page and it tells you, in one line, what the whole community should do 
 
 - **Order of the day:** the single move that changes the outcome the most (which planet to focus, which defense to save, which front needs players).
 - **Forecast:** from "On track" to "Impossible", based on planet health, regen, and how many Helldivers are on each planet.
+- **When each planet falls**, with the range it will most likely land in. Replayed on every planet liberated in 2026 (the forecast was fitted on 2024-25 only): within 25% of the real time 81% / 76% / 62% of the time 6 / 12 / 24 hours ahead, up from 72% / 65% / 52%; the range held the real fall 81-94% of the time. Kill and mission counts count the players a finished objective frees for the others: 81% called right a day in, up from 73%. The Archive keeps this track record up to date.
 - **Plan:** every useful move ranked by importance, with what it changes ("Fury falls 1d 1h sooner").
 - **What if…?:** drag a slider to see what happens with more or fewer players.
 - **Numbers:** regen, break-even share, pace per hour, projections.

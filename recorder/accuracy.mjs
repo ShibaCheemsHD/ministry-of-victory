@@ -13,7 +13,9 @@ const tOf = (s) => Date.parse(String(s).slice(0, 16).replace(' ', 'T') + ':00Z')
 const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[x.length >> 1] : null; };
 const share = (a, f) => a.length ? a.filter(f).length / a.length : null;
 
-export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-01T00:00:00Z'), horizons = [6, 12, 24] } = {}) {
+// v2: the forecast the site uses since November 2026 (engine forecastFall: the planet's own strength over the last
+// 6 h, players arriving, blended with everyone's strength), replayed the same way.
+export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-01T00:00:00Z'), horizons = [6, 12, 24], E = null, withRows = false, until = Infinity } = {}) {
   const ev = hist.events || [], times = ev.map(e => tOf(e.time));
   const allAt = []; let la = null;
   for (let i = 0; i < ev.length; i++) { if (ev[i].all_players) la = ev[i].all_players; allAt[i] = la; }
@@ -23,10 +25,10 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
   for (const [k, list] of Object.entries(resort)) {
     const st = { hp: null, pl: null, r: null, o: null, reg: false }; const out = [];
     for (const x of list) {
-      if (x.hp != null) st.hp = Number(x.hp) || 0; if (x.pl != null) st.pl = Number(x.pl) || 0; if (x.r != null) st.r = Number(x.r) || 0;
+      if (x.hp != null) { st.hp = Number(x.hp) || 0; st.max = Math.max(st.max || 0, st.hp); } if (x.pl != null) st.pl = Number(x.pl) || 0; if (x.r != null) st.r = Number(x.r) || 0;
       if (x.t != null) st.o = OWNER[x.t >> 4] || null;
       if (x.regions) st.reg = Object.values(x.regions).some(g => g && g.t != null && (g.t >> 4) !== 1);
-      out.push({ t: times[x.eind], hp: st.hp, pl: st.pl, r: st.r, o: st.o, reg: st.reg, hpSet: x.hp != null });
+      out.push({ t: times[x.eind], hp: st.hp, pl: st.pl, r: st.r, o: st.o, reg: st.reg, max: st.max, hpSet: x.hp != null });
     }
     P[k] = out;
   }
@@ -52,7 +54,7 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
   for (const [k, l] of Object.entries(P)) {
     for (let j = 1; j < l.length; j++) {
       const fall = l[j];
-      if (!(l[j - 1].o && l[j - 1].o !== 'Humans' && fall.o === 'Humans') || fall.t < since) continue;
+      if (!(l[j - 1].o && l[j - 1].o !== 'Humans' && fall.o === 'Humans') || fall.t < since || fall.t >= until) continue;
       const fight = l.slice(0, j).filter(x => x.hpSet && x.o === l[j - 1].o);
       for (const hz of horizons) {
         const t0 = fall.t - hz * H;
@@ -64,7 +66,18 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
         if (back && !back.reg && back.hp > at.hp) { const net = (back.hp - at.hp) / ((at.t - back.t) / H); out.pace = at.hp / net; }
         const all = playersAt(at.t), C = capacityAt(at.t);
         if (all && C && at.pl > 0) { const net = C * at.pl / all - (at.r || 0) * 3600; if (net > 0) out.model = at.hp / net; }
-        if (out.pace != null || out.model != null) rows.push(out);
+        // what the page showed before November 2026: the recent pace when it had one, else the model
+        out.old = out.pace ?? out.model;
+        if (E && all && C && at.pl > 0) {
+          // the planet's last day as the page's samples (the forecast keeps its own window)
+          const samples = l.slice(0, j).filter(x => x.o === l[j - 1].o && x.t <= at.t && x.t >= at.t - 24 * H)
+            .map(x => ({ t: x.t, N: playersAt(x.t), planets: { [k]: { h: x.hpSet ? x.hp : null, p: x.pl, r: x.r } } })).filter(s => s.N);
+          const pw = { work: at.hp, regionHP: 0, regen: (at.r || 0) * 3600, activeRegen: (at.r || 0) * 3600, queue: [], hasRegions: false };
+          const fc = E.forecastFall({ index: k, maxHealth: at.max || at.hp }, pw, at.pl / all, C, 1, samples, at.t);
+          if (isFinite(fc.eta)) { out.v2 = fc.eta; out.inBand = !!fc.band && fc.band.lo <= truth && truth <= fc.band.hi; }
+          if (withRows) Object.assign(out, { fcG: fc.global, fcL: fc.local, fcC: fc.localC, C, share: at.pl / all, nS: samples.length });
+        }
+        if (out.pace != null || out.model != null || out.v2 != null) rows.push(out);
       }
     }
   }
@@ -72,9 +85,10 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
     const r = rows.filter(x => x.hz === hz && x[key] != null);
     const rel = r.map(x => Math.abs(x[key] - x.truth) / x.truth);
     return [hz, { n: r.length, medErrH: r.length ? +med(r.map(x => Math.abs(x[key] - x.truth))).toFixed(1) : null,
-      within25: r.length ? +share(rel, v => v <= 0.25).toFixed(2) : null, early: r.length ? +share(r, x => x[key] < x.truth).toFixed(2) : null }];
+      within25: r.length ? +share(rel, v => v <= 0.25).toFixed(2) : null, early: r.length ? +share(r, x => x[key] < x.truth).toFixed(2) : null,
+      ...(key === 'v2' && r.length ? { inBand: +share(r, x => x.inBand).toFixed(2) } : {}) }];
   }));
-  return { since, planets: new Set(rows.map(x => x.i + ':' + x.fell)).size, pace: summary('pace'), model: summary('model') };
+  return { since, planets: new Set(rows.map(x => x.i + ':' + x.fell)).size, pace: summary('pace'), model: summary('model'), old: summary('old'), v2: E ? summary('v2') : null, ...(withRows ? { rows } : {}) };
 }
 
 export function countBacktest(hs, E, { at = 24 } = {}) {
@@ -86,6 +100,7 @@ export function countBacktest(hs, E, { at = 24 } = {}) {
     if (hours < at + 12) continue;
     // ran to its deadline (or was closed early because it was done)
     const ranOut = o.exp - o.last < 20 * 60e3;
+    const mine = [];
     o.tasks.forEach((tk, k) => {
       const p = E.parseTask(tk, 0); if (!COUNTER.has(p.type) || !p.goal) return;
       const ser = o.pts.map(x => [x[0], Number(x[1 + k]) || 0]);
@@ -97,14 +112,27 @@ export function countBacktest(hs, E, { at = 24 } = {}) {
       const proj = (a[1] + rate * (o.exp - a[0]) / H) / p.goal;
       const fin = ser[ser.length - 1][1] / p.goal;
       if (a[1] >= p.goal) return;   // already done a day in: nothing to forecast
-      rows.push({ id: o.id, k, proj, final: ranOut ? fin : Math.max(fin, 1), done: fin >= 1 || !ranOut });
+      const row = { id: o.id, k, proj, final: ranOut ? fin : Math.max(fin, 1), done: fin >= 1 || !ranOut, got: a[1], rate, goal: p.goal, left: (o.exp - a[0]) / H };
+      rows.push(row); mine.push(row);
     });
+    // v2 (the site since November 2026): players freed by a finished objective spread over those still open
+    const live = mine.filter(x => x.rate > 0);
+    for (const x of mine) x.proj2 = x.proj;
+    if (live.length > 1) {
+      const st = live.map(x => ({ x, got: x.got })), n0 = st.length, left = live[0].left;
+      for (let t = 0; t < left; t += 1) {
+        const open = st.filter(y => y.got < y.x.goal); if (!open.length) break;
+        for (const y of open) y.got += y.x.rate * (n0 / open.length) * Math.min(1, left - t);
+      }
+      for (const y of st) y.x.proj2 = Math.max(y.x.proj, y.got / y.x.goal);
+    }
   }
-  const decided = rows;
-  return { n: rows.length,
-    calledRight: rows.length ? +share(decided, x => (x.proj >= 1) === x.done).toFixed(2) : null,
-    medErrPts: rows.filter(x => !x.done).length ? +(med(rows.filter(x => !x.done).map(x => Math.abs(x.proj - x.final))) * 100).toFixed(0) : null,
-    missedWins: rows.filter(x => x.proj < 1 && x.done).length, missedLosses: rows.filter(x => x.proj >= 1 && !x.done).length };
+  const sum = (key) => ({ n: rows.length,
+    calledRight: rows.length ? +share(rows, x => (x[key] >= 1) === x.done).toFixed(2) : null,
+    medErrPts: rows.filter(x => !x.done).length ? +(med(rows.filter(x => !x.done).map(x => Math.abs(x[key] - x.final))) * 100).toFixed(0) : null,
+    missedWins: rows.filter(x => x[key] < 1 && x.done).length, missedLosses: rows.filter(x => x[key] >= 1 && !x.done).length });
+  // the headline numbers are the forecast the site uses now; `old` is the plain day-one pace
+  return { ...sum('proj2'), old: sum('proj') };
 }
 
 // The live record: the forecasts the recorder made hour by hour (hist.calls[].track), checked against what

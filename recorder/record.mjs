@@ -179,7 +179,7 @@ hist.samples = hist.samples.filter(s => s.t >= from).sort((a, b) => a.t - b.t);
 for (const i of Object.keys(hist.names)) if (!hist.samples.some(s => s.pl[i])) delete hist.names[i];
 
 // damage constant measured on this history (as the page does), else the reference
-const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, planets: Object.fromEntries(Object.entries(s.pl).map(([i, v]) => [i, { h: v[0], p: v[1] }])) });
+const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, planets: Object.fromEntries(Object.entries(s.pl).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] }])) });
 const cal = E.calibrateK(hist.samples.map(asPage), planets, now, 0, 1);
 const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
 
@@ -350,7 +350,7 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 7) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 8) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
     if (!r.ok) bad('warlog', 'historydata.json HTTP ' + r.status);
@@ -385,10 +385,10 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 7
         } catch (e) { bad('helldiversstats', e); console.log('::warning::helldiversstats: ' + String(e).slice(0, 200)); }
         const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
         const resort = rr.ok ? await rr.json() : null;
-        if (resort) { try { hist.backtest = { t: now, lib: liberationBacktest(j, resort), cnt: countBacktest(hist.hs, E) }; } catch (e) { console.log('::warning::backtest failed: ' + String(e).slice(0, 200)); } }
+        if (resort) { try { hist.backtest = { t: now, lib: liberationBacktest(j, resort, { E }), cnt: countBacktest(hist.hs, E) }; } catch (e) { console.log('::warning::backtest failed: ' + String(e).slice(0, 200)); } }
         if (rr.ok) hist.retro = buildRetro(j, resort, E, hist.hs, { samples: hist.samples, factions: hist.factions }).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
           : { code: x.code, start: x.start, end: x.end || null, result: x.result, v: x.v, need: x.need, cap: x.cap ?? null, span: x.span ?? null, goals: x.goals || null, counts: !!x.counts, combined: !!x.combined, facts: x.facts || null, src: x.src || 'log', hsId: x.hsId || null, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
-        if (rr.ok) { hist.retroV = 7; ok('rebuild'); } else bad('rebuild', 'resort.json HTTP ' + rr.status);
+        if (rr.ok) { hist.retroV = 8; ok('rebuild'); } else bad('rebuild', 'resort.json HTTP ' + rr.status);
       } catch (e) { bad('rebuild', e); console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }

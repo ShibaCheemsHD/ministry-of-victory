@@ -20,6 +20,22 @@ test('a planet falling at a steady pace is forecast exactly, both ways', () => {
   }
 });
 
+test('forecast v2 on the same planet: exact when nobody is left to arrive, earlier when players can still come', () => {
+  const run = (pl) => {
+    const events = Array.from({ length: 60 }, (_, h) => ({ time: stamp(t0 + h * H), all_players: 100000, log: [] }));
+    const planet = [{ eind: 0, hp: 1e6, pl, r: 0, t: 49 }];
+    for (let h = 1; h < 40; h++) planet.push({ eind: h, hp: 1e6 - 25000 * h });
+    planet.push({ eind: 40, hp: 1e6, t: 16 });
+    return liberationBacktest({ events }, { 5: planet }, { since: t0, E });
+  };
+  const full = run(60000), few = run(20000);
+  for (const hz of [6, 12, 24]) {
+    assert.equal(full.v2[hz].medErrH, 0); assert.equal(full.v2[hz].inBand, 1);
+    assert.equal(few.v2[hz].early, 1);     // 20% of everyone: more players expected, the fall comes sooner
+  }
+  assert.ok(few.old && few.model);
+});
+
 test('counts: a day\'s pace projected to the deadline, against the result', () => {
   const kill = (goal) => ({ type: 3, values: [2, goal], valueTypes: [1, 3] });
   const order = (id, goal, perHour, hours, done) => ({ id, complete: true, start: t0, exp: t0 + hours * H, last: done ? t0 + 30 * H : t0 + hours * H,
