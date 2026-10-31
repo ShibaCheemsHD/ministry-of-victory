@@ -41,7 +41,7 @@
     // a bare "MAJOR ORDER" title says nothing: name it after what it asks, as the archive does
     const title = orderName({ name: plain(clean(txt(a.title) || '')), tasks: a.tasks, brief: txt(a.briefing) }).toUpperCase();
     const n = last.results.length, k = last.results.indexOf(entry) + 1;
-    const stamp = new Date(last.now).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
+    const stamp = new Date(last.now).toLocaleString(LANG === 'en' ? 'en-GB' : LOCALE, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     // two passes: measure the height, then draw
     function draw(on) {
       let y = 0;
@@ -381,6 +381,9 @@
   $('refresh').addEventListener('click', () => refresh());
 
   function bindSettings() {
+    // the language: saved, then the page starts again in it (every text is drawn at load)
+    const lang = $('s-lang'); lang.value = LANG;
+    lang.addEventListener('change', () => { store.set('lang', lang.value); const u = new URL(location.href); u.searchParams.delete('lang'); location.replace(u.href); });
     const map = { 's-capmode': 'capMode', 's-cap': 'capacity', 's-dss': 'dssBonus', 's-hod': 'hodMult', 's-rec': 'recordShare', 's-contact': 'contact', 's-motion': 'motion' };
     for (const [id, key] of Object.entries(map)) {
       const el = $(id);
@@ -395,7 +398,10 @@
   }
 
   function applyTexts() {
-    document.documentElement.lang = 'en';
+    document.documentElement.lang = LANG;
+    $('ot-nav').setAttribute('aria-label', t('ordersAria'));
+    document.querySelectorAll('[data-close]').forEach(b => b.setAttribute('aria-label', t('close')));
+    $('l-lang').textContent = t('sLang');
     $('tagline').textContent = t('tagline');
     $('settings-title').textContent = t('settings');
     $('info-title').textContent = t('info');
@@ -404,14 +410,14 @@
     $('open-settings').title = t('settings');
     $('open-info').setAttribute('aria-label', t('info'));
     $('open-info').title = t('info');
-    $('order-tabs').setAttribute('aria-label', 'Major Orders');
+    $('order-tabs').setAttribute('aria-label', t('ordersAria'));
     const lbl = { 'l-cap': 'sCap', 'l-capval': 'sCapVal', 'l-dss': 'sDss', 'l-hod': 'sHod', 'l-rec': 'sRec', 'l-contact': 'sContact', 'l-motion': 'sMotion' };
     for (const [id, k] of Object.entries(lbl)) $(id).textContent = t(k);
     $('s-capmode').options[0].textContent = t('sAuto');
     $('s-capmode').options[1].textContent = t('sManual');
     $('s-motion').options[0].textContent = t('mFull');
     $('s-motion').options[1].textContent = t('mReduced');
-    $('explain').innerHTML = EXPLAIN;
+    $('explain').innerHTML = LANG === 'it' ? EXPLAIN_IT : EXPLAIN;
     $('footer').textContent = t('footer');
     for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) { el.textContent = t(k); el.parentElement.setAttribute('aria-label', t(k)); } }
     $('boot-skip').textContent = t('skip');

@@ -42,7 +42,7 @@
   function taskText(r) {
     const tk = r.task, n = big(tk.goal);
     // "Liberate 1 planet", not "1 planets"
-    const fillN = (key, params) => fill(tk.goal === 1 && t(key + '1') !== key + '1' ? t(key + '1') : t(key), params);
+    const fillN = (key, params) => fill(tk.goal === 1 && tHas(key + '1') ? t(key + '1') : t(key), params);
     const sector = tk.sectorIndex != null && last && last.sectorName ? last.sectorName[tk.sectorIndex] : null;
     const where = r.planet ? ` ${t('on')} ${planetName(r.planet)}` : sector ? ` ${fill(t('inSector'), { s: esc(sector) })}` : tk.sectorIndex != null ? ` ${t('inASector')}` : '';
     const fac = tk.faction && tk.faction !== 'Humans' ? tk.faction : null;

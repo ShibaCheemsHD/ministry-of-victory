@@ -94,11 +94,11 @@
   }
 
   function recItem(rec, res, tag = 'li', icon = '') {
-    const R = (k) => TEXT.r[k];
+    const R = (k) => tHas('r.' + k);
     const P = (p) => planetName(p);
     let key = rec.kind, params = {}, cls = '', minor = false, extra = '';
     switch (rec.kind) {
-      case 'libImpossible': params = { need: sharePct(rec.need) }; cls = 'k-bad'; if (rec.none) key = 'libImpossibleNone'; break;
+      case 'libImpossible': params = { need: shareOf(rec.need) }; cls = 'k-bad'; if (rec.none) key = 'libImpossibleNone'; break;
       case 'libNFocus': {
         const rest = rec.list.slice(1).map(P);
         params = { planet: P(rec.planet), left: fmt(rec.left), then: rest.length ? fill(R('libNThen'), { list: listJoin(rest) }) : '',
@@ -108,7 +108,7 @@
       }
       case 'libNOk': params = { task: taskText(rec.task) }; minor = true; break;
       case 'defWait': params = { left: fmt(rec.left) }; minor = true; break;
-      case 'libPartial': params = { k: rec.k, n: rec.n, share: sharePct(rec.share), need: sharePct(rec.need), planets: listJoin(rec.planets.map(P)) }; cls = 'k-warn'; break;
+      case 'libPartial': params = { k: rec.k, n: rec.n, share: pct(rec.share), need: shareOf(rec.need), planets: listJoin(rec.planets.map(P)) }; cls = 'k-warn'; break;
       case 'libFocus':
         key = { win: 'libFocusWin', more: 'libFocusMore', partial: 'libFocusPartial' }[rec.variant];
         params = { planet: P(rec.planet), players: people(rec.players), share: pct(rec.share), nowPlayers: fmt(rec.nowPlayers), when: rec.hours != null ? clock(rec.hours) : '', crowd: crowdText(rec.players, rec.nowPlayers) };
@@ -124,7 +124,7 @@
           order: rec.order.map(esc).join(' → '), spread: rec.spread ? fill(R('libRegionSpread'), { n: rec.spread }) : '' };
         break;
       case 'libDss': params = { p: pct(settings.dssBonus), planet: P(rec.planet), from: rec.from ? fill(R('libDssFrom'), { from: P(rec.from) }) : '' }; minor = true; break;
-      case 'libHod': params = { planet: P(rec.planet), be: sharePct(rec.breakEven) }; minor = true; break;
+      case 'libHod': params = { planet: P(rec.planet), be: shareOf(rec.breakEven) }; minor = true; break;
       case 'defSend': params = { planet: P(rec.planet), when: clock(rec.hours), players: people(rec.players), nowPlayers: fmt(rec.nowPlayers) }; break;
       case 'defSkip': params = { planet: P(rec.planet) }; minor = true; break;
       case 'cntMove': {
@@ -138,7 +138,7 @@
       case 'cntShort': params = { players: people(rec.players), to: facName(rec.to) }; cls = 'k-warn'; break;
       case 'cntBehind': {
         const tk = rec.task.task;
-        params = { task: taskText(rec.task), more: sharePct(rec.more), needed: big(rec.needed), rate: big(rec.rate), proj: rec.task.projection != null && tk.goal ? projPct(rec.task.projection / tk.goal) : '—' };
+        params = { task: taskText(rec.task), more: projPct(rec.more), needed: big(rec.needed), rate: big(rec.rate), proj: rec.task.projection != null && tk.goal ? projPct(rec.task.projection / tk.goal) : '—' };
         break;
       }
       case 'cntStart': params = { task: taskText(rec.task), needed: big(rec.needed) }; break;
@@ -243,10 +243,10 @@
     }
   }
   function moveHTML(m, res) {
-    const MV = TEXT.mv[m.kind];
+    const MV = tHas('mv.' + m.kind);
     if (!MV) return recItem(m, res);
     const P = (p) => planetName(p);
-    const R = (k) => TEXT.r[k];
+    const R = (k) => tHas('r.' + k);
     const weapon = m.weapon ? fill(t('mvWeapon'), { item: esc(itemName(m.weapon)) }) : '';
     let p = {}, why = MV.why, extra = '';
     switch (m.kind) {
@@ -261,7 +261,7 @@
       case 'libDss': p = { p: pct(settings.dssBonus), planet: P(m.planet), from: m.from ? fill(t('mvDssFrom'), { from: P(m.from) }) : '' }; break;
       case 'libRegion': p = { planet: P(m.planet), region: esc(m.region || '?'), hp: big(m.hp), regen: big(m.regen), order: m.order.map(esc).join(' → '),
         spread: m.spread ? fill(t('mvSpread'), { n: m.spread }) : '' }; break;
-      case 'libHod': p = { planet: P(m.planet), be: sharePct(m.breakEven) }; break;
+      case 'libHod': p = { planet: P(m.planet), be: shareOf(m.breakEven) }; break;
       case 'defSend': p = { planet: P(m.planet), when: clock(m.hours), players: people(m.players), nowPlayers: fmt(m.nowPlayers) }; break;
       case 'defWait': p = { left: fmt(m.left) }; break;
       case 'libNFocus': {
@@ -284,7 +284,7 @@
       case 'cntWeapon': p = { item: esc(itemName(m.task.task.itemId) || '') }; break;
       case 'cntStart': p = { task: taskText(m.task), needed: big(m.needed) }; break;
     }
-    const subj = m.task && m.task.task ? `${facName(m.task.task.faction)} ${t('what')[m.task.task.type] || t('what')[0]}`.trim() : null;
+    const subj = m.task && m.task.task ? facWhat(m.task.task.faction, m.task.task.type) : null;
     let fx = effectText(m.effect, subj);
     if (m.kind === 'cntMove' && m.short) { const g = effectText({ kind: 'gap', more: m.short, weaponUse: m.shortWeaponUse }); if (g) fx = fx ? fx + '. ' + g : g; }
     const nums = MV.nums != null ? MV.nums : (R(m.kind) || [])[2] || '';
@@ -310,7 +310,7 @@
     const { res } = entry, { worst } = storyFacts(entry), lib = res.liberation;
     const tiles = [];
     if (worst) {
-      const { r, f } = worst, noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
+      const { r, f } = worst, noun = facWhat(r.task.faction, r.task.type);
       if (f.fromStart && !compact) tiles.push(tile(t('pm.tStart'), big(f.fromStart) + '<small>/h</small>', esc(fill(t('pm.tStartS'), { what: noun }))));
       const day = r.primary && r.primary.kind === 'day';
       tiles.push(tile(t(day ? 'pm.tDay' : 'pm.tAvg'), big(f.avg) + '<small>/h</small>', f.fromStart ? esc(fill(t('pm.tAvgS'), { p: pct(f.avg / f.fromStart) })) : ''));
@@ -334,7 +334,7 @@
     for (const x of alerts.filter(al => al.kind === 'edited' && al.order === String(a.id))) items.push({ t: x.t, html: alertText(x, false) });
     if (worst && worst.f.ponr && !fromDayOne) items.push({ t: worst.f.ponr, cls: 'bad', html: fill(t('pm.sPonr'), { best: big(worst.f.best) }) });
     const lib = res.liberation;
-    if (!worst && lib && isFinite(lib.currentShare)) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNowLib'), { need: sharePct(lib.seqNeed), rec: pct(settings.recordShare) }) });
+    if (!worst && lib && isFinite(lib.currentShare)) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNowLib'), { need: shareOf(lib.seqNeed), rec: pct(settings.recordShare) }) });
     for (const r of res.tasks.filter(x => x.verdict === 'done')) items.push({ t: last.now - 1, cls: 'ok', html: fill(t('pm.sDone'), { task: taskText(r) }) });
     if (worst) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNow'), { p: projPct(worst.r.projection / worst.r.task.goal) }) });
     if (!items.length) return '';

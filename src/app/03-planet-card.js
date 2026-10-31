@@ -18,28 +18,12 @@
     fire_tornadoes: '<path d="M4 4h16M6 8h12M8 12h8M10 16h5M11 20h2"/>',
   };
   const hzIcon = (k) => `<svg class="hz-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 22 6.5v11L12 23 2 17.5v-11Z" class="hex"/><g transform="translate(6 6) scale(.5)">${HZ_ICON[k] || '<circle cx="12" cy="12" r="3"/>'}</g></svg>`;
-  const HZ_TIP = {
-    extreme_cold: ['A good planet for laser weapons: weapons that build heat cool about a third faster here. Rate of fire is about 10% lower.', 'wiki'],
-    intense_heat: ['Maximum stamina is halved and weapons that build heat cool about a third slower: favour weapons that don\'t overheat, and a Stamina Enhancement booster.', 'wiki'],
-    acid_storms: ['During a storm armor counts for less on both sides: enemies go down faster, and so do you. Keep stims ready.', 'game'],
-    ion_storms: ['Stratagems cut out from time to time: call down support weapons and backpacks early, and don\'t count on a strike at the critical moment.', 'game'],
-    sandstorms: ['Visibility drops a lot and movement slows: close-range weapons and a tight squad beat long-range picks.', 'game'],
-    blizzards: ['Visibility and movement drop: fight closer, and keep the squad together.', 'game'],
-    thick_fog: ['Visibility drops a little: enemies show up closer than usual.', 'game'],
-    rainstorms: ['Visibility drops; nothing else changes.', 'game'],
-    tremors: ['Quakes stun everyone, enemies too: use them to break contact rather than to aim.', 'game'],
-    meteor_storms: ['Meteor strikes deal massive damage: don\'t hold still in the open.', 'game'],
-    volcanic_activity: ['Burning rocks rain down: armor with fire resistance (the Inflammable passive) cuts the damage.', 'game'],
-    fire_tornadoes: ['Fire tornadoes sweep the map: give them room; armor with fire resistance (the Inflammable passive) cuts the damage.', 'game'],
-  };
-  const FAC_TIP = {
-    Terminids: 'Swarms plus big armored bugs: bring crowd control (fire, gas, explosives) and at least one anti-tank weapon in the squad.',
-    Automaton: 'Armored walkers, tanks and gunships: a primary that pierces medium armor plus an anti-tank support weapon, and fight from cover.',
-    Illuminate: 'Shielded Overseers and Harvesters behind hordes of Voteless: sustained fire to break shields, crowd control for the hordes.',
-  };
-  const DIV_TIP = [[/jet brigade/i, 'Jetpack troopers: hitting the jetpack brings them down.'], [/predator/i, 'Fast ambush hunters: stay together and favour close-range firepower.'],
-    [/rupture/i, 'They burst out of the ground: keep moving.'], [/spore burst/i, 'They burst into spores when they die: kill them at a distance.'],
-    [/incinerat/i, 'Flame troops: armor with fire resistance (the Inflammable passive) helps.'], [/dragonroach/i, 'They fly: bring a weapon that can hit targets in the air.']];
+  // tips: texts in the dictionary (tips.hz / tips.fac / tips.div), sources here
+  const HZ_SRC = { extreme_cold: 'wiki', intense_heat: 'wiki' };
+  const hzTip = (k) => tHas('tips.hz.' + k);
+  const FAC_TIP = (f) => tHas('tips.fac.' + f);
+  const DIV_RE = [['jet', /jet brigade/i], ['predator', /predator/i], ['rupture', /rupture/i], ['spore', /spore burst/i], ['incin', /incinerat/i], ['dragon', /dragonroach/i]];
+  const divTip = (n) => { const d = DIV_RE.find(([, re]) => re.test(n)); return d ? t('tips.div.' + d[0]) : null; };
   const fxName = (id) => { const f = G.fx[String(id)]; return f && f.n ? f.n.replace(/\s*\((enemies)\)\s*$/i, '').trim() : null; };
   function planetCardHTML(p, entry, frontPlanets) {
     if (!p) return '';
@@ -70,11 +54,11 @@
       <span class="label pc-sec">${esc(t('pc.where'))}</span>
       <ul class="pc-list">
         ${p.biome ? row(hzIcon(null), esc(p.biome.name), esc((p.biome.description || (G.bio[bioKey] || {}).d || '').split(/(?<=\.)\s/)[0]), '', '') : ''}
-        ${hz.length ? hz.map(x => row(hzIcon(x.k), esc(x.name), esc(x.d || ''), (HZ_TIP[x.k] || [])[0], (HZ_TIP[x.k] || [])[1])).join('') : `<li class="muted"><span class="pc-ic"></span><div><p>${esc(t('pc.noHz'))}</p></div></li>`}
+        ${hz.length ? hz.map(x => row(hzIcon(x.k), esc(x.name), esc(x.d || ''), hzTip(x.k), hzTip(x.k) ? HZ_SRC[x.k] || 'game' : '')).join('') : `<li class="muted"><span class="pc-ic"></span><div><p>${esc(t('pc.noHz'))}</p></div></li>`}
       </ul>
-      ${fac && FAC_TIP[fac] ? `<span class="label pc-sec">${esc(t('pc.enemy'))}</span><ul class="pc-list">
-        ${row(`<span class="pc-fdot"></span>`, esc(plain(facPlural(fac))), '', FAC_TIP[fac], '')}
-        ${divs.map(e => { const n = fxName(e.id) || effectLabel(e.type, e.v); const tip = (DIV_TIP.find(([re]) => re.test(n)) || [])[1]; return row(ICON.fx, esc(n), esc((G.fx[String(e.id)] || {}).d || ''), tip || '', ''); }).join('')}
+      ${fac && FAC_TIP(fac) ? `<span class="label pc-sec">${esc(t('pc.enemy'))}</span><ul class="pc-list">
+        ${row(`<span class="pc-fdot"></span>`, esc(plain(facPlural(fac))), '', FAC_TIP(fac), '')}
+        ${divs.map(e => { const n = fxName(e.id) || effectLabel(e.type, e.v); const tip = divTip(n); return row(ICON.fx, esc(n), esc((G.fx[String(e.id)] || {}).d || ''), tip || '', ''); }).join('')}
       </ul>` : ''}
       ${weapons.length || permits.length ? `<span class="label pc-sec">${esc(t('pc.order'))}</span><ul class="pc-list">
         ${weapons.map(w => row(ICON.target, esc(w), esc(t('pc.reqS')), '', '')).join('')}
@@ -116,7 +100,7 @@
       ${p.meter}
       <div class="dir-actions">
         <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
-        <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}">${ICON.image}<span>${t('sh.btn')}</span></button>
+        <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>
         <button type="button" class="btn ghostly" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
       </div>
     </section></div>`;
@@ -130,9 +114,9 @@
     const cx = ENGINE.crossOrders(last.results.map(({ a, res }) => ({ id: String(a.id), title: plain(clean(txt(a.title) || 'Major Order')), medals: medalsOf(a), res })), settings.recordShare);
     if (!cx) { box.innerHTML = ''; return; }
     const pick = cx.orders.find(o => o.id === cx.pick);
-    const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: sharePct(cx.total) })
-      : cx.verdict === 'pick' ? fill(t('xPick'), { total: sharePct(cx.total), title: esc(pick.title), need: sharePct(pick.need) })
-      : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: sharePct(cx.total) });
+    const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: shareOf(cx.total) })
+      : cx.verdict === 'pick' ? fill(t('xPick'), { total: shareOf(cx.total), title: esc(pick.title), need: shareOf(pick.need) })
+      : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: shareOf(cx.total) });
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
     const chips = cx.orders.map(o => `<button type="button" class="xchip ${o.id === cx.pick ? 'pick' : ''}" data-otab="${esc(o.id)}">
       <span>${esc(o.title)}</span><b>${o.unknown ? '?' : sharePct(o.need)}</b></button>`).join('');
@@ -159,7 +143,7 @@
     for (const r of res.anyOf ? [res.tasks[res.pick]] : res.tasks) {
       if (r.verdict === 'done') continue;
       if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
-        const noun = `${facName(r.task.faction)} ${t('what')[r.task.type] || t('what')[0]}`.trim();
+        const noun = facWhat(r.task.faction, r.task.type);
         const rec0 = r.rates.recent ? r.rates.recent.rate : null;
         // the last hour is worth showing only when it differs from the main pace
         const rec = rec0 != null && r.primary.rate > 0 && Math.abs(rec0 / r.primary.rate - 1) > 0.1 ? rec0 : null;
@@ -167,13 +151,13 @@
           fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
       } else if (r.defense && !r.defense.outlastsMO) {
         meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,
-          fill(t('why.players'), { have: pct(r.defense.share), need: sharePct(r.defense.need) }), null, `${res.id}:${r.idx}`, true);
+          fill(t('why.players'), { have: pct(r.defense.share), need: shareOf(r.defense.need) }), null, `${res.id}:${r.idx}`, true);
       }
     }
     const lib = res.liberation;
     if (lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
       meter(esc(t(lib.count > 1 ? 'why.libN' : 'why.lib1')), lib.currentShare, isFinite(lib.seqNeed) ? lib.seqNeed : 5,
-        fill(t('why.players'), { have: pct(lib.currentShare), need: sharePct(lib.seqNeed) }), null, `${res.id}:lib`, true);
+        fill(t('why.players'), { have: pct(lib.currentShare), need: shareOf(lib.seqNeed) }), null, `${res.id}:lib`, true);
     if (!meters.length) return '';
     meters.sort((x, y) => x.sev - y.sev);
     const doneN = res.tasks.filter(r => r.verdict === 'done').length;

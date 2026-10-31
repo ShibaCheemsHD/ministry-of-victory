@@ -6,16 +6,22 @@ import os, re, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
-BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{4,}%|\b1 (times|planets|missions|attacks|objectives|operations|extractions)\b|about 0 needed|\b0 Helldivers needed|#\d{6,}')
+BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{1,3}(\.\d{3})+%|\b\d{4,}%|\b1 (times|planets|missions|attacks|objectives|operations|extractions)\b|\b1 (volte|pianeti|missioni|attacchi|obiettivi|operazioni|estrazioni|eventi)\b|about 0 needed|\b0 Helldivers needed|#\d{6,}')
 SCENARIOS = ['default', 'done', 'steady', 'impossible', 'none', 'fail', 'apidown', 'libn', 'measure', 'win', 'last', 'ended', 'edited',
              'regions', 'sector', 'intel', 'sniper', 'sniperlost', 'anyof', 'newmo'] + [f'type&t={t}' for t in (1, 2, 4, 5, 6, 7, 9, 10, 15, 16)]
 FUZZ = int(sys.argv[1]) if len(sys.argv) > 1 else 25
 problems = []
 
+# in Italian, interface phrases that only exist in English mean a text skipped the dictionary
+# (game texts - titles, briefings, news, names - stay in English on purpose, so only UI phrases are listed)
+EN_UI = re.compile(r'\b(On track|on track|falls by|Needs a push|See the plan|Time left|What to do now|Show the numbers|Helldivers on|of everyone online|Command log|Refreshing|Share image|Copy for Discord)\b')
 def check(pg, label, errs):
     text = pg.evaluate('document.body.innerText')
     for m in BAD.finditer(text):
         s = max(0, m.start() - 60); problems.append(f'{label}: "…{text[s:m.end() + 40]}…"'.replace('\n', ' '))
+    if 'lang=it' in label:
+        for m in EN_UI.finditer(text):
+            s = max(0, m.start() - 60); problems.append(f'{label}: English in the Italian page "…{text[s:m.end() + 40]}…"'.replace('\n', ' '))
 
 def run(br, query, width):
     pg = br.new_page(viewport={'width': width, 'height': 900}); errs = []
@@ -48,8 +54,18 @@ with sync_playwright() as p:
     br = p.chromium.launch()
     for s in SCENARIOS: run(br, s, 1366)
     for s in ('default', 'none', 'sniper'): run(br, s, 390)
-    for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
+    # the Italian page: every scenario, a phone, and a third of the random ones
+    for s in SCENARIOS: run(br, s + '&lang=it', 1366)
+    for s in ('default', 'none', 'sniper'): run(br, s + '&lang=it', 390)
+    for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}' + ('&lang=it' if seed % 3 == 0 else ''), 1366 if seed % 2 else 390)
+    # the language switch in Settings: saved, and the page comes back in the other language
+    pg = br.new_page(); pg.goto(f'{PAGE}?s=default'); pg.wait_for_timeout(1500)
+    pg.click('#open-settings'); pg.select_option('#s-lang', 'it'); pg.wait_for_timeout(2000)
+    if pg.evaluate('document.documentElement.lang') != 'it' or 'Impostazioni' not in pg.evaluate('document.body.innerText'): problems.append('language switch: the page did not come back in Italian')
+    pg.click('#open-settings'); pg.select_option('#s-lang', 'en'); pg.wait_for_timeout(2000)
+    if pg.evaluate('document.documentElement.lang') != 'en': problems.append('language switch: could not switch back to English')
+    pg.close()
     br.close()
 for x in problems[:60]: print('PROBLEM', x)
-print(f'{len(SCENARIOS) + 3 + FUZZ} pages, {len(problems)} problems')
+print(f'{2 * (len(SCENARIOS) + 3) + FUZZ} pages, {len(problems)} problems')
 sys.exit(1 if problems else 0)

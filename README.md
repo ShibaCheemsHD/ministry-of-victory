@@ -23,11 +23,12 @@ Estimates are based on observed galactic war behavior, measured on the community
 
 ## Working on it
 
-- `src/`: the forecast engine (`engine.js`), the texts (`i18n.js`), `style.css`, `body.html`, the mock API used by the tests (`mock.js`), and the page's code in `src/app/`, one file per part of the page, joined in order into one script by the build:
+- `src/`: the forecast engine (`engine.js`), the texts (`i18n.js` in English, `i18n.it.js` in Italian, with the same keys), `style.css`, `body.html`, the mock API used by the tests (`mock.js`), and the page's code in `src/app/`, one file per part of the page, joined in order into one script by the build:
   `00-core` (settings, API, state) · `01-intel` (Joel's moves, news) · `02-directive` (the order of the day) · `03-planet-card` (planet card, several orders, side rail) · `04-between-orders` · `05-war-map` · `06-objectives-strategy` · `07-history-data` (charts) · `08-view-archive` · `09-motion-interaction` · `10-share-image` · `11-boot`.
 - `recorder/`: the GitHub Action that records the war every 10 minutes and writes the `data` branch.
 - `python3 tools/build.py` builds `index.html` (minified) and `recorder/engine.cjs` from `src/`, plus `build/test.html` (readable, mock API).
-- Tests: `node --test tests/*.test.mjs` (engine maths, reading of the game's texts on real headlines, the recorder on a real snapshot) and `python3 tests/page_test.py` (every scenario and random data in a real browser). They run on every push (`.github/workflows/test.yml`); a bug that reached the site gets a regression test.
+- Tests: `node --test tests/*.test.mjs` (engine maths, reading of the game's texts on real headlines, the recorder on a real snapshot) and `python3 tests/page_test.py` (every scenario and random data in a real browser). `tests/i18n.test.mjs` checks the two languages have the same texts, placeholders and markup; `python3 tests/a11y_test.py` runs axe-core on every view and checks the dialogs by keyboard (needs `npm i --no-save axe-core@4.10.2`). They run on every push (`.github/workflows/test.yml`); a bug that reached the site gets a regression test.
+- Languages: English and Italian, from the browser's language or Settings (`?lang=it` in the address forces one). The game's own texts (order titles, briefings, news, names) stay in English as the API gives them: the engine reads them.
 
 ## Disclaimer
 

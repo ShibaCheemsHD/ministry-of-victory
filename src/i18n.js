@@ -1,16 +1,38 @@
-/* Ministry of Victory - interface texts (English only) */
+/* Ministry of Victory - interface texts, English (the reference; src/i18n.it.js has the Italian) */
 const TEXT = {
   tagline: 'Major Order tactical terminal',
   boot: ['> CONNECTING TO THE GALACTIC WAR NETWORK', '> READING ACTIVE ORDERS', '> ANALYZING REGEN AND DEPLOYED FORCES', '> COMPUTING STRATEGY'],
   bootOk: 'OK', bootReady: '> READY. FOR SUPER EARTH.', bootFail: '> UNSTABLE UPLINK', bootWait: '> THE API IS SLOW: STILL LOADING IN THE BACKGROUND', skip: 'Skip',
   players: 'Helldivers online', dss: 'DSS', hod: 'Heavy Ordnance', none: 'none', active: 'active until', inactive: 'not active',
   refresh: 'Refresh now', updatedAt: 'Updated at {t}', nextIn: 'next refresh in {s}s', loading: 'Refreshing…',
-  info: 'How it works', settings: 'Settings', offline: 'No signal',
+  info: 'How it works', settings: 'Settings', offline: 'No signal', sLang: 'Language', facWhat: '{f} {what}', ordersAria: 'Major Orders', and: 'and',
+  u: { k: 'k', M: 'M', B: 'B', d: 'd', h: 'h', min: 'min' },
+  tips: {
+    hz: {
+      extreme_cold: 'A good planet for laser weapons: weapons that build heat cool about a third faster here. Rate of fire is about 10% lower.',
+      intense_heat: 'Maximum stamina is halved and weapons that build heat cool about a third slower: favour weapons that don\'t overheat, and a Stamina Enhancement booster.',
+      acid_storms: 'During a storm armor counts for less on both sides: enemies go down faster, and so do you. Keep stims ready.',
+      ion_storms: 'Stratagems cut out from time to time: call down support weapons and backpacks early, and don\'t count on a strike at the critical moment.',
+      sandstorms: 'Visibility drops a lot and movement slows: close-range weapons and a tight squad beat long-range picks.',
+      blizzards: 'Visibility and movement drop: fight closer, and keep the squad together.',
+      thick_fog: 'Visibility drops a little: enemies show up closer than usual.',
+      rainstorms: 'Visibility drops; nothing else changes.',
+      tremors: 'Quakes stun everyone, enemies too: use them to break contact rather than to aim.',
+      meteor_storms: 'Meteor strikes deal massive damage: don\'t hold still in the open.',
+      volcanic_activity: 'Burning rocks rain down: armor with fire resistance (the Inflammable passive) cuts the damage.',
+      fire_tornadoes: 'Fire tornadoes sweep the map: give them room; armor with fire resistance (the Inflammable passive) cuts the damage.' },
+    fac: {
+      Terminids: 'Swarms plus big armored bugs: bring crowd control (fire, gas, explosives) and at least one anti-tank weapon in the squad.',
+      Automaton: 'Armored walkers, tanks and gunships: a primary that pierces medium armor plus an anti-tank support weapon, and fight from cover.',
+      Illuminate: 'Shielded Overseers and Harvesters behind hordes of Voteless: sustained fire to break shields, crowd control for the hordes.' },
+    div: { jet: 'Jetpack troopers: hitting the jetpack brings them down.', predator: 'Fast ambush hunters: stay together and favour close-range firepower.',
+      rupture: 'They burst out of the ground: keep moving.', spore: 'They burst into spores when they die: kill them at a distance.',
+      incin: 'Flame troops: armor with fire resistance (the Inflammable passive) helps.', dragon: 'They fly: bring a weapon that can hit targets in the air.' } },
   xLabel: 'All active orders',
-  xAll: 'Every active order can be won together: they need about {total} of everyone online.',
-  xPick: 'There aren\'t enough players for every order at once: together they\'d need {total} of everyone online. Best bet: {title}, which needs {need}.',
-  xNone: 'No active order looks winnable with today\'s players: together they\'d need {total} of everyone online.',
-  xNoneU: 'The orders that can be measured don\'t look winnable with today\'s players: together they\'d need {total} of everyone online.',
+  xAll: 'Every active order can be won together: they need about {total}.',
+  xPick: 'There aren\'t enough players for every order at once: together they\'d need {total}. Best bet: {title}, which needs {need}.',
+  xNone: 'No active order looks winnable with today\'s players: together they\'d need {total}.',
+  xNoneU: 'The orders that can be measured don\'t look winnable with today\'s players: together they\'d need {total}.',
   xUnknown: 'Orders marked ? are still having their pace measured.',
   inSector: 'in the {s} sector', inASector: 'in one sector',
   newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'New advice: {x}',
@@ -70,7 +92,7 @@ const TEXT = {
     sStart: 'The order begins. To finish on time it needed about <b>{need}</b> {what} an hour from the very first hour.',
     sStartOut: 'The order begins. It needed about <b>{need}</b> {what} an hour from the first hour, more than even our best recorded hour (<b>{best}/h</b>): it was out of reach from the start.',
     sStartAny: 'The order begins: {n} objectives in {d}.', sStartAny1: 'The order begins: 1 objective in {d}.',
-    sNowLib: 'Taking the planets in time needs <b>{need}</b> of all players at once. The most ever seen on one order is <b>{rec}</b>.',
+    sNowLib: 'Taking the planets in time needs <b>{need}</b>, all at once. The most ever seen on one order is <b>{rec}</b>.',
     sPonr: 'Past our best hour: from here on, the pace still needed was more than our best recorded hour (<b>{best}/h</b>). The order slipped out of reach.',
     sDone: '{task}: done.', so: 'So far', sNow: 'At our pace we end at about <b>{p}</b> of the hardest objective.',
     chart: 'See it on the chart', stillTitle: 'What still counts',
@@ -87,11 +109,11 @@ const TEXT = {
     k1: { edited: 'objectives edited once', effect: '1 effect switched on', jump: '1 hand-made jump', setback: '1 setback', regen: '1 resistance change', attack: '1 new attack' },
     kN: { edited: 'objectives edited {n} times', effect: '{n} effects switched on', jump: '{n} hand-made jumps', setback: '{n} setbacks', regen: '{n} resistance changes', attack: '{n} new attacks' },
     fronts: 'The war right now', divers: 'Helldivers', planets1: '1 planet contested', planetsN: '{n} planets contested', defs1: '1 defense running', defsN: '{n} defenses running' },
-  sh: { btn: 'Share image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', obj: 'Objectives',
+  sh: { btn: 'Share image', short: 'Image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', obj: 'Objectives',
     more: '+{n} more objectives on the site', foot: 'Live forecast · updated every 10 min', making: 'Drawing the briefing…', fail: 'Couldn\'t draw the image in this browser.',
     alt: 'Major Order briefing image', note: 'Everything that matters in one picture, made for Reddit and Discord. Times are in UTC.',
     dl: 'Download PNG', copy: 'Copy image', share: 'Share…', copied: 'Image copied: paste it into your post.' },
-  shareX: '{x}× everyone online', shareInf: 'more than everyone online',
+  shareOf: '{p} of everyone online', shareX: '{x}× everyone online', shareInf: 'more than everyone online',
   acc: { kicker: 'Track record', title: 'How right are our forecasts?', sub: 'The same forecasts the site makes live, replayed on the war\'s own records and checked against what happened.',
     libT: 'When will a planet fall?', hzH: 'How long before', hz: '{h} h before', model: 'From players there', pace: 'From recent pace', miss: 'typical miss {h} h',
     libN: 'Share of forecasts within 25% of the real time, on {n} planets liberated in 2026. Most big misses are planets that fell sooner than forecast: players pile on once a planet is close.',
@@ -233,7 +255,7 @@ const TEXT = {
     libDecay: { head: 'Don\'t abandon {planet}', nums: 'Regen {regen} HP per hour.', why: 'It\'s {done} liberated: if everyone leaves, that progress slides back.' },
     libDss: { head: 'Vote the DSS onto {planet}', nums: '+{p} liberation on the DSS planet (your setting).', why: 'The DSS makes every mission on its planet count for more.{from}' },
     libRegion: { head: 'On {planet}, take {region} first', nums: '{region}: {hp} HP left, regen {regen} HP per hour. Best order: {order}.', why: 'Regions fall one at a time: players split over several regions just let each one heal.{spread}' },
-    libHod: { head: 'Save Heavy Ordnance for {planet}', nums: 'Just matching its regen takes {be} of everyone online.', why: 'Its regen is the hardest to beat, so the boost matters most there.' },
+    libHod: { head: 'Save Heavy Ordnance for {planet}', nums: 'Just matching its regen takes {be}.', why: 'Its regen is the hardest to beat, so the boost matters most there.' },
     defSend: { head: 'Defend {planet}', nums: 'About {players} in total, right now there are {nowPlayers}.', why: 'If {planet} falls, the Major Order is lost.' },
     defWait: { head: 'Stand by to defend', nums: '', why: 'We still need {left} successful defenses: when an attack starts, go there.' },
     libNFocus: { head: 'Everyone on {planet}', nums: 'About {players} in total ({share} of everyone online). Right now there are {nowPlayers}.', why: 'It\'s the quickest of the planets that count: {left} more needed.{then}' },
@@ -282,8 +304,8 @@ const TEXT = {
   facPl: { Terminids: 'Terminids', Automaton: 'Automatons', Illuminate: 'Illuminate', Humans: 'Super Earth' },
   r: {
     allDone: ['Order complete', 'Nothing else to do.', ''],
-    libImpossible: ['This order can\'t be won', 'Not even with every player online at once. Better to take the planets that can be taken.', 'It would take {need} of everyone online.'],
-    libImpossibleNone: ['This order can\'t be won', 'Not even every player online can take a single planet in time.', 'It would take {need} of everyone online.'],
+    libImpossible: ['This order can\'t be won', 'Not even with every player online at once. Better to take the planets that can be taken.', 'It would take {need}.'],
+    libImpossibleNone: ['This order can\'t be won', 'Not even every player online can take a single planet in time.', 'It would take {need}.'],
     libNFocus: ['Everyone on {planet}', 'It\'s the quickest to take among the planets that count. We still need {left} planets liberated.{then}', 'About {players} players needed ({share} of everyone online). Right now there are {nowPlayers}.'],
     libNThen: ' Next: {list}.',
     libNOk: ['{task}: on track', 'At the current pace enough planets fall on their own.', ''],
@@ -300,7 +322,7 @@ const TEXT = {
     libRegionSpread: ' Right now players are split over {n} regions: pick one and finish it.',
     libDss: ['Vote the DSS onto {planet}', 'It makes everyone fighting on that planet hit harder.{from}', '+{p} liberation on the DSS planet (your setting).'],
     libDssFrom: ' It\'s on {from} right now.',
-    libHod: ['Save Heavy Ordnance for {planet}', 'It\'s the toughest planet, so the help matters most there.', 'Just matching its regen takes {be} of everyone online.'],
+    libHod: ['Save Heavy Ordnance for {planet}', 'It\'s the toughest planet, so the help matters most there.', 'Just matching its regen takes {be}.'],
     defSend: ['Defend {planet}', 'Reinforcements needed before {when}.', 'About {players} players needed, right now there are {nowPlayers}.'],
     defSkip: ['No need to defend {planet}', 'The attack ends after the deadline: for this order it still counts as ours.', ''],
     cntMove: ['More players on the {to} front', '{why}', 'Suggested move: about {players} players.'],
@@ -359,5 +381,6 @@ const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>r
 <dt>New orders</dt><dd>The page checks the API every minute. When Super Earth issues a new Major Order, or changes the current one, everything on the page is worked out again from the new objectives.</dd>
 <dt>Copy for Discord</dt><dd>Copies the order of the day as text ready to paste on Discord, Reddit or in chat.</dd>
 <dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> to <kbd>4</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
+<dt>Language</dt><dd>English or Italian, from Settings. The game's own texts (order titles, briefings, news, names of planets, enemies and weapons) stay in English, as the API gives them.</dd>
 </dl>
 <p>Limits: the effect of the DSS and Heavy Ordnance isn't public. Measured on the war log since 2025, the DSS alone adds nothing visible, and Heavy Ordnance makes its planet count about 1.8 times while every other planet drops to about 0.7 (the war's total damage barely moves). the region capture bonus and how planet regen works against it are estimated, weapon-only kill counts can't be turned into a number of players, and the Game Master can change regen at any time.</p>`;

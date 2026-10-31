@@ -59,7 +59,7 @@
     return won.filter(n => Math.abs(n.t - x.t) < 3 * 3.6e6).sort((a, b) => Math.abs(a.t - x.t) - Math.abs(b.t - x.t))[0] || null;
   }
   function joelItem(x, tasks, rel, ctx = {}) {
-    const noun = (i) => { const tk = tasks && tasks[i - 1]; if (!tk) return '#' + i; const p = tk.raw ? tk : ENGINE.parseTask(tk, 0); const w = `${p.faction ? plain(facName(p.faction)) + ' ' : ''}${t('what')[p.type] || t('what')[0]}`; return w.charAt(0).toUpperCase() + w.slice(1); };
+    const noun = (i) => { const tk = tasks && tasks[i - 1]; if (!tk) return '#' + i; const p = tk.raw ? tk : ENGINE.parseTask(tk, 0); const w = plain(facWhat(p.faction, p.type)); return w.charAt(0).toUpperCase() + w.slice(1); };
     if (x.kind === 'edited') {
       const g = (x.diff || []).filter(d => d.kind === 'goal');
       const title = g.length && g.every(d => d.to < d.from) ? t('jo.cut') : g.length && g.every(d => d.to > d.from) ? t('jo.raised') : t('jo.edited');
@@ -108,7 +108,7 @@
   // Intel feed: one short line per event, grouped by day like a war log. The order's own start and
   // end come from the game data; a dispatch can be opened to read it in full, never cut off.
   function feedRow(r) {
-    const tm = new Date(r.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const tm = new Date(r.t).toLocaleTimeString(LANG === 'en' ? 'en-GB' : LOCALE, { hour: '2-digit', minute: '2-digit' });
     const head = `<span class="fd-time">${esc(tm)}</span><span class="fd-ico">${ICON[NEWS_ICON[r.k]]}</span><span class="fd-txt"><b>${r.title}</b>${r.sub ? `<span class="fd-sub">${r.sub}</span>` : ''}</span>`;
     return r.body
       ? `<li class="nk-${r.k}"><details class="fd-more"><summary>${head}${ICON.chev}</summary><p>${clean(r.body)}</p></details></li>`

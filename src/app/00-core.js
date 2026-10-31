@@ -17,18 +17,31 @@
     set(k, v) { try { localStorage.setItem('mocheck.' + k, JSON.stringify(v)); } catch {} },
   };
 
-  /* ---------- texts + formatting (English only) ---------- */
+  /* ---------- texts + formatting (English, Italian) ---------- */
+  // ?lang= in the address, then the choice saved in Settings, then the browser's language
+  const LANGS = { en: TEXT, it: TEXT_IT };
+  const LANG = (() => {
+    const q = new URLSearchParams(location.search).get('lang'); if (LANGS[q]) return q;
+    const s = store.get('lang', null); if (LANGS[s]) return s;
+    return /^it(-|$)/i.test((navigator.language || '').trim()) ? 'it' : 'en';
+  })();
+  const DICT = LANGS[LANG];
+  const look = (o, k) => k.split('.').reduce((o2, p) => o2?.[p], o);
   const t = (k) => {
-    const v = k.split('.').reduce((o, p) => o?.[p], TEXT);
-    // the test page lists every text the code asks for and the dictionary doesn't have
+    let v = look(DICT, k);
+    // a text the translation lacks falls back to English; the test page lists both kinds of gap
+    if (v == null && DICT !== TEXT) { v = look(TEXT, k); if (window.__mockLog) (window.__missingT ||= new Set()).add(LANG + ':' + k); }
     if (v == null && window.__mockLog) (window.__missingT ||= new Set()).add(k);
     return v ?? k;
   };
-  // the browser's own English variant if it has one, otherwise en-GB (24-hour clock)
-  const LOCALE = (() => { const n = (navigator.language || '').trim(); return /^en(-|$)/i.test(n) ? n : 'en-GB'; })();
+  // an optional text: null when there is none (never logged as missing)
+  const tHas = (k) => look(DICT, k) ?? look(TEXT, k) ?? null;
+  // dates: Italian, or the browser's own English variant if it has one, otherwise en-GB (24-hour clock)
+  const LOCALE = LANG === 'it' ? 'it-IT' : (() => { const n = (navigator.language || '').trim(); return /^en(-|$)/i.test(n) ? n : 'en-GB'; })();
   const locale = () => LOCALE;
-  // numbers always in English format (36,000), whatever the browser's region
-  const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: min });
+  // numbers in the page's language (36,000 in English, 36.000 in Italian), whatever the browser's region
+  const NUM = LANG === 'it' ? 'it-IT' : 'en-US';
+  const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString(NUM, { maximumFractionDigits: d, minimumFractionDigits: min });
   const plainCap = (s) => String(s).replace(/<[^>]+>/g, '');
   const pct = (x, d = 0) => (x == null || !isFinite(x)) ? '—' : fmt(x * 100, d) + '%';
   // a projection of the goal: past three times it, the exact figure means nothing
@@ -36,36 +49,46 @@
   // shares in the plan texts: "83%", or "over 500%" when even 5x the playerbase isn't enough
   // a share of everyone online: past twice everyone, "x times everyone" says it better than 23,083%
   const sharePct = (x, d = 0) => (x == null || !isFinite(x)) ? t('shareInf') : x > 2 ? fill(t('shareX'), { x: fmt(x, x < 10 ? 1 : 0) }) : pct(x, d);
+  // the same inside a sentence, as a whole phrase: "45% of everyone online", "3× everyone online", "more than everyone online"
+  const shareOf = (x) => (x == null || !isFinite(x)) || x > 2 ? sharePct(x) : fill(t('shareOf'), { p: pct(x) });
   const big = (n) => {
     if (n == null || !isFinite(n)) return '—';
     const a = Math.abs(n);
-    if (a >= 1e9) return fmt(n / 1e9, 2, 0) + 'B';
-    if (a >= 1e6) return fmt(n / 1e6, 2, 0) + 'M';
-    if (a >= 1e4) return fmt(n / 1e3, 1, 0) + 'k';
+    if (a >= 1e9) return fmt(n / 1e9, 2, 0) + t('u.B');
+    if (a >= 1e6) return fmt(n / 1e6, 2, 0) + t('u.M');
+    if (a >= 1e4) return fmt(n / 1e3, 1, 0) + t('u.k');
     return fmt(n);
   };
   const people = (n) => n == null || !isFinite(n) ? '—' : fmt(Math.round(n / 100) * 100);
   const dur = (h) => {
     if (h == null || !isFinite(h)) return t('never');
-    if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min';
+    const U = t('u');
+    if (h < 1) return Math.max(1, Math.round(h * 60)) + ' ' + U.min;
     // round to whole hours first, so 4d 23.6h reads "5d", never "4d 24h"
     const H = Math.round(h), d = Math.floor(H / 24), hh = H - d * 24;
-    return d ? (hh ? `${d}d ${hh}h` : `${d}d`) : `${H}h`;
+    return d ? (hh ? `${d}${U.d} ${hh}${U.h}` : `${d}${U.d}`) : `${H}${U.h}`;
   };
   // time left, rounded down like the countdown (2d 18h 59m -> "2d 18h")
   const durDown = (h) => {
     if (h == null || !isFinite(h)) return '—';
-    if (h < 1) return Math.max(0, Math.floor(h * 60)) + ' min';
+    const U = t('u');
+    if (h < 1) return Math.max(0, Math.floor(h * 60)) + ' ' + U.min;
     const d = Math.floor(h / 24), hh = Math.floor(h - d * 24);
-    return d ? `${d}d ${hh}h` : `${hh}h`;
+    return d ? `${d}${U.d} ${hh}${U.h}` : `${hh}${U.h}`;
   };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clean = (s) => esc(String(s ?? '').replace(/<\/?i(=\d+)?>/g, ''));
   // API texts are requested in English; if an object with every language ever comes back, take English
   const txt = (m) => m && typeof m === 'object' ? (m['en-US'] || m['en-GB'] || m.en || Object.values(m)[0] || '') : (m || '');
-  const fill = (str, params) => String(str).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
-  const listJoin = (a) => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const ELIDE = { il: "l'", al: "all'", del: "dell'", dal: "dall'", nel: "nell'", sul: "sull'" };
+  const fill = (str, params) => {
+    const s = String(str).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
+    return LANG === 'it' ? s.replace(/\b(il|al|del|dal|nel|sul) (?=(<b>)?(8|11(?!\d)))/g, (_, a) => ELIDE[a]) : s;
+  };
+  const listJoin = (a) => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' ' + t('and') + ' ' + a[a.length - 1];
   const facName = (f) => esc(t('fac')[f] || f || '');
+  // "Terminid kills" / "uccisioni Terminid": the word order is the language's
+  const facWhat = (f, type) => fill(t('facWhat'), { f: f && f !== 'Humans' ? facName(f) : '', what: t('what')[type] || t('what')[0] }).replace(/\s+/g, ' ').trim();
   const facPlural = (f) => esc(t('facPl')[f] || t('fac')[f] || f || '');
   const planetName = (p) => p ? esc(txt(p.name) || ('#' + p.index)) : '—';
   const factionOfPlanet = (p) => p ? (p.event ? p.event.faction : p.currentOwner) : null;
@@ -73,7 +96,7 @@
   const clock = (hoursFromNow) => {
     const d = new Date((last ? last.now : Date.now()) + hoursFromNow * 3.6e6);
     // the share image is read all over the world: UTC there
-    if (clockUTC) return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
+    if (clockUTC) return d.toLocaleString(LANG === 'en' ? 'en-GB' : LOCALE, { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     return d.toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   };
 

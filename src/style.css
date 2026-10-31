@@ -1700,7 +1700,7 @@ a { text-underline-offset: 3px; }
 .sh-note { color: var(--muted); font-size: 14px; margin: 12px 0; }
 .sh-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .sh-actions .btn { text-decoration: none; }
-@media (max-width: 640px) { .dir-actions [data-shareimg] span { font-size: 0; } .dir-actions [data-shareimg] span::after { content: "Image"; font-size: 14px; } }
+@media (max-width: 640px) { .dir-actions [data-shareimg] span { font-size: 0; } .dir-actions [data-shareimg] span::after { content: attr(data-short); font-size: 14px; } }
 
 /* ===== ARCHIVE: TRACK RECORD ===== */
 .ar-acc { padding: 20px 22px; display: grid; gap: 12px; background: var(--row); }
