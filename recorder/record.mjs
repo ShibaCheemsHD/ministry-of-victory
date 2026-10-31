@@ -297,17 +297,28 @@ for (const a of assignments || []) {
   const ge = (status?.globalEvents || []).find(g => String(g.assignmentId32) === String(a.id) && g.title);
   const ph = ge && (hist.episode?.phases || []).find(x => x.title === ge.title);
   if (!ph) continue;
+  // only kill counts: "kill 300,000,000 Terminids", not "acquire 60,000,000 Automaton samples"
+  // (Interrogation Enhancement, 30 Oct 2026: a sample count was once read as a raised kill goal)
   const said = {};
-  for (const m of ph.intro.replace(/<[^>]+>/g, '').matchAll(/(\d[\d,.]*)\s*(?:million\s+)?(Terminids?|Automatons?|Illuminates?)/gi)) {
+  const text = ph.intro.replace(/<[^>]+>/g, '');
+  for (const m of text.matchAll(/(\d[\d,.]*)\s*(?:million\s+)?(Terminids?|Automatons?|Illuminates?)(?!\s+(?:samples?|data|intel|resources?))/gi)) {
+    const before = text.slice(Math.max(0, m.index - 80), m.index);
+    // the verb of this clause must be a kill, and no other order verb may stand between it and the number
+    const verbs = [...before.matchAll(/\b(kill|eliminat\w*|eradicat\w*|destroy|terminat\w*|neutrali[sz]\w*|decommission\w*|acquire|extract|collect|complete|liberate|hold|defend|deliver)\b/gi)];
+    const v = verbs.length ? verbs[verbs.length - 1][1].toLowerCase() : '';
+    if (!/^(kill|elimin|eradic|destroy|termin|neutral|decomm)/.test(v)) continue;
     const f = FAC[m[2].toLowerCase().replace(/s$/, '')];
     if (f && !(f in said)) said[f] = Number(m[1].replace(/[,.]/g, ''));
   }
   const diff = [];
   (a.tasks || []).forEach((tk, i) => {
     const pt = E.parseTask(tk, 0);
-    if (pt.type === 3 && pt.faction && said[pt.faction] && pt.goal && said[pt.faction] !== pt.goal) diff.push({ i: i + 1, kind: 'goal', from: said[pt.faction], to: pt.goal });
+    // a kill of one enemy type ("Radicals") isn't the faction-wide count the text gives
+    if (pt.type === 3 && pt.faction && !pt.enemyId && said[pt.faction] && pt.goal && said[pt.faction] !== pt.goal) diff.push({ i: i + 1, kind: 'goal', from: said[pt.faction], to: pt.goal });
   });
   const sig = JSON.stringify(diff);
+  // what the launch text says today wins: an earlier reading that no longer holds is dropped
+  hist.edits = hist.edits.filter(e => !(e.ref === 'briefing' && e.order === String(a.id) && e.sig !== sig));
   if (diff.length && !hist.edits.some(e => e.ref === 'briefing' && e.order === String(a.id) && e.sig === sig))
     hist.edits.push({ kind: 'edited', ref: 'briefing', order: String(a.id), t: now, start: hist.orders[String(a.id)]?.start || null, diff, sig });
 }
