@@ -15,6 +15,7 @@ const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
+import { liberationBacktest, countBacktest, liveAccuracy } from './accuracy.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -79,7 +80,7 @@ let hist = { v: 1, samples: [], orders: {}, edits: [], names: {} };
 try { hist = { ...hist, ...JSON.parse(fs.readFileSync(histPath, 'utf8')) }; } catch { /* first run */ }
 
 // the community API first; if it's down, the same data built from the game's own API
-let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null;
+let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null, commErr = null;
 try {
   war = await get('/api/v1/war', 3);
   assignments = await get('/api/v1/assignments', 3);
@@ -87,6 +88,7 @@ try {
   stations = await get('/api/v2/space-stations', 2).catch(() => []);
   raw = await get('/raw/api/v2/Assignment/War/801', 2).catch(() => []);
 } catch (e) {
+  commErr = String(e.message || e).slice(0, 300);
   console.log('::warning::community API unreachable, reading the official API instead: ' + String(e.message || e).slice(0, 400));
   const fetchJson = async (u) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(20000) }); return r.ok ? await r.json() : null; } catch { return null; } };
   if (!hist.static || Date.now() - hist.static.t > 24 * H) { const S = await loadStatic(fetchJson); if (S) hist.static = { t: Date.now(), ...S }; }
@@ -96,6 +98,13 @@ try {
   ({ war, assignments, campaigns } = o); raw = asg; all = o.planets; src = 'official';
 }
 const now = Date.now();
+
+// Health of every source, for the alarm (.github/workflows/health.yml) and the page: when each one last
+// answered, and the last error
+hist.health ||= { _since: now };
+const ok = (k) => { hist.health[k] = { ...(hist.health[k] || {}), ok: now }; };
+const bad = (k, msg) => { hist.health[k] = { ...(hist.health[k] || {}), err: now, msg: String(msg || '').slice(0, 300) }; };
+if (src === 'community') ok('community'); else { bad('community', commErr); ok('official'); }
 
 // Strategic Opportunity dispatches, kept for a week: a goal cut right after one was earned, not hand-made
 if (src === 'community') {
@@ -139,7 +148,9 @@ for (const [i, p] of Object.entries(planets)) {
   const ev = p.event;
   sample.pl[i] = [ev ? ev.health : p.health, p.statistics?.playerCount || 0, ev ? 0 : (p.regenPerSecond || 0), ev ? ev.maxHealth : p.maxHealth,
     ev ? (ev.id ?? 1) : 0, (p.regions || []).filter(r => r && r.isAvailable && (r.health || 0) > 0).length, p.currentOwner, ev ? (Date.parse(ev.endTime) || 0) : 0,
-    p.statistics?.missionsWon ?? null];
+    p.statistics?.missionsWon ?? null,
+    // regions (cities): [id, HP left, full HP, open?] so the capture bonus can be measured on our own data
+    (p.regions || []).length ? p.regions.map(r => [r.id ?? r.name, Math.round(r.health || 0), r.maxHealth || 0, r.isAvailable ? 1 : 0]) : null];
   hist.names[i] = txt(p.name) || hist.names[i];
   if (ev && ev.faction) (hist.factions ||= {})[i] = ev.faction;
 }
@@ -170,6 +181,53 @@ for (const i of Object.keys(hist.names)) if (!hist.samples.some(s => s.pl[i])) d
 const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, planets: Object.fromEntries(Object.entries(s.pl).map(([i, v]) => [i, { h: v[0], p: v[1] }])) });
 const cal = E.calibrateK(hist.samples.map(asPage), planets, now, 0, 1);
 const K = cal && cal.K > 0.005 && cal.K < 0.2 ? cal.K : 0.027;
+
+// Our own measurements of what the game doesn't publish, kept for good (the war log can't show them):
+//  - damage per Helldiver (in units of K) on the DSS planet, with and without Heavy Ordnance, and on the
+//    other planets while Heavy Ordnance runs: the engine's dssBonus / hodMult / hodOther
+//  - each region capture: how much planet health went with it, against the region's full HP (wiki: 1.5x)
+{
+  const M = hist.measure ||= { last: 0, kv: { base: [], dss: [], hodDss: [], hodOther: [] }, caps: [] };
+  const cap = (a, n = 3000) => { if (a.length > n) a.splice(0, a.length - n); };
+  const S = hist.samples;
+  for (let k = 1; k < S.length; k++) {
+    const a = S[k - 1], b = S[k];
+    if (b.t <= M.last) continue;
+    const dt = (b.t - a.t) / 1000;
+    if (dt <= 0 || dt > 35 * 60 || !a.imp || !a.N) continue;
+    for (const [i, v] of Object.entries(a.pl || {})) {
+      const w = b.pl?.[i]; if (!w) continue;
+      const [h0, p0, r0, m0, e0, g0, o0] = v, [h1, , , m1, e1, g1, o1] = w;
+      // a region taken between the two snapshots: open before, gone or closed after, same owner
+      if (v[9] && w[9] && !e0 && o0 === o1 && o0 !== 'Humans') {
+        for (const rg of v[9]) {
+          const after = w[9].find(x => x[0] === rg[0]);
+          if (rg[3] && rg[1] > 0 && rg[2] > 0 && (!after || !after[3] || after[1] <= 0) && rg[1] < 0.35 * rg[2])
+            M.caps.push({ t: b.t, i: Number(i), id: rg[0], max: rg[2], left: rg[1], drop: h0 - h1, regen: (r0 || 0) * dt, players: p0, imp: a.imp, dt });
+        }
+      }
+      // damage per Helldiver: planets being liberated, no event, no open region, not full, same owner
+      if (e0 || e1 || g0 || g1 || o0 !== o1 || o0 === 'Humans' || m0 !== m1 || h0 >= 0.995 * m0 || h1 <= 0 || p0 < 300) continue;
+      const gross = (h0 - h1) + (r0 || 0) * dt;
+      if (gross <= 0) continue;
+      const kv = gross / (p0 * a.imp * dt) / K;
+      if (!isFinite(kv) || kv > 20) continue;
+      const onDss = String(a.dss) === String(i);
+      M.kv[a.hod ? (onDss ? 'hodDss' : 'hodOther') : (onDss ? 'dss' : 'base')].push(+kv.toFixed(4));
+    }
+  }
+  M.last = S.length ? S[S.length - 1].t : M.last;
+  Object.values(M.kv).forEach(x => cap(x)); cap(M.caps, 500);
+  const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[x.length >> 1] : null; };
+  const base = med(M.kv.base);
+  hist.measured = {
+    dss: M.kv.dss.length >= 20 && base ? { n: M.kv.dss.length, x: +(med(M.kv.dss) / base).toFixed(3) } : { n: M.kv.dss.length },
+    hodDss: M.kv.hodDss.length >= 10 && base ? { n: M.kv.hodDss.length, x: +(med(M.kv.hodDss) / base).toFixed(3) } : { n: M.kv.hodDss.length },
+    hodOther: M.kv.hodOther.length >= 20 && base ? { n: M.kv.hodOther.length, x: +(med(M.kv.hodOther) / base).toFixed(3) } : { n: M.kv.hodOther.length },
+    // planet health lost with a capture, beyond what the players there would have dealt anyway, per full region HP
+    regionBonus: M.caps.length ? { n: M.caps.length, x: +med(M.caps.map(c => (c.drop + c.regen - (base ? base * K * c.players * c.imp * c.dt : 0)) / c.max)).toFixed(3) } : { n: 0 },
+  };
+}
 // The impact multiplier falls as more missions are played, so impact x players online stays nearly flat
 // through the day (930-1240 over 29-31 Oct 2026, while players online went from 27k to 77k). Its mean over
 // the last day is the war's strength for any forecast longer than a few hours; the value of the moment
@@ -211,6 +269,18 @@ const impN24 = (() => {
     }
     c.last = snap;
     c.prog = a.progress;
+    // the forecasts as they were made, once an hour, to be checked against what happened (accuracy)
+    const T = c.track ||= { lib: {}, cnt: {}, fell: {}, t: 0 };
+    for (const r of res.tasks) if (r.planet && r.planet.currentOwner === 'Humans' && r.task.type === 11 && T.lib[r.planet.index] && !T.fell[r.planet.index]) T.fell[r.planet.index] = now;
+    if (now - T.t >= H - 5 * 60e3) {
+      T.t = now;
+      for (const r of res.tasks) {
+        if (r.pw && r.task.type === 11 && isFinite(r.eta) && r.eta > 0) (T.lib[r.planet.index] ||= []).push([now, Math.round(now + r.eta * H)]);
+        if (r.counter && !r.simpleCount && r.projection != null && r.task.goal) (T.cnt[r.idx] ||= []).push([now, +(r.projection / r.task.goal).toFixed(4)]);
+      }
+      for (const k of Object.keys(T.lib)) if (T.lib[k].length > 240) T.lib[k].splice(0, T.lib[k].length - 240);
+      for (const k of Object.keys(T.cnt)) if (T.cnt[k].length > 240) T.cnt[k].splice(0, T.cnt[k].length - 240);
+    }
   }
   // an order that is gone: done if every objective reached its goal in the last progress seen
   for (const c of Object.values(hist.calls)) {
@@ -259,6 +329,7 @@ const inf = (() => {
 // Only the types that change the war or a mission are kept; map decorations are left out.
 const KEEP = new Set([1, 74, 77, 90, 88, 47, 48, 49, 89, 92, 32, 72, 40, 21, 36]);
 const status = await official('WarSeason/801/Status');
+if (status) ok('official'); else if (!process.env.OFFICIAL_DIR) bad('official', 'WarSeason/801/Status did not answer');
 if (!hist.effDefs || now - hist.effDefs.t > 6 * H) {
   const defs = await official('WarSeason/GalacticWarEffects');
   if (Array.isArray(defs)) hist.effDefs = { t: now, map: Object.fromEntries(defs.map(d => [d.id, { type: d.effectType, v: (d.valueTypes || []).map((t, i) => [t, d.values[i]]) }])) };
@@ -321,11 +392,13 @@ hist.updated = now; hist.since = hist.samples[0]?.t ?? now; hist.K = K; hist.inf
 
 // Every Major Order since launch, with its result, from the community war log kept by
 // CrossWaveOmega (github.com/CrossWaveOmega/helldiversplanettable), refreshed twice a day.
-if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 6) {
+if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 7) {
   try {
     const r = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/historydata.json', { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) bad('warlog', 'historydata.json HTTP ' + r.status);
     if (r.ok) {
       const j = await r.json(), mos = new Map();
+      ok('warlog');
       for (const e of j.events || []) {
         const t = Date.parse(String(e.time).slice(0, 16).replace(' ', 'T') + ':00Z');
         const disp = (e.log || []).find(l => l.type === 'Dispatch' && /major order/i.test(l.text || ''));
@@ -346,17 +419,26 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 6
       try {
         // exact objectives and progress of past orders (helldiversstats.com): the first time, all of them.
         // (Before the war log download: its time limit also covers reading the body.)
-        try { await loadHs(hist, now, { maxNew: hist.hs ? 8 : 60 }); } catch (e) { console.log('::warning::helldiversstats: ' + String(e).slice(0, 200)); }
+        try {
+          await loadHs(hist, now, { maxNew: hist.hs ? 8 : 60 }); ok('helldiversstats');
+          // an order page we couldn't read (their layout changed?) shows up as an order without objectives
+          const broken = Object.values(hist.hs || {}).filter(x => !x.complete).length;
+          if (broken) bad('helldiversstats', broken + ' order pages without readable objectives');
+        } catch (e) { bad('helldiversstats', e); console.log('::warning::helldiversstats: ' + String(e).slice(0, 200)); }
         const rr = await fetch('https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data/resort.json', { signal: AbortSignal.timeout(120000) });
-        if (rr.ok) hist.retro = buildRetro(j, await rr.json(), E, hist.hs, { samples: hist.samples, factions: hist.factions }).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
+        const resort = rr.ok ? await rr.json() : null;
+        if (resort) { try { hist.backtest = { t: now, lib: liberationBacktest(j, resort), cnt: countBacktest(hist.hs, E) }; } catch (e) { console.log('::warning::backtest failed: ' + String(e).slice(0, 200)); } }
+        if (rr.ok) hist.retro = buildRetro(j, resort, E, hist.hs, { samples: hist.samples, factions: hist.factions }).map(x => x.skip ? { code: x.code, start: x.start, end: x.end || null, result: x.result, skip: x.skip, facts: x.facts || null, hsId: x.hsId || null }
           : { code: x.code, start: x.start, end: x.end || null, result: x.result, v: x.v, need: x.need, cap: x.cap ?? null, span: x.span ?? null, goals: x.goals || null, counts: !!x.counts, combined: !!x.combined, facts: x.facts || null, src: x.src || 'log', hsId: x.hsId || null, hours: x.hours, anyOf: x.anyOf, loose: x.loose, count: x.count, pool: x.pool, fac: x.fac, partial: x.partial, players: x.players, C: x.C, targets: x.targets });
-        if (rr.ok) hist.retroV = 6;
-      } catch (e) { console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
+        if (rr.ok) { hist.retroV = 7; ok('rebuild'); } else bad('rebuild', 'resort.json HTTP ' + rr.status);
+      } catch (e) { bad('rebuild', e); console.log('::warning::retro failed: ' + String(e).slice(0, 200)); }
       hist.arch = { t: now, upTo: (j.events || []).length ? Date.parse(String(j.events[j.events.length - 1].time).slice(0, 16).replace(' ', 'T') + ':00Z') : null, orders: [...mos.values()].filter(x => x.start || x.end) };
     }
-  } catch (e) { console.log('::warning::war log not reachable: ' + String(e).slice(0, 200)); }
+  } catch (e) { bad('warlog', e); console.log('::warning::war log not reachable: ' + String(e).slice(0, 200)); }
 }
-const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null,
+// how right the forecasts were: replayed on the war log, and checked live since the recorder started
+const accuracy = { backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null };
+const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null, accuracy,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
 // our own call joins the community log entry that started within 3 hours of it
 for (const c of archive.watched) {
@@ -393,7 +475,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
 const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };

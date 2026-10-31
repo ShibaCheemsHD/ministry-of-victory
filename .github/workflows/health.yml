@@ -1,0 +1,43 @@
+# Every hour: is the recorder still running, and is every source still answering? While something is wrong
+# one issue stays open ("Recorder health", label "health"); it is closed when everything works again.
+name: Health check
+
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check
+        id: check
+        run: |
+          set +e
+          python3 tools/health.py > report.md; code=$?
+          cat report.md
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh label create health --repo "$REPO" --color d93f0b --description "Recorder health check" 2>/dev/null || true
+          num=$(gh issue list --repo "$REPO" --label health --state open --json number --jq '.[0].number')
+          if [ "${{ steps.check.outputs.code }}" != "0" ]; then
+            if [ -z "$num" ]; then gh issue create --repo "$REPO" --title "Recorder health" --label health --body-file report.md
+            else
+              sig=$(head -1 report.md)
+              lastsig=$(gh issue view "$num" --repo "$REPO" --json body,comments --jq '([.body] + [.comments[].body]) | last | split("\n")[0]')
+              [ "$sig" != "$lastsig" ] && gh issue comment "$num" --repo "$REPO" --body-file report.md || echo "nothing new to report"
+            fi
+          elif [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$REPO" --body "All good again: $(date -u +%FT%TZ)." && gh issue close "$num" --repo "$REPO"
+          fi

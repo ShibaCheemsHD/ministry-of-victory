@@ -2265,6 +2265,13 @@
   function renderStale() {
     const box = $('stale'); if (!box) return;
     const st = last && last.stale;
+    // the live data is fine but the recorder has stopped: history, Joel's moves and the archive are behind
+    const recOld = record && record.t && Date.now() - record.t > 2 * 3.6e6 ? record.t : null;
+    if (!st && recOld) {
+      const h = (Date.now() - recOld) / 3.6e6;
+      box.innerHTML = `<div class="stale-bar soft" role="status">${ICON.warn}<p>${fill(t('recStale'), { ago: esc(h < 48 ? fill(t('staleH'), { n: fmt(h, h < 10 ? 1 : 0) }) : fill(t('staleD'), { n: fmt(h / 24, 0) })) })}</p></div>`;
+      return;
+    }
     if (!st) { box.innerHTML = ''; return; }
     const mins = Math.max(1, Math.round((Date.now() - st.t) / 60e3));
     const ago = mins < 90 ? fill(t('staleMin'), { n: mins }) : fill(t('staleH'), { n: fmt(mins / 60, 1) });
@@ -2356,6 +2363,37 @@
         <ul>${t('ar.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul>
         <p class="ar-small">${esc(t('ar.howN'))}</p></details>
     </section>`;
+    // 3. how right the forecasts are: replayed on the war's records, and checked live
+    const A = archive.accuracy || {};
+    const accuracy = (() => {
+      const L = A.backtest?.lib, C = A.backtest?.cnt, live = A.live, M = A.measured || {};
+      if (!L && !C) return '';
+      const cell = (m) => `<div>${m && m.n ? `<b>${pct(m.within25)}</b><small>${esc(fill(t('acc.miss'), { h: fmt(m.medErrH, 1) }))}</small>` : '—'}</div>`;
+      const row = (hz, m, p) => `<div class="acc-l">${esc(fill(t('acc.hz'), { h: hz }))}</div>${cell(m)}${cell(p)}`;
+      const liveN = live ? Object.values(live.lib || {}).reduce((a, x) => a + (x.n || 0), 0) + (live.cnt?.n || 0) + (live.verdicts || []).length : 0;
+      const meas = (k, lbl, wiki) => { const x = M[k] || { n: 0 }; return `<li><span>${esc(t(lbl))}</span><b>${x.x != null ? '×' + fmt(x.x, 2) : esc(fill(t('acc.wait'), { n: x.n || 0 }))}</b><small>${esc(wiki)}</small></li>`; };
+      return `<section class="ar-acc" aria-labelledby="acc-t">
+        <span class="label">${esc(t('acc.kicker'))}</span>
+        <h3 id="acc-t">${esc(t('acc.title'))}</h3>
+        <p class="sb-sub">${esc(t('acc.sub'))}</p>
+        <div class="acc-grid">
+          ${L ? `<div class="acc-card"><h4>${esc(t('acc.libT'))}</h4>
+            <div class="acc-t" role="table"><div></div><div class="acc-h">${esc(t('acc.model'))}</div><div class="acc-h">${esc(t('acc.pace'))}</div>${[6, 12, 24].map(hz => row(hz, L.model?.[hz], L.pace?.[hz])).join('')}</div>
+            <p class="ar-small">${esc(fill(t('acc.libN'), { n: L.planets }))}</p></div>` : ''}
+          ${C && C.n ? `<div class="acc-card"><h4>${esc(t('acc.cntT'))}</h4>
+            <p class="acc-big"><b>${pct(C.calledRight)}</b> ${esc(fill(t('acc.cntRight'), { n: C.n }))}</p>
+            <p class="ar-small">${esc(fill(t('acc.cntNote'), { w: C.missedWins, l: C.missedLosses, e: C.medErrPts }))}</p></div>` : ''}
+          <div class="acc-card"><h4>${esc(t('acc.liveT'))}</h4>
+            ${liveN ? `<ul class="acc-live">${[6, 12, 24].filter(hz => live.lib?.[hz]?.n).map(hz => `<li>${esc(fill(t('acc.liveLib'), { h: hz, n: live.lib[hz].n, p: pct(live.lib[hz].within25), m: fmt(live.lib[hz].medErrH, 1) }))}</li>`).join('')}
+              ${live.cnt?.n ? `<li>${esc(fill(t('acc.liveCnt'), { n: live.cnt.n, p: pct(live.cnt.calledRight) }))}</li>` : ''}
+              ${(live.verdicts || []).map(v => `<li>${esc(fill(t('acc.liveV'), { title: titleCase(v.title || 'Major Order'), v: t('ar.g.' + callGroup(v.v)), r: t('ar.r.' + v.result) }))}</li>`).join('')}</ul>`
+              : `<p class="ar-small">${esc(t('acc.liveNone'))}</p>`}
+            <h4 class="acc-sub">${esc(t('acc.measT'))}</h4>
+            <ul class="acc-meas">${meas('dss', 'acc.mDss', t('acc.mDssW'))}${meas('hodDss', 'acc.mHod', t('acc.mHodW'))}${meas('hodOther', 'acc.mHodO', t('acc.mHodOW'))}${meas('regionBonus', 'acc.mReg', t('acc.mRegW'))}</ul></div>
+        </div>
+        <details class="ar-how"><summary>${esc(t('acc.howT'))}</summary><ul>${t('acc.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>
+      </section>`;
+    })();
     const tools = `<div class="ar-tools"><h3>${esc(t('ar.listT'))}</h3><div class="nk-filter ar-filter" role="group" aria-label="${esc(t('nw.filter'))}">${['all', 'won', 'lost'].map(k => `<button type="button" data-af="${k}" aria-pressed="${f === k || (k === 'lost' && f.startsWith('g-'))}">${esc(t('ar.f.' + k))}</button>`).join('')}</div>
       ${f.startsWith('g-') ? `<p class="ar-fnow">${esc(fill(t('ar.fNow'), { what: t('ar.g.' + f.slice(2)), n: list.length }))} <button type="button" class="linkish" data-af="all">${esc(t('ar.fClear'))}</button></p>` : ''}</div>`;
     // the bar an order sat on: share of everyone needed (liberation) or best-day pace vs goal (counts)
@@ -2410,7 +2448,7 @@
     return `<section class="arch">
       <div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button>
         <div><h2>${esc(t('ar.title'))}</h2><p>${esc(fill(t('ar.sub'), { when: day(first) }))}</p></div></div>
-      ${stats}${verdict}${tools}
+      ${stats}${verdict}${accuracy}${tools}
       <div class="feed">${rows || `<p class="ar-note">${esc(t('ar.empty'))}</p>`}</div>
       <p class="foot">${esc(fill(t('ar.foot'), { when: archive.upTo ? day(archive.upTo) : '—' }))}</p>
     </section>`;
