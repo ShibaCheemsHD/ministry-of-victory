@@ -12,7 +12,7 @@
     <div class="hud-in">
       <div class="brand">
         <svg class="emblem" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2 38 20 20 38 2 20Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 8 32 20 20 32 8 20Z" fill="currentColor" opacity=".18"/><path d="M13 17h14l-2.4 4H22v7h-4v-7h-2.6Z" fill="currentColor"/></svg>
-        <div class="logo" aria-label="Ministry of Victory"><span class="l1">Ministry of</span><b>VICTORY</b></div>
+        <h1 class="logo" aria-label="Ministry of Victory"><span class="l1">Ministry of</span><b>VICTORY</b></h1>
         <span class="sub" id="tagline"></span>
       </div>
       <div class="hud-stats" id="hud-stats" aria-live="polite"></div>
@@ -32,22 +32,22 @@
     </div>
   </header>
 
-  <div class="shell">
-    <nav class="order-tabs" id="order-tabs" role="tablist"></nav>
+  <main class="shell" id="main">
+    <nav class="ot-nav" id="ot-nav" aria-label="Orders"><div class="order-tabs" id="order-tabs" role="tablist"></div></nav>
     <div id="cross"></div>
     <div id="intel" hidden></div>
     <div id="errors"></div>
     <div id="stale"></div>
-    <main id="view">
+    <div id="view">
       <div class="skeleton" id="skeleton">
         <p class="sk-note" id="sk-note"></p>
         <div class="sk" style="height:300px"></div>
         <div class="sk" style="height:46px"></div>
         <div class="sk" style="height:120px"></div>
       </div>
-    </main>
+    </div>
     <footer id="footer"></footer>
-  </div>
+  </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

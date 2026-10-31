@@ -694,6 +694,9 @@ details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--m
 
 /* logo: "Ministry of" small above a big "VICTORY" */
 .logo { display: inline-grid; line-height: .9; }
+h1.logo { margin: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ot-nav { display: contents; }
 .logo .l1 { font: 600 10px/1 var(--ui); letter-spacing: .32em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
 .logo b { font-weight: 400; }
 .boot .logo .l1 { font-size: 14px; margin-bottom: 8px; }
@@ -735,7 +738,7 @@ details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--m
 .bar-r.ok { opacity: .9; }
 .ch-h { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line-2); pointer-events: none; }
 .ch-h span { position: absolute; right: 4px; bottom: 2px; font: 600 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--panel-solid); padding: 0 4px; }
-.ch-h.goal { border-top: 1px solid var(--fg); opacity: .8; }
+.ch-h.goal { border-top: 1px solid color-mix(in srgb, var(--fg) 80%, transparent); }
 .ch-h.need { border-top: 1px dashed var(--yellow); } .ch-h.need span { color: var(--yellow); }
 .ch-h.avg { border-top: 1px dashed var(--muted); } .ch-h.avg span { bottom: auto; top: 2px; }
 .ch-mark { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line-2); pointer-events: none; }
@@ -1707,7 +1710,7 @@ a { text-underline-offset: 3px; }
 .acc-card h4 { margin: 0; font: 700 15px var(--ui); color: var(--fg); }
 .acc-card h4.acc-sub { margin-top: 6px; }
 .acc-t { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; align-items: start; font-size: 14px; }
-.acc-t > div { min-width: 0; }
+.acc-t > div { display: contents; } .acc-t > div > div { min-width: 0; }
 .acc-h { font-size: 12px; color: var(--dim); font-weight: 600; }
 .acc-l { color: var(--muted); font-weight: 600; white-space: nowrap; padding-top: 3px; }
 .acc-t b { display: block; font: 800 20px/1.1 var(--title); color: var(--fg); }

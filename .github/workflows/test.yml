@@ -34,3 +34,7 @@ jobs:
           pip install playwright==1.48.0
           python -m playwright install --with-deps chromium
           python3 tests/page_test.py 40
+      - name: Accessibility (axe-core on every view, dialogs by keyboard)
+        run: |
+          npm i --no-save axe-core@4.10.2
+          python3 tests/a11y_test.py

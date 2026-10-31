@@ -93,7 +93,7 @@ const TEXT = {
     dl: 'Download PNG', copy: 'Copy image', share: 'Share…', copied: 'Image copied: paste it into your post.' },
   shareX: '{x}× everyone online', shareInf: 'more than everyone online',
   acc: { kicker: 'Track record', title: 'How right are our forecasts?', sub: 'The same forecasts the site makes live, replayed on the war\'s own records and checked against what happened.',
-    libT: 'When will a planet fall?', hz: '{h} h before', model: 'From players there', pace: 'From recent pace', miss: 'typical miss {h} h',
+    libT: 'When will a planet fall?', hzH: 'How long before', hz: '{h} h before', model: 'From players there', pace: 'From recent pace', miss: 'typical miss {h} h',
     libN: 'Share of forecasts within 25% of the real time, on {n} planets liberated in 2026. Most big misses are planets that fell sooner than forecast: players pile on once a planet is close.',
     cntT: 'Kill and mission counts', cntRight: 'of {n} objectives called right a day in', cntNote: 'A day into the order, the pace of that day projected to the deadline. Misses: {w} won although called short (goals cut, or a late push), {l} lost although called on track. Typical miss on the lost ones: {e} points.',
     liveT: 'Checked live', liveNone: 'The recorder logs every forecast it makes, hour by hour, since 29 October 2026; the first checks arrive when the next planets fall and orders end.',

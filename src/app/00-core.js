@@ -1,0 +1,183 @@
+  const API = 'https://api.helldivers2.dev';
+  const NAMES = {
+    enemies: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/json/enemies/enemy_ids.json',
+    items: 'https://raw.githubusercontent.com/helldivers-2/json/master/items/item_names.json',
+    strats: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/lists.py',
+  };
+  const REFRESH_MS = 60000;
+  // damage constant K (HP per second per player per unit of impact multiplier): reference value measured
+  // live on 28 Oct 2026; plausible range used to reject bad measurements
+  const K_REF = 0.027, K_MIN = 0.005, K_MAX = 0.2;
+  const KEEP_MS = 48 * 3600e3;
+  const RING = 75.4;
+
+  /* ---------- storage (per-browser conveniences; never required) ---------- */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('mocheck.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('mocheck.' + k, JSON.stringify(v)); } catch {} },
+  };
+
+  /* ---------- texts + formatting (English only) ---------- */
+  const t = (k) => {
+    const v = k.split('.').reduce((o, p) => o?.[p], TEXT);
+    // the test page lists every text the code asks for and the dictionary doesn't have
+    if (v == null && window.__mockLog) (window.__missingT ||= new Set()).add(k);
+    return v ?? k;
+  };
+  // the browser's own English variant if it has one, otherwise en-GB (24-hour clock)
+  const LOCALE = (() => { const n = (navigator.language || '').trim(); return /^en(-|$)/i.test(n) ? n : 'en-GB'; })();
+  const locale = () => LOCALE;
+  // numbers always in English format (36,000), whatever the browser's region
+  const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: min });
+  const plainCap = (s) => String(s).replace(/<[^>]+>/g, '');
+  const pct = (x, d = 0) => (x == null || !isFinite(x)) ? '—' : fmt(x * 100, d) + '%';
+  // a projection of the goal: past three times it, the exact figure means nothing
+  const projPct = (x) => x > 3 ? '>300%' : pct(x);
+  // shares in the plan texts: "83%", or "over 500%" when even 5x the playerbase isn't enough
+  // a share of everyone online: past twice everyone, "x times everyone" says it better than 23,083%
+  const sharePct = (x, d = 0) => (x == null || !isFinite(x)) ? t('shareInf') : x > 2 ? fill(t('shareX'), { x: fmt(x, x < 10 ? 1 : 0) }) : pct(x, d);
+  const big = (n) => {
+    if (n == null || !isFinite(n)) return '—';
+    const a = Math.abs(n);
+    if (a >= 1e9) return fmt(n / 1e9, 2, 0) + 'B';
+    if (a >= 1e6) return fmt(n / 1e6, 2, 0) + 'M';
+    if (a >= 1e4) return fmt(n / 1e3, 1, 0) + 'k';
+    return fmt(n);
+  };
+  const people = (n) => n == null || !isFinite(n) ? '—' : fmt(Math.round(n / 100) * 100);
+  const dur = (h) => {
+    if (h == null || !isFinite(h)) return t('never');
+    if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min';
+    // round to whole hours first, so 4d 23.6h reads "5d", never "4d 24h"
+    const H = Math.round(h), d = Math.floor(H / 24), hh = H - d * 24;
+    return d ? (hh ? `${d}d ${hh}h` : `${d}d`) : `${H}h`;
+  };
+  // time left, rounded down like the countdown (2d 18h 59m -> "2d 18h")
+  const durDown = (h) => {
+    if (h == null || !isFinite(h)) return '—';
+    if (h < 1) return Math.max(0, Math.floor(h * 60)) + ' min';
+    const d = Math.floor(h / 24), hh = Math.floor(h - d * 24);
+    return d ? `${d}d ${hh}h` : `${hh}h`;
+  };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clean = (s) => esc(String(s ?? '').replace(/<\/?i(=\d+)?>/g, ''));
+  // API texts are requested in English; if an object with every language ever comes back, take English
+  const txt = (m) => m && typeof m === 'object' ? (m['en-US'] || m['en-GB'] || m.en || Object.values(m)[0] || '') : (m || '');
+  const fill = (str, params) => String(str).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? '');
+  const listJoin = (a) => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const facName = (f) => esc(t('fac')[f] || f || '');
+  const facPlural = (f) => esc(t('facPl')[f] || t('fac')[f] || f || '');
+  const planetName = (p) => p ? esc(txt(p.name) || ('#' + p.index)) : '—';
+  const factionOfPlanet = (p) => p ? (p.event ? p.event.faction : p.currentOwner) : null;
+  let clockUTC = false;   // set while the share image is drawn
+  const clock = (hoursFromNow) => {
+    const d = new Date((last ? last.now : Date.now()) + hoursFromNow * 3.6e6);
+    // the share image is read all over the world: UTC there
+    if (clockUTC) return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
+    return d.toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  };
+
+  /* ---------- settings ---------- */
+  const settings = Object.assign({ capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus,
+    hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare, contact: 'ministry-of-victory-user', motion: 'full' }, store.get('settings', {}));
+  // 1.3 was the old default for Heavy Ordnance, measured on one order; the war log since 2025 says x1.8
+  if (settings.hodMult === 1.3) settings.hodMult = ENGINE.DEFAULTS.hodMult;
+  const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  const reduced = () => settings.motion === 'reduced' || mq.matches;
+
+  /* ---------- enemy / item names (best effort) ---------- */
+  const names = { enemies: store.get('names.enemies', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };
+  async function loadNames(force = false) {
+    const age = Date.now() - store.get('names.t', 0);
+    if (names.enemies && names.items && age < (force ? 15 * 60e3 : 24 * 3600e3)) return;
+    try {
+      const [enemyList, itemList, py] = await Promise.all([
+        fetch(NAMES.enemies).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(NAMES.strats).then(r => r.ok ? r.text() : null).catch(() => null),
+      ]);
+      if (enemyList) { names.enemies = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.plural || v.name])); store.set('names.enemies', names.enemies); }
+      if (itemList) { names.items = Object.fromEntries(Object.entries(itemList).map(([k, v]) => [k, v.name])); store.set('names.items', names.items); }
+      if (py) {
+        const block = py.split('STRATAGEM_ID_DICT')[1] || '';
+        const s = {};
+        for (const m of block.slice(0, block.indexOf('}')).matchAll(/(\d+)\s*:\s*"([^"]+)"/g)) s[m[1]] = m[2];
+        names.strats = s; store.set('names.strats', s);
+      }
+      store.set('names.t', Date.now());
+    } catch {}
+  }
+  // a name the lists don't have yet (a brand-new weapon or enemy): plain words, never a raw id
+  const itemKnown = (id) => id ? (names.items?.[id] || names.strats?.[id] || null) : null;
+  const itemName = (id) => id ? (itemKnown(id) || t('itemAny')) : null;
+  const enemyName = (id) => id ? (names.enemies?.[id] || t('enemyAny')) : null;
+  const unknownNames = (results) => results.some(({ res }) => res.tasks.some(r =>
+    (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || (r.task.enemyId && !names.enemies?.[r.task.enemyId])));
+
+  /* ---------- API ---------- */
+  // The API translates briefings and names into the language the browser asks for (an Italian browser
+  // got Italian briefings). `culture` in the query wins over the browser's Accept-Language, and the
+  // header is set as well; both are "simple" for CORS, so no preflight is needed.
+  const apiUrl = (path) => `${API}${path}${path.includes('?') ? '&' : '?'}culture=en-US&ui-culture=en-US&x-super-client=ministry-of-victory&x-super-contact=${encodeURIComponent(settings.contact || 'ministry-of-victory-user')}`;
+  // The API allows 5 requests every 10 seconds per address, and refuses the rest (HTTP 429).
+  // Requests wait for a free slot here instead (and a refused one is tried again once, 10 s later).
+  // Sliding window: never more than 5 requests in any 11 seconds, so the server's bucket can't run dry.
+  // The timestamps are kept across reloads, so refreshing the page can't burst past the limit either.
+  const sentKey = 'mov-sent';
+  const sent = (() => { try { return (JSON.parse(localStorage.getItem(sentKey)) || []).filter(x => typeof x === 'number' && Date.now() - x < 11000).sort((a, b) => a - b); } catch (e) { return []; } })();
+  const saveSent = () => { try { localStorage.setItem(sentKey, JSON.stringify(sent)); } catch (e) { } };
+  const WINDOW_MS = window.__mockScenario && !window.__mockRealRate ? 200 : 11000;   // tests run fast
+  const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+  const freeSlots = () => { const now = Date.now(); return 5 - sent.filter(t0 => now - t0 < WINDOW_MS).length; };
+  async function slot() {
+    for (;;) {
+      const now = Date.now();
+      while (sent.length && now - sent[0] >= WINDOW_MS) sent.shift();
+      if (sent.length < 5) { sent.push(now); saveSent(); return; }
+      await sleep(sent[0] + WINDOW_MS - now + 20);
+    }
+  }
+  async function getJSON(path, timeoutMs = 20000, retry = 2) {
+    await slot();
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => ctrl && ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(apiUrl(path), { cache: 'no-store', headers: { 'Accept-Language': 'en-US' }, signal: ctrl ? ctrl.signal : undefined });
+      if (r.status === 429 && retry > 0) {
+        clearTimeout(timer);
+        const ra = Number(r.headers.get('Retry-After'));
+        await sleep(ra > 0 && ra < 60 ? ra * 1000 + 300 : 10500);
+        return getJSON(path, timeoutMs, retry - 1);
+      }
+      if (!r.ok) throw new Error(`HTTP ${r.status} ${path}`);
+      return await r.json();
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw new Error(`timeout ${path}`);
+      throw e;
+    } finally { clearTimeout(timer); }
+  }
+  // things that change slowly are fetched again only every few minutes
+  const memo = {};
+  async function getCached(path, maxAgeMs, timeoutMs) {
+    const m = memo[path];
+    if (m && Date.now() - m.t < maxAgeMs) return m.data;
+    const data = await getJSON(path, timeoutMs);
+    memo[path] = { t: Date.now(), data };
+    return data;
+  }
+
+  /* ---------- state ---------- */
+  let samples = store.get('samples', []);
+  let last = null, busy = false, lastRun = 0, lastOk = 0, lastStack = '', firstDone = false;
+  const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false, histMode: {}, chartOff: {} }, store.get('ui', {}));
+  const saveUi = () => store.set('ui', { order: ui.order, tab: ui.tab, showNums: ui.showNums });
+  const prev = { bars: {}, count: {}, dir: {}, verdict: {}, seen: {} };
+  const $ = (id) => document.getElementById(id);
+  // An order is identified by its id *and* its task list: if Super Earth edits an order in place,
+  // its pace history starts over instead of mixing old and new objectives.
+  const hashStr = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+  const orderKey = (a) => `${a.id}:${hashStr(JSON.stringify((a.tasks || []).map(tk => [tk.type, tk.values, tk.valueTypes])))}`;
+  let known = new Set(store.get('known', []));   // orders this browser has already shown
+  const fresh = new Set();                       // orders that arrived while the page was open
+  let dragging = false, pendingRender = false;
+

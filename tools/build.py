@@ -35,8 +35,11 @@ game = {'env': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in e
         'bio': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in bio.items()},
         'fx': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in fx.items() if v.get('name')}}
 out += '<script>\nconst GAME = ' + json.dumps(game, ensure_ascii=False, separators=(',', ':')) + ';\n</script>\n'
-for f in ('engine.js', 'i18n.js', 'app.js'):
-    out += '<script>\n' + read(S(f)) + '\n</script>\n'
+# the page's code lives in src/app/*.js, in order; together they make one closure (shared helpers and state)
+parts = sorted(f for f in os.listdir(S('app')) if f.endswith('.js'))
+app = "/* Ministry of Victory - user interface (built from src/app/) */\n(() => {\n  'use strict';\n" + ''.join(read(S('app', f)) for f in parts) + '})();\n'
+for code in (read(S('engine.js')), read(S('i18n.js')), app):
+    out += '<script>\n' + code + '\n</script>\n'
 out += '</body>\n</html>\n'
 
 def esbuild(code, loader):
@@ -61,6 +64,7 @@ else:
 
 # test page: the readable source, the mock API and a recorded archive
 os.makedirs(os.path.join(ROOT, 'build'), exist_ok=True)
+open(os.path.join(ROOT, 'build', 'app.js'), 'w', encoding='utf-8').write(app)   # the assembled code, for tools
 arch = read(S('mock_archive.json')) if os.path.exists(S('mock_archive.json')) else 'null'
 test = out.replace('<script>', '<script>window.__mockArchive=' + arch + ';\n' + read(S('mock.js')) + '</script>\n<script>', 1)
 open(os.path.join(ROOT, 'build', 'test.html'), 'w', encoding='utf-8').write(test)
