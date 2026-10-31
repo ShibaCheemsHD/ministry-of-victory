@@ -8,11 +8,16 @@ const ENGINE = (() => {
   const COUNTER_TYPES = new Set([1, 2, 3, 4, 5, 6, 7, 9, 10]);
   const FACTIONS = { 1: 'Humans', 2: 'Terminids', 3: 'Automaton', 4: 'Illuminate' };
 
-  // Defaults measured on "Honour the Fallen" (Oct 2026): 100% of the playerbase
-  // deals ~90k HP/h to one planet, DSS adds ~10%, HOD measured ~1.3x.
-  // capacity: HP/h that everyone online would deal on one planet (damage grows in step with the share), 2026 median of the war archive. dssBonus: 0, the archive shows no
-  // extra damage on the DSS planet (0.98-0.99x per share in 2024, 2025 and 2026).
-  const DEFAULTS = { capacity: 100000, dssBonus: 0, hodMult: 1.3, recordShare: 0.77 };
+  // capacity: HP/h that everyone online would deal on one planet (damage grows in step with the share),
+  // 2026 median of the war archive (~100k).
+  // DSS and Heavy Ordnance Distribution, measured on the war log (CrossWaveOmega, Nov 2024 - Oct 2026): damage
+  // per share of players on a planet against the other planets in the same 4 days.
+  //   DSS alone: x1.02 (1,045 stretches; 2025 x1.05, 2026 x0.92): no bonus to count on, whatever the tooltip says.
+  //   DSS + HOD: x1.82 (95 stretches over 52 HOD windows; 2026 x2.04).
+  //   HOD on, planets without the DSS: x0.72 (127 stretches). The impact multiplier keeps the war's total
+  //   damage nearly flat, so counting the DSS planet twice takes damage away from every other planet.
+  const DEFAULTS = { capacity: 100000, dssBonus: 0, hodMult: 1.8, hodOther: 0.72, recordShare: 0.77 };
+  const hodOff = (settings, hod, onDss) => hod && !onDss ? (settings.hodOther ?? DEFAULTS.hodOther) : 1;
 
   function parseTask(task, progress) {
     const v = {};
@@ -211,7 +216,7 @@ const ENGINE = (() => {
         if (Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
         // a drop far beyond what the players there could deal is an intervention, not damage
         if (a.h - b.h > 0.03 * p.maxHealth && a.h - b.h > 5 * a.p * s0.imp * K_TYPICAL * dt) continue;
-        const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1);
+        const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1) * (s0.hod && s0.dss != idx ? DEFAULTS.hodOther : 1);
         g += (a.h - b.h) + (p.regenPerSecond || 0) * dt;
         const corr = s0.N ? Math.pow((a.p / s0.N) / SHARE_REF, SHARE_EXP - 1) : 1;
         w += a.p * s0.imp * mult * corr * dt;
@@ -271,7 +276,7 @@ const ENGINE = (() => {
       const dt = (b.t - a.t) / 3.6e6;
       if (dt > maxGap) return null;   // a hole in the record
       const C = a.imp && a.N ? K * a.imp * a.N * 3600 : Cfb;
-      const mult = a.dss == idx && a.hod ? hodMult : 1;
+      const mult = a.hod ? (a.dss == idx ? hodMult : DEFAULTS.hodOther) : 1;
       const gross = a.N && C ? dmg(a.p / a.N, C) * mult : 0;
       exp += (gross - (a.r || 0) * 3600) * dt;
       const step = Math.abs(a.h - b.h);
@@ -369,7 +374,7 @@ const ENGINE = (() => {
         if (Math.max(a.h, b.h) > 0.98 * p.maxHealth || b.h <= 0) continue;
         const share = a.p / s0.N;
         if (share < 0.03) continue;
-        const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1);
+        const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1) * (s0.hod && s0.dss != idx ? DEFAULTS.hodOther : 1);
         G += (a.h - b.h) + (p.regenPerSecond || 0) * 3600 * dt;
         W += share * mult * dt;
         span += dt;
@@ -424,7 +429,7 @@ const ENGINE = (() => {
           const pw = planetWork(p);
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
           const onDss = dssIdx === p.index;
-          const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
+          const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
           const obs = observedNet(samples, p.index, now, p.maxHealth);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
@@ -443,7 +448,7 @@ const ENGINE = (() => {
           const share = N ? (p.statistics?.playerCount || 0) / N : 0;
           const obs = observedNet(samples, p.index, now, p.maxHealth);
           const onDss = dssIdx === p.index;
-          const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
+          const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
           const modelNet = dmg(share, C) * mult - pw.activeRegen;
           const net = obs ? obs.net : modelNet;
           Object.assign(r, { pw, share, onDss, mult, observed: obs, modelNet, net, eta: net > 0 ? pw.work / net : Infinity, holdLost: true,
@@ -942,7 +947,7 @@ const ENGINE = (() => {
     const hEvent = Math.max(0.01, (new Date(e.endTime).getTime() - now) / 3.6e6);
     const share = N ? (p.statistics?.playerCount || 0) / N : 0;
     const onDss = dssIdx === p.index;
-    const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
+    const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
     const model = dmg(share, C) * mult;
     const obs = observedNet(ctx.samples || [], p.index, now, e.maxHealth);
     const rate = obs && obs.net > 0 ? obs.net : model;
@@ -1034,7 +1039,7 @@ const ENGINE = (() => {
       const pw = planetWork(p);
       const share = N ? (p.statistics?.playerCount || 0) / N : 0;
       const onDss = dssIdx === p.index;
-      const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1);
+      const mult = (onDss ? 1 + settings.dssBonus : 1) * (onDss && hod ? settings.hodMult : 1) * hodOff(settings, hod, onDss);
       const net = dmg(share, C) * mult - pw.activeRegen;
       return { planet: p, pw, share, onDss, net, observed: null, eta: net > 0 ? pw.work / net : Infinity,
         breakEven: shareFor(pw.regen / (1 + settings.dssBonus), C) };

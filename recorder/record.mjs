@@ -125,7 +125,8 @@ for (const i of [...named].filter(i => !planets[i]).slice(0, 10)) {
 const st = (stations || [])[0];
 const dss = st?.planet?.index ?? null;
 if (st?.planet && !planets[dss]) planets[dss] = st.planet;
-const hod = !!(st?.tacticalActions || []).find(a => /ordnance|ordinance/i.test(a.name || '') && a.status === 2 && Date.parse(a.statusExpire) > now);
+const hodAct = (st?.tacticalActions || []).find(a => /ordnance|ordinance/i.test(a.name || '') && a.status === 2 && Date.parse(a.statusExpire) > now);
+const hod = !!hodAct;
 
 // one snapshot: per planet [enemy HP, players, regen HP/s, max HP, event id, open regions, owner, event end, missions won (all time)]
 const N = war?.statistics?.playerCount || 0;
@@ -194,7 +195,7 @@ const impN24 = (() => {
   for (const a of assignments || []) {
     const id = String(a.id), o = hist.orders[id]; if (!o) continue;
     let res;
-    try { res = E.analyzeAssignment(a, { planets, N: N0, now, C, dssIdx: dss, hod: null, settings: { ...E.DEFAULTS }, samples: pageSamples, sectorOf: null, startMs: o.start, progKey: orderKey(a) }); } catch { continue; }
+    try { res = E.analyzeAssignment(a, { planets, N: N0, now, C, dssIdx: dss, hod: hodAct ? { expire: Date.parse(hodAct.statusExpire) } : null, settings: { ...E.DEFAULTS }, samples: pageSamples, sectorOf: null, startMs: o.start, progKey: orderKey(a) }); } catch { continue; }
     const need = (() => { try { const n = E.orderNeeds(res); return n && !n.unknown && isFinite(n.total) ? +n.total.toFixed(3) : null; } catch { return null; } })();
     const early = res.tasks.some(r => r.early);
     const snap = { t: now, v: res.verdict, need, early, age: +((now - o.start) / H).toFixed(1) };
