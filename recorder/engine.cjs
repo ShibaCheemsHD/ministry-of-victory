@@ -1252,6 +1252,6 @@ const ENGINE = (() => {
   }
 
   return { dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
-    observedNet, localC, growth, forecastFall, fallBand, FC, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
+    observedNet, localC, growth, forecastFall, fallBand, FC, defenseInfo, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

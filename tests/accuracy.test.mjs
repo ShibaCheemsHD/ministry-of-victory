@@ -56,3 +56,20 @@ test('live record: hourly forecasts checked when the planet falls and the order 
   assert.deepEqual(r.cnt, { n: 1, calledRight: 1 });
   assert.deepEqual(r.verdicts.map(v => [v.v, v.result]), [['record', 'lost']]);
 });
+
+test('defenses: replayed on the recorder\'s snapshots, Command\'s jumps flagged', async () => {
+  const { defenseReplay, defenseAccuracy } = await import('../recorder/accuracy.mjs');
+  // 20% of 100k players, K 0.027, impact 0.01: 19,440 HP/h; 500k HP of defense, 30 h left -> held in about 25.7 h
+  const S = [];
+  for (let k = 0; k <= 27 * 6; k++) {
+    const t = t0 + k * 600e3, hp = Math.max(0, 5e5 - 19440 * k / 6);
+    S.push({ t, N: 100000, imp: 0.01, pl: { 9: hp > 0 ? [hp, 20000, 0, 1e6, 77, 0, 'Humans', t0 + 30 * H] : [1e6, 20000, 0, 1e6, 0, 0, 'Humans', 0] } });
+  }
+  const hist = { samples: S };
+  const rec = defenseReplay(hist, E, 0.027, t0 + 28 * H);
+  const r = rec['9:77'];
+  assert.ok(r && r.done && r.won && !r.joel);
+  assert.ok(r.calls.every(c => c[3] === 1), 'every call says it holds');
+  const a = defenseAccuracy(rec);
+  assert.equal(a.calledRight, 1); assert.equal(a.within25, 1);
+});

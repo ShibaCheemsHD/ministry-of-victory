@@ -165,3 +165,61 @@ export function liveAccuracy(calls, E, { horizons = [6, 12, 24] } = {}) {
     return [hz, { n: r.length, medErrH: r.length ? +med(r.map(x => Math.abs(x.errH))).toFixed(1) : null, within25: r.length ? +share(r, x => Math.abs(x.errH) <= 0.25 * x.truth).toFixed(2) : null }]; }));
   return { lib: byHz, cnt: { n: cnt.length, calledRight: cnt.length ? +share(cnt, x => (x.proj >= 1) === x.done).toFixed(2) : null }, verdicts };
 }
+
+// Defenses. The community war log has no defense health, so they can't be replayed on the past: they are
+// replayed on the recorder's own snapshots instead (every 10 minutes, kept 2-8 days), with the page's own
+// defenseInfo, every 2 hours of each attack, and kept for good once the attack is over.
+//   hist.defRecord[planet:event] = { i, start, end, deadline, won, joel, calls: [[t, eta h, hours left, held?]] }
+// sample.pl[i] = [HP, players, regen/s, max HP, event id, open regions, owner, event end, ...]
+export function defenseReplay(hist, E, K, now) {
+  const S = hist.samples || [], rec = hist.defRecord ||= {};
+  const asPage = (s) => ({ t: s.t, N: s.N, imp: s.imp, dss: s.dss, hod: s.hod, planets: Object.fromEntries(Object.entries(s.pl).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] }])) });
+  const byKey = {};
+  S.forEach((s, k) => { for (const [i, v] of Object.entries(s.pl || {})) if (v[4]) (byKey[i + ':' + v[4]] ||= []).push(k); });
+  for (const [key, ks] of Object.entries(byKey)) {
+    if (rec[key]?.done) continue;
+    const i = key.split(':')[0], first = S[ks[0]], lastK = ks[ks.length - 1], last = S[lastK];
+    const v0 = first.pl[i], vl = last.pl[i], deadline = vl[7] || null;
+    // over? the next snapshot no longer shows the attack
+    const after = S[lastK + 1];
+    if (!after) continue;
+    const va = after.pl?.[i];
+    const won = va ? va[6] === 'Humans' : vl[0] <= 0.03 * vl[3];
+    // Command stepping in: a drop of more than 3% of the defense in one snapshot, beyond what its players could do
+    let joel = false;
+    for (let k = 1; k < ks.length; k++) {
+      const a = S[ks[k - 1]], b = S[ks[k]], A = a.pl[i], B = b.pl[i], dt = (b.t - a.t) / 1000;
+      if (A[0] - B[0] > 0.03 * A[3] && A[0] - B[0] > 5 * A[1] * (a.imp || 0) * K * dt) joel = true;
+    }
+    const calls = [];
+    let next = first.t;
+    for (const k of ks) {
+      const s = S[k]; if (s.t < next) continue; next = s.t + 2 * 3.6e6;
+      const v = s.pl[i];
+      if (!s.N || !s.imp) continue;
+      const p = { index: Number(i), event: { health: v[0], maxHealth: v[3], endTime: new Date(v[7]).toISOString() }, statistics: { playerCount: v[1] } };
+      const C = K * s.imp * s.N * 3600;
+      const pages = S.slice(Math.max(0, k - 40), k + 1).map(asPage);
+      const d = E.defenseInfo(p, { N: s.N, now: s.t, C, dssIdx: s.dss, hod: null, settings: E.DEFAULTS, samples: pages }, 1e6);
+      calls.push([s.t, isFinite(d.eta) ? +d.eta.toFixed(2) : null, +d.hoursToEnd.toFixed(2), d.eta <= d.hoursToEnd ? 1 : 0]);
+    }
+    rec[key] = { i: Number(i), start: first.t, end: last.t, deadline, won, joel, done: true, calls,
+      // started before the recording window: the first calls are missing, but the end is known
+      partial: first.t - (S[0]?.t || first.t) < 15 * 60e3 && (v0[0] < 0.97 * v0[3]) };
+  }
+  for (const [k, r] of Object.entries(rec)) if (now - r.end > 120 * 24 * 3.6e6) delete rec[k];
+  return rec;
+}
+export function defenseAccuracy(rec) {
+  const R = Object.values(rec || {}).filter(r => r.done && r.calls?.length);
+  const calls = R.flatMap(r => r.calls.map(c => ({ ...r, c })));
+  const right = calls.filter(x => (x.c[3] === 1) === x.won);
+  // once Command steps in, the forecast before it was about a different fight: counted apart
+  const clean = R.filter(r => !r.joel);
+  const cc = clean.flatMap(r => r.calls.map(c => ({ ...r, c })));
+  const timed = cc.filter(x => x.won && x.c[1] != null).map(x => ({ truth: (x.end - x.c[0]) / 3.6e6 + 1 / 6, eta: x.c[1] })).filter(x => x.truth > 0.5);
+  return { n: R.length, won: R.filter(r => r.won).length, joel: R.filter(r => r.joel).length, calls: calls.length,
+    calledRight: calls.length ? +(right.length / calls.length).toFixed(2) : null,
+    cleanRight: cc.length ? +(cc.filter(x => (x.c[3] === 1) === x.won).length / cc.length).toFixed(2) : null,
+    within25: timed.length ? +(timed.filter(x => Math.abs(x.eta - x.truth) <= 0.25 * x.truth).length / timed.length).toFixed(2) : null, timed: timed.length };
+}

@@ -15,7 +15,7 @@ const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
-import { liberationBacktest, countBacktest, liveAccuracy } from './accuracy.mjs';
+import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy } from './accuracy.mjs';
 import { measure, logStation } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
@@ -395,7 +395,9 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 8
   } catch (e) { bad('warlog', e); console.log('::warning::war log not reachable: ' + String(e).slice(0, 200)); }
 }
 // how right the forecasts were: replayed on the war log, and checked live since the recorder started
-const accuracy = { backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null };
+try { defenseReplay(hist, E, K, now); } catch (e) { console.log('::warning::defense replay failed: ' + String(e).slice(0, 200)); }
+const accuracy = { backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null,
+  defense: (() => { try { return defenseAccuracy(hist.defRecord); } catch { return null; } })() };
 const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null, accuracy,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
 // our own call joins the community log entry that started within 3 hours of it
