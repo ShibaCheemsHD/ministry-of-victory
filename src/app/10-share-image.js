@@ -276,12 +276,11 @@
   function openCard(pin) {
     if (!last) return;
     const forced = ui.pcForce != null && last.planets[ui.pcForce];
-    let wrap = document.querySelector('.call .pc-wrap');
+    // the card lives at the end of the page, outside the cut-corner panels (a clip-path also clips fixed
+    // children: critique 1 Nov 2026, its title and close button were cut off)
+    const wrap = document.querySelector('.pc-wrap.free') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'pc-wrap free', hidden: true }));
     let entry = last.results.find(x => String(x.a.id) === String(ui.order));
-    if ((!wrap || !entry) && forced) {   // no order on screen: the war map still opens planet cards
-      wrap = document.querySelector('.pc-wrap.free') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'pc-wrap free', hidden: true }));
-      entry = entry || { res: { tasks: [], id: 'none' }, a: {} };
-    }
+    if (!entry && forced) entry = { res: { tasks: [], id: 'none' }, a: {} };
     if (!wrap || !entry) return;
     const cp = forced ? { planet: forced, list: null } : cardPlanets(entry); if (!cp) return;
     wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list);

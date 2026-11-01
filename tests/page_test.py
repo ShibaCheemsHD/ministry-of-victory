@@ -34,6 +34,16 @@ def run(br, query, width):
       const a = [logo, r('#hud-stats .stat .v'), r('.hud-actions')].filter(x => x && x.width);
       for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].left < a[j].right - 1 && a[j].left < a[i].right - 1 && a[i].top < a[j].bottom - 1 && a[j].top < a[i].bottom - 1) return true; return false; }""")
     if clash: errs.append('header pieces overlap')
+    # the planet card opens fully on screen, its close button reachable (1 Nov 2026: a panel's cut-corner
+    # clip-path hid its title and close button)
+    pb = pg.locator('[data-globe]:visible')
+    if pb.count():
+        pb.first.click(timeout=3000); pg.wait_for_timeout(250)
+        bad = pg.evaluate("""() => { const c = document.querySelector('.pc-wrap.open .pcard'), x = document.querySelector('.pc-wrap.open .pc-x'); if (!c || !x) return 'did not open';
+          const r = c.getBoundingClientRect(), b = x.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          return r.top < -1 || r.bottom > innerHeight + 1 ? 'off screen' : !(hit && (hit === x || x.contains(hit))) ? 'close button covered' : null; }""")
+        if bad: errs.append('planet card: ' + bad)
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(100)
     tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)

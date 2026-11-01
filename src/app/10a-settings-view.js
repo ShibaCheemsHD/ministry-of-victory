@@ -7,8 +7,12 @@
     render(); window.scrollTo({ top: 0 });
   }
   $('open-archive').addEventListener('click', () => setView(ui.view === 'archive' ? 'war' : 'archive'));
-  window.addEventListener('popstate', () => setView(location.hash === '#archive' ? 'archive' : 'war', false));
-  window.addEventListener('hashchange', () => { const h = readHash(); if (h.view === 'war' && h.order && last) { ui.order = h.order; ui.orderManual = true; if (h.tab) ui.tab[h.order] = h.tab; render(); } });
+  // back / forward, and a link to another order opened in this tab: the address decides what shows
+  window.addEventListener('popstate', () => {
+    const h = readHash();
+    if (h.view === 'war' && h.order) { ui.order = h.order; ui.orderManual = true; if (h.tab) { ui.tab[h.order] = h.tab; tabScrollDue = true; } }
+    setView(h.view, false);
+  });
   if (location.hash === '#archive') ui.view = 'archive';
   $('refresh').addEventListener('click', () => refresh());
 

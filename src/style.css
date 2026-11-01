@@ -19,8 +19,8 @@
   /* the call scale */
   --v-done: #3fc483;
   --v-ok: #2fc6b8;
-  --v-push: #efc63a;
-  --v-record: #ff8040;
+  --v-push: #e2c46c;
+  --v-record: #f0609e;
   --v-out: #a0a9bb;
   --v-wait: #a0a9bb;
   /* factions: planet swatches, map dots, chart lines */
@@ -30,7 +30,7 @@
   --f-human: #67b7ee;
   --s1: #4f9df0; --s2: #e0763b; --s3: #2fb487; --s4: #d3a015;
   /* older names still used by a few inline styles */
-  --yellow: var(--se); --info: var(--v-ok); --warn: var(--v-push); --bad: var(--f-automaton); --ok: var(--v-done);
+  --yellow: var(--se); --info: var(--v-ok); --warn: var(--v-push); --bad: var(--v-record); --ok: var(--v-done);
   --display: "Saira", "Arial Black", sans-serif;
   --ui: "Chakra Petch", system-ui, -apple-system, "Segoe UI", sans-serif;
   --cut: 12px;
@@ -1129,3 +1129,17 @@ dialog { background: linear-gradient(180deg, #17181c, #0f1013); }
 
 /* phones: wrapped display titles get room between their lines */
 @media (max-width: 640px) { .moves > li:not(.move) .head, .mv-top h4, .sb-head, .call-head, .race-name, .rc-head h3, .ar-head h2 { line-height: 1.18; } }
+
+/* the forecast's one extra reason */
+.fwhy-h { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+/* a lost or finished order: the place to drop is a suggestion, set smaller than a call */
+.call.suggest .call-head { font-size: clamp(30px, 3.2vw, 46px); }
+/* a won order: the medals, where the planet hologram stands */
+.holo.won { display: grid; place-content: center; justify-items: center; gap: 6px; border-radius: 50%; background: radial-gradient(circle, rgba(63, 196, 131, .16), transparent 68%); }
+.holo.won .medal { width: 96px; height: 96px; }
+.holo.won b { font: 900 34px/1 var(--display); font-stretch: 125%; color: var(--se); }
+.holo.won span { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .call.celebrate .holo.won .medal { animation: medalIn .7s var(--ease-out) .2s both; } }
+@keyframes medalIn { from { opacity: 0; transform: translateY(10px) scale(.9); } }
+/* phones: the planet button keeps its parts on one line */
+@media (max-width: 640px) { .planet-btn { display: grid; grid-template-columns: auto 1fr auto; } .planet-btn .pb-t { grid-column: 2; white-space: normal; } .planet-btn .pb-n { grid-column: 2; } .planet-btn .sw { grid-row: 1 / span 2; } .planet-btn > .ico { grid-column: 3; grid-row: 1 / span 2; } .planet-btn .pb-dss { grid-column: 2; justify-self: start; } }

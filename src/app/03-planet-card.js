@@ -156,13 +156,14 @@
     const meanwhile = p.state === 'done' && !next ? meanwhileHTML() : '';
     let head = `${verb ? `<span class="verb">${esc(verb)}</span> ` : ''}<span class="tgt">${esc(p.target)}</span>`, why = `${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}`;
     if (moveOn && next) { head = `<span class="verb">${esc(t('bw.play'))}</span> <span class="tgt">${esc(titleCase(clean(txt(next.a.title) || 'Major Order')))}</span>`; why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.nextWhy'))}`; }
-    else if (moveOn && mw) { head = `<span class="verb">${esc(t(mw.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(mw.p)}</span>`; why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${capFirst(mw.why)}`; }
+    // a suggestion, not a call: smaller, and it says why the drop is still worth it
+    else if (moveOn && mw) { head = `<span class="verb">${esc(t(mw.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(mw.p)}</span>`; why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; }
     const moveBtn = moveOn && !next && mw ? `<button type="button" class="btn primary" data-open-planet="${mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(res.ended || res.verdict === 'failed' ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>` : '';
-    return `<section class="call vl-${L} state-${p.state}${alt ? ' not-pick' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
+    return `<section class="call vl-${L} state-${p.state}${alt ? ' not-pick' : ''}${moveOn && !next ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.' + p.state))}<span class="call-stale">· ${esc(t('callStale'))}</span></span><span class="call-v">${pill(v)}</span>${fac ? `<span class="call-front"><i class="sw" style="--fc:${FAC_VAR[fac] || 'var(--fg)'}" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.' + p.state))}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${p.state === 'go' || p.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${fac ? `<span class="call-front"><i class="sw" style="--fc:${FAC_VAR[fac] || 'var(--fg)'}" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
-        ${moveOn ? '' : holoPlanet(p, res)}
+        ${moveOn ? '' : p.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>` : holoPlanet(p, res)}
         <h2 class="call-head${long && !moveOn ? ' long' : ''}" id="dir-${esc(id)}">${head}</h2>
         ${p.req ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
         <p class="why">${why}</p>
@@ -173,13 +174,12 @@
           <button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
           ${moveOn ? '' : planetBtn(res)}
         </div>
-        <div class="pc-wrap" hidden></div>
       </div>
       <div class="call-side" role="group" aria-labelledby="fc-${esc(id)}">
         <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || p.state === 'done' ? 'result' : 'forecast'))}</h3>
         <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
         <p class="meaning">${esc(t('m.' + v))}</p>
-        ${res.ended ? '' : whyHTML(res)}
+        ${res.ended || moveOn ? '' : whyHTML(res, p.d)}
         <dl class="clock">${clockRow}${medals ? `<div><dt>${esc(t('reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : ''}</dl>
         ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))}</button>` : ''}
       </div>
@@ -190,8 +190,11 @@
 
   // the forecast's "why": what we do against what it takes, one meter per open objective, all in the same
   // words: Helldivers there and needed, or the pace now and the pace needed
-  function whyHTML(res) {
+  // Beside the call, only the one thing holding the order back that the call doesn't already show (critique
+  // 1 Nov 2026: the same Helldivers count twice in the first screen, and the races repeated below it)
+  function whyHTML(res, d = {}) {
     if (res.verdict === 'done' || res.verdict === 'unknown') return '';
+    const skipIdx = d.task ? d.task.idx : null, skipPlanet = d.planet ? d.planet.index : null, skipLib = d.kind === 'liberate';
     const meters = [];
     const meter = (label, have, need, sub, mark, key, few = false, cond = false) => {
       const ratio = need > 0 ? have / need : 1;
@@ -205,7 +208,7 @@
         <div class="wm-sub">${sub}</div></div>` });
     };
     for (const r of res.anyOf ? [res.tasks[res.pick]] : res.tasks) {
-      if (r.verdict === 'done') continue;
+      if (r.verdict === 'done' || (skipIdx != null && r.idx === skipIdx) || (skipPlanet != null && r.planet && r.planet.index === skipPlanet)) continue;
       if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
         const noun = taskText(r);
         const rec0 = r.rates.recent ? r.rates.recent.rate : null;
@@ -223,12 +226,12 @@
       }
     }
     const lib = res.liberation;
-    if (lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
+    if (!skipLib && lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
       meter(esc(t(lib.count > 1 ? 'why.libN' : 'why.lib1')), lib.currentShare, isFinite(lib.seqNeed) ? lib.seqNeed : 5,
         fill(t('why.players'), { have: divers(lib.currentShare), need: divers(isFinite(lib.seqNeed) ? lib.seqNeed : 5) }), null, `${res.id}:lib`, true);
     meters.sort((x, y) => x.sev - y.sev);
     const doneN = res.tasks.filter(r => r.verdict === 'done').length;
     if (!meters.length) return doneN ? `<div class="fwhy"><p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p></div>` : '';
-    return `<div class="fwhy">${meters.slice(0, 3).map(m => m.html).join('')}
+    return `<div class="fwhy"><p class="fwhy-h">${esc(t('why.also'))}</p>${meters.slice(0, 1).map(m => m.html).join('')}
       ${doneN ? `<p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p>` : ''}</div>`;
   }

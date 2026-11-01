@@ -44,6 +44,10 @@
   const LICON = { done: 'check', ok: 'track', push: 'plus', record: 'warn', out: 'cross', wait: 'dots' };
   const lvl = (v) => LVL[v] || 'wait';
   const VICON = Object.fromEntries(Object.keys(LVL).map(v => [v, LICON[lvl(v)]]));
+  // the call an objective shows, the same in every panel (critique 1 Nov 2026: the Progress tab said
+  // "On track" where the races said "Needs a push"): over and missed is Failed, on track only if players
+  // switch over is a push
+  const raceVerdict = (r, res) => res.ended && r.verdict !== 'done' ? 'failed' : r.verdict === 'ontrack' && r.freed ? 'effort' : r.verdict;
   const pill = (v, label) => `<span class="pill vl-${lvl(v)}">${ICON[VICON[v] || 'dots']}<span>${esc(label || t('v.' + v))}</span></span>`;
   const medalSvg = '<svg class="medal" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 1h10l-2 8h-6z" fill="var(--info)"/><circle cx="13" cy="16" r="8" fill="none" stroke="var(--yellow)" stroke-width="2"/><path d="M13 11.5l1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="var(--yellow)"/></svg>';
 
@@ -123,7 +127,7 @@
   function renderHud() {
     const Ls = last;
     $('hud-stats').innerHTML = `
-      <div class="stat"><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}" aria-hidden="true"></i><b data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</b></span><span class="stat-l">${t('players')}</span></div>`;
+      <div class="stat"><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}" aria-hidden="true"></i><b data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</b></span><span class="stat-l">${t('players')} · ${esc(fill(t('updatedShort'), { t: new Date(Ls.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }))}</span></div>`;
   }
 
   /* ---------- order switcher ---------- */

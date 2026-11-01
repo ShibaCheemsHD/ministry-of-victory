@@ -166,6 +166,8 @@
     const id = `l:${entry.a.id}`, now = last.now, end = Date.parse(entry.a.expiration), H = entry.res.hoursLeft;
     const all = rows.map((r, k) => ({ r, k, pts: planetSeries(r.planet.index) })).filter(x => x.pts.length);
     if (!all.length) return '';
+    // a line needs two points: until the recorder has them, say so instead of an empty chart
+    if (all.every(x => x.pts.length < 2)) return `<p class="ch-empty">${esc(t('h.noHist'))}</p>`;
     const x0 = Math.min(entry.start || now, ...all.map(x => x.pts[0][0])), x1 = Math.max(end, now);
     const series = [], tags = [];
     all.forEach(({ r, k, pts }) => {
@@ -196,7 +198,7 @@
       const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1), basis: t('why.basis.' + (r.primary?.kind || 'start')) }) : '';
       const key = `${entry.a.id}:${r.idx}`, cid = `c:${entry.a.id}:${r.idx}:prog`;
       cards.push(`<section class="hist-card panel br">
-        <div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(r.verdict)}
+        <div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}
           <div class="seg" role="group" aria-label="${esc(t('h.view'))}">
             <button type="button" data-hmode="${esc(key)}" data-v="prog" aria-pressed="${mode === 'prog'}">${esc(t('h.prog'))}</button>
             <button type="button" data-hmode="${esc(key)}" data-v="hour" aria-pressed="${mode === 'hour'}">${esc(t('h.hour'))}</button></div></div>
@@ -209,7 +211,7 @@
     }
     if (doneList.length) cards.push(`<section class="hist-card panel br done-card">${doneList.map(r => `<div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill('done')}</div>`).join('')}</section>`);
     for (const r of res.tasks.filter(x => x.defense)) {
-      cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(r.verdict)}</div>${libChart(entry, [r])}</section>`);
+      cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}</div>${libChart(entry, [r])}</section>`);
     }
     if (!cards.length) return `<p class="empty-moves unknown">${ICON.dots}<span>${esc(t('h.nothing'))}</span></p>`;
     const since = record && record.since ? fill(t('h.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('h.footLocal');

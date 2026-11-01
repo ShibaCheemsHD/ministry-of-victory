@@ -70,9 +70,10 @@
   function fmtCountdown(ms) {
     if (!isFinite(ms)) return '—';
     const s = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
     const u = t('dhms'), p2 = (n) => String(n).padStart(2, '0');
-    return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>${p2(sec)}<span>${u[3]}</span>`;
+    // days, hours and minutes: on a second screen a ticking seconds field only pulls the eye
+    return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>`;
   }
   function rollDigits(el, html) { if (el.innerHTML !== html) el.innerHTML = html; }
   // live counters: between refreshes, objectives count up at the pace just measured
@@ -162,7 +163,9 @@
   }
   function shareText(entry) {
     const { a, res } = entry;
-    const p = directiveParts(res);
+    // times in UTC, as on the share image: the text is read all over the world
+    clockUTC = true;
+    let p; try { p = directiveParts(res); } finally { clockUTC = false; }
     const left = Date.parse(a.expiration) - Date.now();
     const lines = [
       `MINISTRY OF VICTORY · ${plain(clean(txt(a.title) || 'Major Order')).toUpperCase()}`,

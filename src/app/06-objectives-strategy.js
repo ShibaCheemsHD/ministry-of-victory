@@ -91,7 +91,7 @@
       // time inside an order that is still short says so in words, not with a green tick)
       // every race says one of the five calls (critique 1 Nov 2026: "Falls in time", "on pace" and "Called: done"
       // sat beside them); on track only if players switch over is a push, not on track
-      const rv = res.ended && r.verdict !== 'done' ? 'failed' : r.verdict === 'ontrack' && r.freed ? 'effort' : r.verdict;
+      const rv = raceVerdict(r, res);
       const pv = pill(rv);
       // liberation that falls before the deadline: the bracket runs to the goal line
       if (r.pw && r.eta <= H && !res.ended && r.verdict !== 'done') { const frac = Math.max(0, 1 - p.health / p.maxHealth); bar = bar.replace('<div class="fill"', `<div class="proj" style="left:${frac * 100}%;width:${(1 - frac) * 100}%"></div><div class="fill"`).replace(/<\/div>$/, '<div class="goal"></div></div>'); }
