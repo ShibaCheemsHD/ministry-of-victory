@@ -1917,3 +1917,25 @@ a { text-underline-offset: 3px; }
 .timer .count, .dir-fc-count { white-space: nowrap; }
 .verdict-card .timer .count { font-size: clamp(20px, 2.1vw, 28px); }
 .ar-src { color: var(--info); }
+
+/* ---------- motion pass (1 Nov 2026) ----------
+   A page people keep open for an hour: motion only where something happened. */
+/* the live dot pulses once each time fresh data arrives (the HUD and the order of the day are redrawn
+   at every refresh), instead of forever */
+.live { animation: pulse 1.4s cubic-bezier(.23, 1, .32, 1) 1; }
+/* the meter pips light up once when the order of the day is drawn; no endless wave */
+.dir-meter .pip.on { animation: none; }
+.anim .dir-meter .pip.on { animation: pipIn .45s var(--ease) both; animation-delay: calc(var(--i) * 28ms); }
+/* no glint sweeping every bar: only a planet being liberated keeps its lit leading edge (it means "moving") */
+.bar .fill::after, .wm-bar .fill::after { animation: none; background: none; }
+.bar.lib.moving .fill::after { left: auto; right: 0; width: 3px; transform: none; background: #fff; animation: edge 2.4s ease-in-out infinite; }
+/* a new order's tab calls for attention three times, then rests */
+.otab.is-new { animation-iteration-count: 3; }
+/* the card tilt follows the pointer: short and crisp */
+.directive, .rail-card, .objective, .hist-card, .acc-card { transition: transform 240ms cubic-bezier(.23, 1, .32, 1); }
+/* pressable things answer the press */
+@media (hover: hover) and (pointer: fine) { .btn:active, .icon-btn:active, .linkish:active { transform: scale(.97); } }
+.btn, .icon-btn { transition-property: transform, background-color, border-color, color, box-shadow; transition-duration: 160ms; transition-timing-function: cubic-bezier(.23, 1, .32, 1); }
+/* the boot screen, once faded out, stops its loops (they ran hidden for as long as the page stayed open) */
+.boot.out *, .boot.out::before, .boot.out::after { animation-play-state: paused; }
+.boot.gone { display: none; }

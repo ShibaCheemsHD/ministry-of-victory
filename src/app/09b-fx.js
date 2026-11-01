@@ -49,13 +49,17 @@
 
   // 2. The tab underline slides from the tab you left to the one you picked (FLIP on the hatch).
   const tabInk = {};
+  // keyboard tab switches (Q / E, 1-4, arrows) are instant: an animation would trail behind the key
+  let viaKeys = false;
+  document.addEventListener('keydown', () => { viaKeys = true; }, true);
+  document.addEventListener('pointerdown', () => { viaKeys = false; }, true);
   function slideTabInk(root) {
     root.querySelectorAll('.order').forEach(o => {
       const id = o.dataset.order, sel = o.querySelector('.tab[aria-selected="true"]');
       if (!sel) return;
       const r = sel.getBoundingClientRect(), was = tabInk[id];
       tabInk[id] = { tab: sel.dataset.tab, x: r.left, w: r.width };
-      if (!fxOn() || !was || was.tab === sel.dataset.tab || !sel.animate) return;
+      if (!fxOn() || viaKeys || !was || was.tab === sel.dataset.tab || !sel.animate) return;
       try {
         sel.animate([{ transform: `translateX(${(was.x - r.left).toFixed(1)}px) scaleX(${(was.w / r.width).toFixed(3)})`, transformOrigin: 'left center' },
           { transform: 'translateX(0) scaleX(1)', transformOrigin: 'left center' }], { duration: 260, easing: 'cubic-bezier(0.23, 1, 0.32, 1)', pseudoElement: '::after' });

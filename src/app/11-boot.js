@@ -25,10 +25,10 @@
       const lines = t('boot');
       const lastLine = state === 'ok' ? t('bootReady') : state === 'fail' ? t('bootFail') : t('bootWait');
       log.innerHTML = lines.map((l, i) => `${esc(l)} <span class="${state === 'ok' || i < lines.length - 1 ? 'ok' : 'pending'}">${state === 'ok' || i < lines.length - 1 ? t('bootOk') : '…'}</span>`).join('\n') + '\n' + esc(lastLine);
-      setTimeout(() => boot.classList.add('out'), reduced() ? 0 : 120);
+      setTimeout(() => { boot.classList.add('out'); setTimeout(() => boot.classList.add('gone'), 600); }, reduced() ? 0 : 120);
     }, wait);
   }
-  $('boot-skip').addEventListener('click', () => { bootDone = true; $('boot').classList.add('out'); });
+  $('boot-skip').addEventListener('click', () => { bootDone = true; $('boot').classList.add('out'); setTimeout(() => $('boot').classList.add('gone'), 600); });
   setTimeout(() => bootFinish('wait'), 4500);
 
   /* ---------- start ---------- */
