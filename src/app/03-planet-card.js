@@ -116,13 +116,16 @@
     const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: shareOf(cx.total) })
       : cx.verdict === 'pick' ? fill(t('xPick'), { total: shareOf(cx.total), title: esc(pick.title), need: shareOf(pick.need) })
       : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: shareOf(cx.total) });
+    // the total is less than the sum when the orders share an enemy: said, or it reads as a sum gone wrong
+    const sum = cx.orders.reduce((a, o) => a + (o.unknown ? 0 : o.need || 0), 0);
+    const overlap = sum > cx.total + 0.02 ? ' ' + t('xOverlap') : '';
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
     const chips = cx.orders.map(o => `<button type="button" class="xchip ${o.id === cx.pick ? 'pick' : ''}" data-otab="${esc(o.id)}">
       <span>${esc(o.title)}</span><b>${o.unknown ? '?' : sharePct(o.need)}</b></button>`).join('');
     const short = cx.verdict === 'all' ? fill(t('xShortAll'), { n: cx.orders.length }) : cx.verdict === 'pick' ? fill(t('xShortPick'), { title: esc(pick.title) }) : t('xShortNone');
     box.innerHTML = `<details class="cross v-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}>
       <summary><span class="label">${fill(t('xLabelN'), { n: cx.orders.length })}</span><span class="xs">${short}</span>${ICON.chev}</summary>
-      <p>${msg}${note}</p><div class="xchips">${chips}</div></details>`;
+      <p>${msg}${overlap}${note}</p><div class="xchips">${chips}</div></details>`;
   }
 
   /* ---------- rail ---------- */
@@ -146,6 +149,9 @@
         const rec0 = r.rates.recent ? r.rates.recent.rate : null;
         // the last hour is worth showing only when it differs from the main pace
         const rec = rec0 != null && r.primary.rate > 0 && Math.abs(rec0 / r.primary.rate - 1) > 0.1 ? rec0 : null;
+        // on track thanks to players switching over from finished objectives: the meter shows that pace, said so
+        const fr = r.verdict === 'ontrack' && r.freed && r.freed.rate > 0 ? r.freed.rate : null;
+        if (fr != null) { meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), fr, r.needed, fill(t('why.paceFreed'), { have: big(r.primary.rate), eff: big(fr), need: big(r.needed) }), null, `${res.id}:${r.idx}`); continue; }
         meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), r.primary.rate, r.needed,
           fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
       } else if (r.defense && !r.defense.outlastsMO) {

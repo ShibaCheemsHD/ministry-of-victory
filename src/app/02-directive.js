@@ -35,7 +35,7 @@
     data: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><ellipse cx="6" cy="3" rx="4" ry="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 3v6c0 .9 1.8 1.6 4 1.6s4-.7 4-1.6V3M2 6c0 .9 1.8 1.6 4 1.6S10 6.9 10 6" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
     lens: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><circle cx="5" cy="5" r="3.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7.5 7.5L11 11" stroke="currentColor" stroke-width="1.6"/></svg>',
   };
-  const VICON = { done: 'check', ontrack: 'check', effort: 'plus', focus: 'target', hard: 'warn', record: 'warn', nearly_impossible: 'cross', impossible: 'cross', failed: 'cross', unknown: 'dots' };
+  const VICON = { done: 'check', ontrack: 'check', effort: 'plus', focus: 'target', hard: 'warn', record: 'warn', nearly_impossible: 'cross', impossible: 'cross', failed: 'cross', unknown: 'dots', planet: 'check' };
   const pill = (v, label) => `<span class="pill v-${v}">${ICON[VICON[v] || 'dots']}${esc(label || t('v.' + v))}</span>`;
   const medalSvg = '<svg class="medal" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 1h10l-2 8h-6z" fill="var(--info)"/><circle cx="13" cy="16" r="8" fill="none" stroke="var(--yellow)" stroke-width="2"/><path d="M13 11.5l1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="var(--yellow)"/></svg>';
 

@@ -359,6 +359,8 @@ button { cursor: pointer; }
 .v-hard, .v-record { color: var(--warn); }
 .v-nearly_impossible, .v-impossible, .v-failed { color: var(--bad); }
 .v-unknown { color: var(--muted); }
+/* one planet that falls in time, in an order that is still short: a fact, not a verdict, so not green (critique 1 Nov 2026) */
+.pill.v-planet { color: var(--fg); border-color: var(--line-2); }
 .pill { font: 600 11px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase; padding: 5px 8px; border: 1px solid currentColor; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
 .ico { width: 12px; height: 12px; display: inline-block; flex: 0 0 auto; }
 

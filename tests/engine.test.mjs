@@ -135,4 +135,13 @@ test('counts: players freed by a finished objective move to the others', () => {
   near(B.freed.plain, 30 + 48);
   near(B.projection, 116, 0.02);
   assert.notEqual(B.verdict, 'ontrack');
+  near(B.freed.rate, (116 - 30) / 48, 0.02);
+  // a goal that only the switch reaches: on track, the switch is the advice, and the order needs no one extra
+  const a2 = { ...a, tasks: [task(100), task(110)] };
+  const r2 = E.analyzeAssignment(a2, { planets: {}, N: 1e5, now, C: 1e5, dssIdx: null, hod: null, settings: E.DEFAULTS, samples, startMs: start });
+  const B2 = r2.tasks[1];
+  assert.equal(B2.verdict, 'ontrack');
+  assert.ok(B2.freed && B2.freed.plain < 110 && B2.projection >= 110);
+  assert.ok(r2.recs.some(x => x.kind === 'cntFreed' && x.task === B2), 'the switch is the advice');
+  assert.ok(!r2.recs.some(x => x.kind === 'cntOk' && x.task === B2), 'not "finishes on its own"');
 });

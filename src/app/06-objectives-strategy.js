@@ -67,7 +67,7 @@
           ? `<span class="tick-wrap"><i class="live"></i><span class="tick" data-tick="${tk.progress}" data-rate="${(rate / 3600).toFixed(3)}" data-goal="${tk.goal}" data-t0="${last.now}">${fmt(tk.progress)}</span> / ${big(tk.goal)}</span> · ` : '';
         // far ahead: "done by Sun 14:00" reads better than "about 5,575% by the deadline"
         const doneIn = r.verdict === 'ontrack' && r.primary && r.primary.rate > 0 && r.projection / tk.goal > 1.5 ? (tk.goal - tk.progress) / r.primary.rate : null;
-        line = `${r.early ? `<span class="chip early" title="${esc(t('earlyWhy'))}">${esc(t('early'))}</span> ` : ''}<b>${pct(frac)}</b> · ${live}${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj || r.verdict === 'unknown' ? S('cWait') : doneIn != null ? S('cOkBy', { when: clock(doneIn) }) : r.verdict === 'ontrack' ? S('cOk', { proj }) : S('cBehind', { proj })}`;
+        line = `${r.early ? `<span class="chip early" title="${esc(t('earlyWhy'))}">${esc(t('early'))}</span> ` : ''}<b>${pct(frac)}</b> · ${live}${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj || r.verdict === 'unknown' ? S('cWait') : doneIn != null ? S('cOkBy', { when: clock(doneIn) }) : r.verdict === 'ontrack' ? S(r.freed ? 'cOkFreed' : 'cOk', { proj }) : S('cBehind', { proj })}`;
       } else {
         const frac = tk.goal ? Math.min(1, tk.progress / tk.goal) : null;
         if (frac != null) bar = `<div class="bar">${barFill(key, frac)}<div class="goal"></div></div>`;
@@ -77,7 +77,7 @@
       }
       const check = r.verdict === 'done' ? `<span class="check done">${ICON.check}</span>` : r.verdict === 'impossible' || r.verdict === 'failed' ? `<span class="check fail">${ICON.cross}</span>` : '<span class="check"></span>';
       return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}">
-        ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${multiLib && r.pw && r.verdict === 'ontrack' ? pill('ontrack', t('vPlanetOk')) : pill(r.verdict)}
+        ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${multiLib && r.pw && r.verdict === 'ontrack' && res.verdict !== 'ontrack' && res.verdict !== 'done' ? pill('planet', t('vPlanetOk')) : multiLib && r.pw && r.verdict === 'ontrack' ? pill('ontrack', t('vPlanetOk')) : pill(r.verdict)}
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
     }).join('');
@@ -146,6 +146,13 @@
       case 'cntStart': params = { task: taskText(rec.task), needed: big(rec.needed) }; break;
       case 'cntWeapon': params = { item: esc(itemName(rec.task.task.itemId) || '') }; minor = true; break;
       case 'cntOk': params = { task: taskText(rec.task) }; minor = true; break;
+      case 'cntFreed': {
+        const from = (rec.from || []).filter(Boolean).map(f => facName(f));
+        if (!from.length || !rec.to) key = 'cntFreedAny';
+        const tk = rec.task.task, pl = rec.task.freed?.plain;
+        params = { task: taskText(rec.task), from: from.join(' and '), to: rec.to ? facName(rec.to) : '', plain: pl != null && tk.goal ? projPct(pl / tk.goal) : '—' };
+        break;
+      }
     }
     const [head, detail, nums] = R(key) || [key, '', ''];
     return `<${tag} class="${minor ? 'minor ' : ''}${cls}">${icon ? `<span class="fi">${icon}</span>` : ''}<div>

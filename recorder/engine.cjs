@@ -513,10 +513,13 @@ const ENGINE = (() => {
       const m = n0 / open.length, dt = Math.min(step, H - t);
       for (const x of open) x.got += x.rate * m * dt;
     }
+    // the objectives that finish in time hand their players over: named, so the page can say whose
+    const done = st.filter(x => x.got >= x.goal);
     for (const x of st) {
       const r = x.r;
       if (!(x.got > r.projection + 1)) continue;
-      r.freed = { projection: x.got, plain: r.projection };
+      r.freed = { projection: x.got, plain: r.projection, rate: (x.got - r.task.progress) / H,
+        from: [...new Set(done.filter(y => y !== x).map(y => y.r.task.faction || null))] };
       r.projection = x.got;
       const eff = (x.got - r.task.progress) / H;   // the average pace this projection stands for
       const v = countVerdict(r.needed / eff, r.frontShare, settings);
@@ -881,7 +884,12 @@ const ENGINE = (() => {
         const rate = r.primary?.rate;
         const tk = r.task;
         const front = tk.planetIndex == null ? tk.faction : null;
-        if (r.verdict === 'ontrack') {
+        // on track only because players of finished objectives move over: that move is the advice, and
+        // the front isn't short (the page would otherwise say "on track" and "23,600 more needed" at once)
+        const freedOk = r.verdict === 'ontrack' && !!r.freed;
+        if (freedOk) {
+          recs.push({ kind: 'cntFreed', prio: 2.4, task: r, from: r.freed.from, to: front });
+        } else if (r.verdict === 'ontrack') {
           recs.push({ kind: 'cntOk', prio: 7, task: r });
         } else if (rate > 0) {
           recs.push({ kind: 'cntBehind', prio: 2, task: r, more: r.needed / rate - 1, needed: r.needed, rate });
@@ -891,7 +899,7 @@ const ENGINE = (() => {
         if (tk.itemId && tk.type === TASK.KILL && r.verdict !== 'ontrack') recs.push({ kind: 'cntWeapon', prio: 2.2, task: r });
         // players needed = players there now x (pace needed / pace now). For weapon-only kills this
         // assumes the same share of players keeps using the weapon ("at today's weapon use").
-        if (front && front in fronts && fronts[front] > 0 && rate > 0) {
+        if (front && front in fronts && fronts[front] > 0 && rate > 0 && !freedOk) {
           const perPlayer = rate / fronts[front];
           const needPlayers = r.needed / perPlayer;
           if (needPlayers > (byFront[front] || 0)) { byFront[front] = needPlayers; weaponFront[front] = !!tk.itemId; }
@@ -1019,6 +1027,7 @@ const ENGINE = (() => {
           continue;
         }
         case 'cntStart': m.level = 'tip'; break;
+        case 'cntFreed': m.level = 'high'; break;
         default: break;
       }
       out.push(m);
@@ -1099,6 +1108,7 @@ const ENGINE = (() => {
     // Weapon-only kills are left out: they depend on how many pick the weapon up, not on head count.
     for (const r of res.tasks) {
       if (!r.counter || r.simpleCount || r.verdict === 'done' || r.task.planetIndex != null) continue;
+      if (r.verdict === 'ontrack' && r.freed) continue;   // covered once the finished objectives' players move over
       const f = r.task.faction, now = res.fronts && res.fronts.players ? res.fronts.players[f] || 0 : 0;
       const rate = r.primary?.rate;
       // kills of any enemy: every Helldiver counts, so the share needed is the pace needed over the pace now
