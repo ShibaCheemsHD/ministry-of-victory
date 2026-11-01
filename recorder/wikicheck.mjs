@@ -48,6 +48,11 @@ export function parseWiki(raw) {
       const name = verb === 'kill' && num ? (text.slice(num.index + num[0].length).split(/\s+(?:on|using|with|in|from|to|across|within)\s+|\s*\(|\s*\.|\s*;/i)[0] || '').trim() : null;
       return { verb, goal, name, text };
     });
+    for (const o of objectives) {
+      // the weapon or stratagem an objective asks for: "... using the Orbital Railcannon Strike"
+      const m = /\b(?:using|with)\s+(?:the\s+)?([A-Z0-9][^.;(]*?)(?:\s+(?:Stratagem|on|in|across|for)\b|[.;(]|$)/.exec(o.text);
+      o.item = o.verb === 'kill' || o.verb === 'use' ? (m ? m[1].trim() : null) : null;
+    }
     out.push({ title: clean(field('title')), start, objectives });
   }
   return out;
@@ -67,20 +72,25 @@ export function singular(s) {
   return w;
 }
 
-// orders: [{ id, start (ms), tasks: raw game tasks }]; foes: src/game/enemies.json
-export function checkOrders(entries, orders, foes) {
-  const res = { checked: 0, matched: 0, mismatches: [], hints: {}, notes: [] };
+// the faction word an objective uses ("Kill 50,000,000 Automatons using ...")
+const FAC_WORD = { 2: /terminid/i, 3: /automaton/i, 4: /illuminate/i };
+
+// orders: [{ id, start (ms), tasks: raw game tasks }]; foes: src/game/enemies.json; items: id -> name we use
+export function checkOrders(entries, orders, foes, items = {}) {
+  const res = { checked: 0, matched: 0, mismatches: [], hints: {}, itemHints: {}, itemMismatches: [], notes: [] };
   for (const o of orders) {
-    const kills = (o.tasks || []).map(tk => {
+    const all = (o.tasks || []).map(tk => {
       const vt = tk.valueTypes || [], v = tk.values || [];
       const at = (k) => { const i = vt.indexOf(k); return i >= 0 ? Number(v[i]) : 0; };
-      return { unit: at(4), goal: at(3), type: tk.type };
-    }).filter(k => k.type === 3 && k.unit && k.goal);
-    if (!kills.length || !o.start) continue;
+      return { unit: at(4), goal: at(3), type: tk.type, item: at(5), fac: at(1) };
+    });
+    const kills = all.filter(k => k.type === 3 && k.unit && k.goal);
+    const withItem = all.filter(k => (k.type === 3 || k.type === 6) && k.item && k.goal);
+    if ((!kills.length && !withItem.length) || !o.start) continue;
     res.checked++;
     // the wiki entry that started within 2 days and shares the most goals
     const near = entries.filter(e => Math.abs(e.start - o.start) < 48 * H);
-    const score = (e) => kills.filter(k => e.objectives.some(x => x.goal === k.goal)).length;
+    const score = (e) => [...kills, ...withItem].filter(k => e.objectives.some(x => x.goal === k.goal)).length;
     const e = near.sort((a, b) => score(b) - score(a))[0];
     if (!e || !score(e)) continue;
     res.matched++;
@@ -90,6 +100,18 @@ export function checkOrders(entries, orders, foes) {
       const ours = foes[String(k.unit)];
       if (!ours) res.hints[String(k.unit)] = { many: w.name, one: singular(w.name), order: o.id, wiki: e.title };
       else if (!sameName(ours.many, w.name)) res.mismatches.push({ order: o.id, unit: k.unit, ours: ours.many, wiki: w.name, title: e.title });
+    }
+    // weapons and stratagems: the objective with the same goal, else the one naming the same faction
+    // (goals get edited after launch, so the wiki may show the first ones)
+    const used = new Set();
+    for (const k of withItem) {
+      const cands = e.objectives.filter(x => x.item && !used.has(x));
+      const w = cands.find(x => x.goal === k.goal) || (FAC_WORD[k.fac] ? cands.filter(x => FAC_WORD[k.fac].test(x.text)) : []).find((x, i, a) => a.length === 1);
+      if (!w) continue;
+      used.add(w);
+      const ours = items[String(k.item)];
+      if (!ours) res.itemHints[String(k.item)] = w.item;
+      else if (!sameName(ours, w.item)) res.itemMismatches.push({ order: o.id, item: k.item, ours, wiki: w.item, title: e.title });
     }
   }
   return res;

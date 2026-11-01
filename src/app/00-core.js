@@ -125,7 +125,7 @@
     } catch {}
   }
   // a name the lists don't have yet (a brand-new weapon or enemy): plain words, never a raw id
-  const itemKnown = (id) => id ? (names.items?.[id] || names.strats?.[id] || null) : null;
+  const itemKnown = (id) => id ? (GAME.item?.[id] || names.items?.[id] || names.strats?.[id] || (record && record.itemHints ? record.itemHints[id] : null) || null) : null;
   const itemName = (id) => id ? (itemKnown(id) || t('itemAny')) : null;
   // an enemy unit not in our list yet: said as "Automaton targets of one kind", never as all Automatons
   const foeHint = (id) => record && record.foeHints ? record.foeHints[id] : null;
@@ -134,7 +134,7 @@
   const enemyKnown = (id) => !!(GAME.foe?.[id] || foeHint(id) || names.enemies?.[id]);
   const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   const unknownNames = (results) => results.some(({ res }) => res.tasks.some(r =>
-    (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || false));
+    r.task.itemId && !itemKnown(r.task.itemId)));
 
   /* ---------- API ---------- */
   // The API translates briefings and names into the language the browser asks for (an Italian browser

@@ -1,0 +1,15 @@
+{
+ "_about": "Weapon and stratagem ids the game uses in Major Order objectives (task valueType 5) that the community item list (helldivers-2/json item_names.json) lacks: the stratagem list that covered them (Galactic-Wide-Web) went offline in Oct 2026. Matched by order and faction against the objective text on the Helldivers Wiki. The recorder's daily wiki check names any new one.",
+ "3827587060": {
+  "name": "E/MG-101 HMG Emplacement",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Democratic Sniper, 'Kill 300,000,000 Terminids using the E/MG-101 HMG Emplacement' (Oct 2026)"
+ },
+ "376960160": {
+  "name": "APW-1 Anti-Materiel Rifle",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Democratic Sniper, 'Kill 65,000,000 Illuminate using the APW-1 Anti-Materiel Rifle' (Oct 2026)"
+ },
+ "2197477188": {
+  "name": "Orbital Railcannon Strike",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Democratic Sniper, 'Kill 50,000,000 Automatons using the Orbital Railcannon Strike' (Oct 2026)"
+ }
+}

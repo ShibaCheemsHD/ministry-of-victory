@@ -151,3 +151,24 @@ test('wiki cross-check: objectives read from the wiki, names compared, unknown u
   // not on the wiki yet: nothing to say
   assert.equal(checkOrders(E, [{ id: 'new', start: Date.UTC(2026, 10, 20), tasks: [kill(999, 5e6)] }], foes).matched, 0);
 });
+
+test('wiki cross-check: weapons named by objectives, matched even when the goal was edited', async () => {
+  const { parseWiki, checkOrders } = await import('../recorder/wikicheck.mjs');
+  const E = parseWiki(`{{Major Order
+|title = Memoriam Eternal - Inspirational Re-enactment
+|start_date = October 24th, 2186
+|overview = Kill the designated enemies. {{*}}Kill 300,000,000 Terminids using the E/MG‑101 HMG Emplacemen{{*}}Kill 65,000,000 Illuminate using the APW‑1 Anti‑Materiel Rifle{{*}}Kill 50,000,000 Automatons using the Orbital Railcannon Strike
+|notes =
+}}`);
+  assert.deepEqual(E[0].objectives.map(o => o.item), ['E/MG-101 HMG Emplacemen', 'APW-1 Anti-Materiel Rifle', 'Orbital Railcannon Strike']);
+  const t = (fac, goal, item) => ({ type: 3, values: [fac, 0, goal, 0, 1, item, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] });
+  // the game's goals had been cut (300M -> 150M, 65M -> 32.5M): the faction picks the objective
+  const orders = [{ id: '568917260', start: Date.UTC(2026, 9, 24, 15), tasks: [t(2, 150e6, 3827587060), t(4, 32.5e6, 376960160), t(3, 50e6, 2197477188)] }];
+  const none = checkOrders(E, orders, {}, {});
+  assert.deepEqual(none.itemHints, { 3827587060: 'E/MG-101 HMG Emplacemen', 376960160: 'APW-1 Anti-Materiel Rifle', 2197477188: 'Orbital Railcannon Strike' });
+  const items = JSON.parse(fs.readFileSync(path.join(here, '..', 'src', 'game', 'items.json'), 'utf8'));
+  const named = Object.fromEntries(Object.entries(items).filter(([k]) => !k.startsWith('_')).map(([k, v]) => [k, v.name]));
+  const ok = checkOrders(E, orders, {}, named);
+  assert.deepEqual(ok.itemHints, {}); assert.deepEqual(ok.itemMismatches, []);
+  assert.equal(checkOrders(E, orders, {}, { ...named, 2197477188: 'Orbital Laser' }).itemMismatches[0].wiki, 'Orbital Railcannon Strike');
+});

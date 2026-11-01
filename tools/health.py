@@ -54,6 +54,10 @@ for f in intel.get('unknownFoes') or []:
 wc = intel.get('wikiCheck') or {}
 for m in wc.get('mismatches') or []:
     problems.append(f'**Enemy name differs from the wiki**: unit `{m.get("unit")}` is "{m.get("ours")}" in `src/game/enemies.json`, the wiki\'s "{m.get("title")}" says "{m.get("wiki")}". Check which is right.')
+for m in wc.get('itemMismatches') or []:
+    problems.append(f'**Weapon name differs from the wiki**: item `{m.get("item")}` is "{m.get("ours")}" for us, the wiki\'s "{m.get("title")}" says "{m.get("wiki")}". Check `src/game/items.json`.')
+for iid, name in (intel.get('itemHints') or {}).items():
+    problems.append(f'**Unknown weapon in a Major Order**: item `{iid}`; the Helldivers Wiki calls it **{name}** and the page already uses that name. Add it to `src/game/items.json` to make it permanent.')
 check('wiki', 'Helldivers Wiki (name cross-check)', 72, 'enemy names in Major Orders are not checked against the wiki.')
 up = intel.get('warlogUpTo')
 if up and now - up / 1000 > 10 * 86400:

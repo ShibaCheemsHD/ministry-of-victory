@@ -31,12 +31,14 @@ head = '''<!doctype html>
 '''
 out = head + read(S('style.css')) + '</style>\n</head>\n<body>\n' + read(S('body.html'))
 # game texts (hazards, biomes, effects) from github.com/helldivers-2/json (MIT)
-env, bio, fx, foe = (json.load(open(S('game', f), encoding='utf-8')) for f in ('environmentals.json', 'biomes.json', 'planetEffects.json', 'enemies.json'))
+env, bio, fx, foe, items = (json.load(open(S('game', f), encoding='utf-8')) for f in ('environmentals.json', 'biomes.json', 'planetEffects.json', 'enemies.json', 'items.json'))
 game = {'env': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in env.items()},
         'bio': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in bio.items()},
         'fx': {k: {'n': v.get('name'), 'd': v.get('description')} for k, v in fx.items() if v.get('name')},
         # enemy units named by Major Order objectives (our own list: the community one went offline)
-        'foe': {k: {'one': v['one'], 'many': v['many']} for k, v in foe.items() if not k.startswith('_')}}
+        'foe': {k: {'one': v['one'], 'many': v['many']} for k, v in foe.items() if not k.startswith('_')},
+        # weapons and stratagems named by objectives that the community item list lacks
+        'item': {k: v['name'] for k, v in items.items() if not k.startswith('_')}}
 out += '<script>\nconst GAME = ' + json.dumps(game, ensure_ascii=False, separators=(',', ':')) + ';\n</script>\n'
 # the page's code lives in src/app/*.js, in order; together they make one closure (shared helpers and state)
 parts = sorted(f for f in os.listdir(S('app')) if f.endswith('.js'))
