@@ -25,21 +25,25 @@
   const RECORD = 'https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/';
   let record = store.get('record', null);   // { t, since, every, alerts }
   let recordSamples = [], recordFetched = 0, recordProgress = null;
+  const isNum = (x) => typeof x === 'number' && isFinite(x), isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x), arr = (x) => Array.isArray(x) ? x : [];
   async function loadRecord(now) {
     if (now - recordFetched < 5 * 60e3) return false;
     recordFetched = now;
     try {
       const [intel, recent, prog] = await Promise.all(['intel.json', 'recent.json', 'progress.json'].map(f =>
-        fetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
-      if (intel && Array.isArray(intel.alerts)) {
-        record = { t: intel.updated, since: intel.since, every: intel.every || 10, alerts: intel.alerts, effects: intel.effects || [], inf: intel.inf || null, official: !!intel.official, K: intel.K || null, impN24: intel.impN24 || null, orders: intel.orders || {}, so: intel.so || [] };
+        ghFetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
+      // the recorder's files are checked for shape before use: a broken file is ignored, not drawn (audit SEC-06)
+      if (intel && Array.isArray(intel.alerts) && isNum(intel.updated)) {
+        record = { t: intel.updated, since: isNum(intel.since) ? intel.since : null, every: isNum(intel.every) ? intel.every : 10, alerts: intel.alerts.filter(isObj), effects: arr(intel.effects).filter(isObj),
+          inf: isNum(intel.inf) ? intel.inf : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null,
+          K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
         store.set('record', record);
       }
-      if (prog && prog.orders) { recordProgress = prog; saveRecap(); }
-      if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
+      if (prog && isObj(prog.orders)) { recordProgress = prog; saveRecap(); }
+      if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.filter(x => isObj(x) && isNum(x.t)).map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
         planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] ?? null, w: v[8] ?? null }])), prog: x.prog || {} }))
         // older progress only (no planets), so a full day of pace is known on a first visit
-        .concat((recent.prog || []).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
+        .concat(arr(recent.prog).filter(x => isObj(x) && isNum(x.t)).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
       return true;
     } catch { return false; }
   }
@@ -48,7 +52,7 @@
   let apiDown = false, stale = null;
   async function loadLive() {
     try {
-      const r = await fetch(RECORD + 'live.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' });
+      const r = await ghFetch(RECORD + 'live.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' });
       const j = r.ok ? await r.json() : null;
       if (!j || j.v !== 1 || !j.war || !Array.isArray(j.assignments) || Date.now() - j.t > 6 * 3600e3) return null;
       return j;

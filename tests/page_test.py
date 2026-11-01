@@ -20,12 +20,20 @@ def check(pg, label, errs):
 def run(br, query, width):
     pg = br.new_page(viewport={'width': width, 'height': 900}); errs = []
     pg.on('pageerror', lambda e: errs.append('page error: ' + str(e)[:300]))
+    # anything the Content-Security-Policy blocks is a bug: a source missing from the policy, or code that needs it
+    pg.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + (e.blockedURI || e.sample || '')))")
     pg.goto(f'{PAGE}?s={query}'); pg.wait_for_timeout(1600)
     label = f'{query} @{width}'
     check(pg, label + ' home', errs)
     # no empty band between the order of the day and the tabs (the side rail used to stretch the first row; desktop only)
     gap = pg.evaluate("() => { const d = document.querySelector('.area-dir'), t = document.querySelector('.area-tabs'); return d && t && innerWidth > 980 ? t.getBoundingClientRect().top - d.getBoundingClientRect().bottom : null; }")
     if gap is not None and gap > 40: errs.append(f'empty band of {round(gap)}px under the order of the day')
+    # the header pieces never sit on top of each other (1 Nov 2026: the player count covered the logo on phones)
+    clash = pg.evaluate("""() => { const r = (s) => document.querySelector(s)?.getBoundingClientRect(), l1 = r('.hud .logo .l1'), b = r('.hud .logo b');
+      const logo = l1 && b ? { left: Math.min(l1.left, b.left), right: Math.max(l1.right, b.right), top: l1.top, bottom: b.bottom, width: 1 } : null;
+      const a = [logo, r('#hud-stats .stat .v'), r('.hud-actions')].filter(x => x && x.width);
+      for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].left < a[j].right - 1 && a[j].left < a[i].right - 1 && a[i].top < a[j].bottom - 1 && a[j].top < a[i].bottom - 1) return true; return false; }""")
+    if clash: errs.append('header pieces overlap')
     tabs = pg.locator('[data-otab]:visible')
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)
@@ -46,6 +54,8 @@ def run(br, query, width):
     arch = pg.locator('#open-archive')
     if arch.count() and arch.is_visible():
         arch.click(); pg.wait_for_timeout(600); check(pg, label + ' archive', errs)
+    csp = pg.evaluate('window.__csp || []')
+    if csp: errs.append('blocked by the security policy: ' + ', '.join(sorted(set(csp))[:4]))
     missing = pg.evaluate('window.__missingT ? [...window.__missingT] : []')
     if missing: errs.append('texts missing from the dictionary: ' + ', '.join(sorted(missing)[:10]))
     problems.extend(f'{label}: {e}' for e in sorted(set(errs)))
@@ -57,15 +67,24 @@ with sync_playwright() as p:
     for s in ('default', 'none', 'sniper'): run(br, s, 390)
     for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
     for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
+    # GitHub raw down: the recorder's files come from jsDelivr instead (audit ARCH-05)
+    pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
+    via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")
+    if 'cdn.jsdelivr.net' not in via: problems.append('raw down: the recorder data did not come from the fallback')
+    if not pg.locator('.trust-link').count(): problems.append('raw down: the page lost the recorder data')
+    pg.close()
     # outside text never runs as code (1 Nov 2026: an order name with markup ran its onerror in the archive)
     pg = br.new_page()
     pg.add_init_script("""Object.defineProperty(window, '__mockArchive', { configurable: true, get() { return this.__a; }, set(v) {
       const bad = '<img src=x onerror="window.__pwn=1">';
       if (v && v.orders) v.orders.forEach(o => { o.name = 'MAJOR ORDER | ' + bad; o.brief = bad + ' Liberate it.'; (o.facts?.planets || []).forEach(p => { p.n = bad; }); });
       this.__a = v; } });""")
+    # the security policy would now block the handler anyway: a blocked attempt counts as a failure too
+    pg.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective))")
     pg.goto(f'{PAGE}?s=default&motion=reduced'); pg.wait_for_timeout(1500)
     pg.click('#open-archive'); pg.wait_for_timeout(1500)
     if pg.evaluate('window.__pwn'): problems.append('outside text ran as code in the archive')
+    if pg.evaluate('window.__csp.length'): problems.append('outside text tried to run as code in the archive (blocked by the security policy)')
     pg.close()
     br.close()
 for x in problems[:60]: print('PROBLEM', x)

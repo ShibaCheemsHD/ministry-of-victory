@@ -15,11 +15,17 @@ const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
+import { buildFeed, notifyDiscord } from './feed.mjs';
 import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
 import { measure, logStation } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
+// every warning is also kept in the history (the last 50, with the time), so a missing measure can be
+// explained later: the Actions logs are gone after 90 days (audit OPS-08)
+const warnings = [];
+const log0 = console.log;
+console.log = (...a) => { const s = a.join(' '); const m = /^::(warning|error)::/.exec(s); if (m) warnings.push([Date.now(), s.slice(m[0].length).slice(0, 300)]); log0(...a); };
 
 const API = 'https://api.helldivers2.dev';
 const CLIENT = 'ministry-of-victory-recorder';
@@ -89,6 +95,15 @@ let hist = { v: 1, samples: [], orders: {}, edits: [], names: {} };
     if (!Array.isArray(hist.samples)) { console.log('::error::history.json has no samples, not overwriting it'); process.exit(1); }
   }
 }
+// One version number for the whole history, with the changes between versions in order (audit ARCH-07).
+// Parts that rebuild themselves (measure.v, retroV) keep their own numbers: they are caches, not data.
+const MIGRATIONS = [
+  /* 1 -> 2 (1 Nov 2026) */ (h) => { h.warnings = Array.isArray(h.warnings) ? h.warnings : []; h.posted = Array.isArray(h.posted) ? h.posted : []; },
+];
+if (!(hist.v >= 1)) hist.v = 1;
+if (hist.v > MIGRATIONS.length + 1) { console.log(`::error::history.json is version ${hist.v}, newer than this recorder: not overwriting it`); process.exit(1); }
+for (let v = hist.v; v <= MIGRATIONS.length; v++) MIGRATIONS[v - 1](hist);
+hist.v = MIGRATIONS.length + 1;
 
 // the community API first; if it's down, the same data built from the game's own API
 let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null, commErr = null;
@@ -141,6 +156,8 @@ for (const a of assignments || []) for (const tk of a.tasks || []) {
   const t = E.parseTask(tk, 0);
   if (t.planetIndex != null) named.add(t.planetIndex);
 }
+// planets whose fall is being checked (accuracy record) are read even after they leave the campaign list
+for (const a of assignments || []) { const T = hist.calls?.[String(a.id)]?.track; if (T) for (const k of Object.keys(T.lib || {})) if (!T.fell?.[k]) named.add(Number(k)); }
 for (const i of [...named].filter(i => !planets[i]).slice(0, 10)) {
   const p = all ? all[i] : await get('/api/v1/planets/' + i, 2).catch(() => null);
   if (p) planets[p.index] = p;
@@ -240,10 +257,14 @@ const impN24 = (() => {
     // the forecasts as they were made, once an hour, to be checked against what happened (accuracy)
     const T = c.track ||= { lib: {}, cnt: {}, fell: {}, t: 0 };
     for (const r of res.tasks) if (r.planet && r.planet.currentOwner === 'Humans' && r.task.type === 11 && T.lib[r.planet.index] && !T.fell[r.planet.index]) T.fell[r.planet.index] = now;
+    // "liberate N planets": its candidates leave the list once taken, so the owner is read from the war (audit CR-06)
+    for (const k of Object.keys(T.lib)) if (!T.fell[k] && planets[k]?.currentOwner === 'Humans') T.fell[k] = now;
     if (now - T.t >= H - 5 * 60e3) {
       T.t = now;
       for (const r of res.tasks) {
         if (r.pw && r.task.type === 11 && isFinite(r.eta) && r.eta > 0) (T.lib[r.planet.index] ||= []).push([now, Math.round(now + r.eta * H)]);
+        // the planets of a "liberate N planets" objective, with the forecast the page shows for each
+        if (r.libN && Array.isArray(r.libN.rank)) for (const x of r.libN.rank.slice(0, 6)) if (x.planet && isFinite(x.eta) && x.eta > 0 && x.eta < 30 * 24) (T.lib[x.planet.index] ||= []).push([now, Math.round(now + x.eta * H)]);
         if (r.counter && !r.simpleCount && r.projection != null && r.task.goal) (T.cnt[r.idx] ||= []).push([now, +(r.projection / r.task.goal).toFixed(4)]);
       }
       for (const k of Object.keys(T.lib)) if (T.lib[k].length > 240) T.lib[k].splice(0, T.lib[k].length - 240);
@@ -271,6 +292,7 @@ const impN24 = (() => {
     else if (now - lastT > 12 * H) c.result = 'lost';   // no word after half a day: the counters at the deadline decide
     else continue;   // wait a little for the dispatch
     c.resultBy = word ? 'news' : 'progress';
+    c.resultT = now;
   }
 }
 
@@ -440,6 +462,10 @@ for (const r of hist.retro || []) {
 archive.orders.sort((a, b) => (b.start || b.end || 0) - (a.start || a.end || 0));
 
 fs.mkdirSync(outDir, { recursive: true });
+// news without opening the site: RSS on the data branch, and Discord when a webhook is set (audit PO-04)
+try { fs.writeFileSync(path.join(outDir, 'feed.xml'), buildFeed(hist.calls, now)); } catch (e) { console.log('::warning::feed: ' + e.message); }
+if (process.env.DISCORD_WEBHOOK) { try { const n = await notifyDiscord(hist, now, process.env.DISCORD_WEBHOOK); if (n) console.log(`posted ${n} to Discord`); } catch (e) { console.log('::warning::discord: ' + e.message); } }
+hist.warnings = [...(Array.isArray(hist.warnings) ? hist.warnings : []), ...warnings].slice(-50);
 try { compactCalls(hist.calls, now); } catch (e) { console.log('::warning::compacting the forecast record: ' + e.message); }
 const histJson = JSON.stringify(hist);
 if (histJson.length > 5e6) console.log(`::warning::history.json is ${(histJson.length / 1e6).toFixed(1)} MB: time to prune (audit CR-03)`);
@@ -448,7 +474,9 @@ fs.writeFileSync(path.join(outDir, 'history.json'), histJson);
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so }));
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10),
+  // how right the forecasts are, for the link next to the page's forecast (audit PO-03)
+  trust: hist.backtest?.lib?.v2?.[6]?.within25 != null ? { fall6: hist.backtest.lib.v2[6].within25, n: hist.backtest.lib.v2[6].n, cnt: hist.backtest.cnt?.calledRight ?? null } : null }));
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
 const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };

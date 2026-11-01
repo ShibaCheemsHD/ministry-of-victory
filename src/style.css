@@ -165,7 +165,8 @@ button { cursor: pointer; }
 .area-tabs { grid-area: tabs; min-width: 0; display: grid; gap: 0; scroll-margin-top: 96px; }
 .sim { scroll-margin-top: 96px; }
 @media (max-width: 980px) {
-  .order { grid-template-columns: minmax(0, 1fr); grid-template-areas: "dir" "rail" "tabs"; grid-template-rows: none; }
+  /* phones: the objectives and the plan right after the forecast; map, Joel and briefing after (audit UX-02) */
+  .order { grid-template-columns: minmax(0, 1fr); grid-template-areas: "dir" "tabs" "rail"; grid-template-rows: none; }
   .area-rail { position: static; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
 .order.anim .directive { animation: rise .5s var(--ease) both; }
@@ -267,6 +268,8 @@ button { cursor: pointer; }
 .stamp.slam { animation: slam .55s cubic-bezier(.2, 1.6, .4, 1) both; }
 @keyframes slam { 0% { transform: rotate(-12deg) scale(2.2); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-2.5deg) scale(1); } }
 .verdict-card .meaning { color: var(--fg); font-size: 15px; }
+.verdict-card .trust-link { font-size: 13px; color: var(--muted); justify-self: start; text-align: left; }
+.verdict-card .trust-link:hover, .verdict-card .trust-link:focus-visible { color: var(--fg); }
 .verdict-card.alert { background: linear-gradient(rgba(58, 9, 5, .92), rgba(40, 6, 4, .92)); border-color: var(--alert-line); }
 .verdict-card.alert .meaning { color: var(--alert-fg); }
 .timer .count { font: 400 34px/1 var(--mono); letter-spacing: .03em; color: var(--fg); transition: color .4s; }
@@ -323,6 +326,7 @@ button { cursor: pointer; }
 .objective .meta { grid-column: 2 / 4; display: grid; gap: 8px; }
 .objective .line { font-size: 14px; color: var(--muted); }
 .objective .line b { color: var(--fg); font-weight: 600; }
+.objective .line .band { color: var(--dim); white-space: nowrap; }
 .chipline { display: flex; flex-wrap: wrap; gap: 6px; }
 .anim .objective { animation: rise .45s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms + 120ms); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -689,9 +693,16 @@ details.cmdintel .note { padding: 8px 14px 12px; font-size: 12px; color: var(--m
   .brand { margin-right: auto; }
   .hud-stats .stat .label { display: none; }
   .hud-stats .stat .v { font-size: 14px; }
-  .m-only { display: inline; color: var(--muted); font-size: 11px; }
+  /* the player count says what it is on phones too (audit UX-05) */
+  .stat .v small.m-only { display: block; color: var(--muted); font: 600 9px/1 var(--ui); letter-spacing: .14em; text-transform: uppercase; text-align: right; margin-top: 2px; }
 }
-@media (max-width: 380px) { .m-only { display: none; } }
+/* narrow phones: no room beside the logo, so the count gets its own short line (it overlapped the logo) */
+@media (max-width: 420px) {
+  .hud-in { flex-wrap: wrap; row-gap: 2px; }
+  .hud-stats { order: 3; width: 100%; justify-content: flex-end; }
+  .hud-stats .stat .v { font-size: 13px; }
+  .stat .v small.m-only { display: inline; font: 600 10px var(--ui); margin: 0 0 0 4px; }
+}
 
 /* logo: "Ministry of" small above a big "VICTORY" */
 .logo { display: inline-grid; line-height: .9; }
@@ -1517,6 +1528,15 @@ a { text-underline-offset: 3px; }
 .feed { display: grid; gap: 6px; }
 .fd-day { margin: 8px 0 2px; font: 700 11px var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .fd-day:first-child { margin-top: 0; }
+.ar-year { border-top: 1px solid var(--line); }
+.ar-year > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; list-style: none; }
+.ar-year > summary::-webkit-details-marker { display: none; }
+.ar-year > summary .fd-day { margin: 0; }
+.ar-year > summary svg { width: 12px; height: 12px; transition: transform .2s var(--ease); transform: rotate(-90deg); color: var(--muted); }
+.ar-year[open] > summary svg { transform: none; }
+.ar-year > summary:hover .fd-day, .ar-year > summary:focus-visible .fd-day { color: var(--fg); }
+.ar-ycount { font: 12px var(--mono); color: var(--dim); }
+.ar-year[open] > .ar-list { margin-bottom: 10px; }
 .fd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .fd-list li { background: var(--row); }
 .fd-list li.nk-win, .fd-list li.nk-loss { background: color-mix(in srgb, var(--nc) 8%, var(--row)); }
@@ -1629,6 +1649,7 @@ a { text-underline-offset: 3px; }
 .ar-tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 .ar-fnow { color: var(--muted); font-size: 14px; }
 .linkish { all: unset; cursor: pointer; color: var(--yellow); text-decoration: underline; text-underline-offset: 3px; }
+.linkish:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .ar-meter { position: relative; height: 8px; max-width: 440px; background: rgba(255, 255, 255, .07); }
 .ar-meter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cg); }
 .ar-meter s { position: absolute; top: -3px; bottom: -3px; width: 1px; background: rgba(255, 255, 255, .4); }
@@ -1702,6 +1723,12 @@ a { text-underline-offset: 3px; }
 .sh-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .sh-actions .btn { text-decoration: none; }
 @media (max-width: 640px) { .dir-actions [data-shareimg] span { font-size: 0; } .dir-actions [data-shareimg] span::after { content: attr(data-short); font-size: 14px; } }
+/* phones: the three actions on one row; the copy button says just "Copy" (audit UX-06) */
+@media (max-width: 640px) {
+  .dir-actions { gap: 6px; }
+  .dir-actions .btn { padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+  .dir-actions [data-copy] span { font-size: 0; } .dir-actions [data-copy] span::after { content: attr(data-short); font-size: 14px; }
+}
 
 /* ===== ARCHIVE: TRACK RECORD ===== */
 .ar-acc { padding: 20px 22px; display: grid; gap: 12px; background: var(--row); }
@@ -1819,3 +1846,11 @@ a { text-underline-offset: 3px; }
 @media (max-width: 640px) { .longshot .pm-tile .label { padding-right: 22px; letter-spacing: .1em; } }
 .the-plan { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .the-plan > *, .situation > * { min-width: 0; }
+
+/* smallest phones: logo and the four buttons on one line (audit UX-05 follow-up) */
+@media (max-width: 360px) {
+  .hud-actions { gap: 4px; }
+  .hud .brand { gap: 8px; }
+  .hud .logo { font-size: 21px; }
+  .hud .logo .l1 { font-size: 8px; letter-spacing: .18em; }
+}

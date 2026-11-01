@@ -208,7 +208,8 @@ const ENGINE = (() => {
      3. Within 10 h the planet's own strength decides, past 36 h everyone's, in between a blend.
      Knowing the future player counts exactly would still leave it at about 80% / 74% / 78%: the rest is
      what nobody can know in advance (Joel, sudden surges, the war log's own 1-2 h resolution). */
-  const FC = { shrink: 0.3, a0: 1.5, smax: 0.6, cap: 48, near: 10, far: 36, window: 6 };
+  // tuned on the 2026 backtest (recorder/accuracy.mjs); frozen so no other code can change them by accident (audit ARCH-08)
+  const FC = Object.freeze({ shrink: 0.3, a0: 1.5, smax: 0.6, cap: 48, near: 10, far: 36, window: 6 });
   // HP/h the planet's fighters would deal with everyone online there (the planet's own C), from the samples
   // Samples may carry a player count without a health reading (h null): they still tell the share in between.
   function localC(samples, idx, now, regenH, maxH) {

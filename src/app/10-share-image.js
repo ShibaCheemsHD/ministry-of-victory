@@ -110,7 +110,9 @@
       y += 70; R(PAD, y, IN, 1, '#2a2f3d'); y += 46;
       font(23, 400, 'Share Tech Mono'); T('shibacheemshd.github.io/ministry-of-victory', PAD, y, '#f1f2f4');
       font(17, 500); T(t('sh.foot'), W - PAD, y, '#a8aebd', 'right');
-      y += 40;
+      // a screenshot travels without the page: one line on what the verdict is and isn't (audit PO-06)
+      y += 34; font(16, 500); for (const l of wrap(t('sh.method'), IN, 2)) { T(l, PAD, y, '#8a90a0'); y += 24; }
+      y += 16;
       if (on) { const hy = y; for (let x = -40; x < W + 40; x += 36) { ctx.fillStyle = '#ffe900'; ctx.beginPath(); ctx.moveTo(x, hy + 16); ctx.lineTo(x + 16, hy); ctx.lineTo(x + 34, hy); ctx.lineTo(x + 18, hy + 16); ctx.closePath(); ctx.fill(); } }
       return y + 16;
     }
@@ -236,6 +238,7 @@
     if (el && el.dataset && el.dataset.simbox) ui.simOpen[el.dataset.simbox] = el.open;
     if (el && el.dataset && 'cross' in el.dataset) ui.crossOpen = el.open;
     if (el && el.dataset && 'intelstrip' in el.dataset) ui.intelStripOpen = el.open;
+    if (el && el.dataset && el.dataset.year) (ui.arYears ||= {})[el.dataset.year] = el.open;
   }, true);
   // game-style shortcuts: Q / E switch tab, 1-3 jump to a tab, R refreshes, ? opens the guide
   document.addEventListener('keydown', (e) => {
@@ -344,7 +347,7 @@
     const af = e.target.closest('[data-af]');
     if (af) { ui.af = af.dataset.af; render(); return; }
     const vw = e.target.closest('[data-view]');
-    if (vw) { setView(vw.dataset.view); return; }
+    if (vw) { if (vw.hasAttribute('data-acc')) wantAcc = true; setView(vw.dataset.view); scrollToAcc(); return; }
     const nf = e.target.closest('[data-nf]');
     if (nf) { ui.nf = nf.dataset.nf || null; render(); return; }
     const op = e.target.closest('[data-open-planet]');
@@ -368,56 +371,3 @@
   document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
   $('open-settings').addEventListener('click', () => $('dlg-settings').showModal());
   $('open-info').addEventListener('click', () => $('dlg-info').showModal());
-  // the archive has its own address (#archive), so it can be shared and the back button works
-  function setView(v, push = true) {
-    ui.view = v === 'archive' ? 'archive' : 'war';
-    if (push) { try { history.pushState(null, '', ui.view === 'archive' ? '#archive' : location.pathname + location.search); } catch { } }
-    if (ui.view === 'archive') loadArchive();
-    render(); window.scrollTo({ top: 0 });
-  }
-  $('open-archive').addEventListener('click', () => setView(ui.view === 'archive' ? 'war' : 'archive'));
-  window.addEventListener('popstate', () => setView(location.hash === '#archive' ? 'archive' : 'war', false));
-  if (location.hash === '#archive') ui.view = 'archive';
-  $('refresh').addEventListener('click', () => refresh());
-
-  function bindSettings() {
-    const map = { 's-capmode': 'capMode', 's-cap': 'capacity', 's-dss': 'dssBonus', 's-hod': 'hodMult', 's-rec': 'recordShare', 's-contact': 'contact', 's-motion': 'motion' };
-    for (const [id, key] of Object.entries(map)) {
-      const el = $(id);
-      el.value = settings[key];
-      el.addEventListener('change', () => {
-        settings[key] = el.type === 'number' ? Number(el.value) : el.value;
-        store.set('settings', settings);
-        if (key === 'motion') { document.documentElement.classList.toggle('calm', reduced()); render(); }
-        else refresh();
-      });
-    }
-  }
-
-  function applyTexts() {
-    document.documentElement.lang = 'en';
-    $('ot-nav').setAttribute('aria-label', t('ordersAria'));
-    document.querySelectorAll('[data-close]').forEach(b => b.setAttribute('aria-label', t('close')));
-    $('tagline').textContent = t('tagline');
-    $('settings-title').textContent = t('settings');
-    $('info-title').textContent = t('info');
-    $('share-title').textContent = t('sh.title');
-    $('open-settings').setAttribute('aria-label', t('settings'));
-    $('open-settings').title = t('settings');
-    $('open-info').setAttribute('aria-label', t('info'));
-    $('open-info').title = t('info');
-    $('order-tabs').setAttribute('aria-label', t('ordersAria'));
-    const lbl = { 'l-cap': 'sCap', 'l-capval': 'sCapVal', 'l-dss': 'sDss', 'l-hod': 'sHod', 'l-rec': 'sRec', 'l-contact': 'sContact', 'l-motion': 'sMotion' };
-    for (const [id, k] of Object.entries(lbl)) $(id).textContent = t(k);
-    $('s-capmode').options[0].textContent = t('sAuto');
-    $('s-capmode').options[1].textContent = t('sManual');
-    $('s-motion').options[0].textContent = t('mFull');
-    $('s-motion').options[1].textContent = t('mReduced');
-    $('explain').innerHTML = EXPLAIN;
-    // a way back to us from the page (audit PO-02): the repo's issue form, no account data sent
-    $('footer').innerHTML = `${esc(t('footer'))} <a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a>`;
-    for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) { el.textContent = t(k); el.parentElement.setAttribute('aria-label', t(k)); } }
-    $('boot-skip').textContent = t('skip');
-    const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
-  }
-

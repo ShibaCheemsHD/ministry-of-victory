@@ -119,6 +119,7 @@
         <div class="stamp v-${v}" data-stamp="${esc(res.id)}:${v}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></div>
         <p class="meaning">${esc(t('m.' + v))}</p>
         ${whyHTML(res)}
+        ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))} ›</button>` : ''}
         <div class="timer ${v === 'done' || res.ended ? 'finished' : ''}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">
           <div><span class="label">${t('timeLeft')}</span><div class="count" data-exp="${exp}">—</div></div>
           ${medals ? `<div class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></div>` : ''}

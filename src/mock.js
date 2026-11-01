@@ -33,7 +33,7 @@
     let assignments=[htf,sniper], campaigns=[fury,esker,zea,mars,bug2,bot2], stations=[{planet:fury,tacticalActions:[{name:'HEAVY ORDNANCE DISTRIBUTION',status:2,statusExpire:new Date(now+9*H).toISOString()}]}];
     let raw=[{id32:9001,startTime:(now-29*H-warStart)/1000},{id32:9002,startTime:(now-28*H-warStart)/1000}];
     const lpts=(f0,f1)=>{const o=[];for(let k=36;k>=0;k--)o.push([now-k*20*60e3,+(f0+(f1-f0)*(36-k)/36).toFixed(4),0,1000]);return o;};
-    let recordDefault={'intel.json':{v:2,updated:now-3*60e3,since:now-12*H,every:10,inf:100,official:true,alerts:[],effects:[]},'recent.json':{v:1,updated:now,samples:[]},
+    let recordDefault={'intel.json':{v:2,updated:now-3*60e3,since:now-12*H,every:10,inf:100,official:true,alerts:[],effects:[],trust:{fall6:0.81,n:32,cnt:0.81}},'recent.json':{v:1,updated:now,samples:[]},
       'progress.json':{v:1,updated:now,since:now-12*H,orders:{},planets:{261:lpts(0.12,0.2523),75:lpts(0,0),7:lpts(0,0)}}};
     let players=82873, mode='ok', sectorInfo=null, dispatches=[], record=S==='default'?recordDefault:null;
     if (S==='done') {
@@ -222,8 +222,11 @@
       window.__mockLog.push({ at: Date.now(), path: u.pathname, culture: u.searchParams.get('culture'), lang: h['Accept-Language'] || null });
       if (sc.mode==='fail') throw new TypeError('Failed to fetch');
       if (sc.mode==='slow') await new Promise((res, rej) => { const t=setTimeout(res, 25000); if (opts.signal) opts.signal.addEventListener('abort', () => { clearTimeout(t); const e=new Error('aborted'); e.name='AbortError'; rej(e); }); });
-    } else if (u.hostname === 'raw.githubusercontent.com' && u.pathname.includes('/ministry-of-victory/')) {
-      window.__mockLog.push({ rec: file });
+    } else if (u.hostname === 'raw.githubusercontent.com' && q.get('raw') === 'down') {
+      window.__mockLog.push({ rawDown: file });
+      throw new TypeError('Failed to fetch');
+    } else if ((u.hostname === 'raw.githubusercontent.com' || u.hostname === 'cdn.jsdelivr.net') && u.pathname.includes('/ministry-of-victory')) {
+      window.__mockLog.push({ rec: file, via: u.hostname });
       if (file === 'archive.json' && window.__mockArchive) return new Response(JSON.stringify(window.__mockArchive), { status: 200, headers: { 'content-type': 'application/json' } });
       const r = sc.record && sc.record[file];
       return r ? new Response(JSON.stringify(r), { status: 200, headers: { 'content-type': 'application/json' } }) : new Response('not found', { status: 404 });

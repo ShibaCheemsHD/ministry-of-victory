@@ -36,7 +36,7 @@
     lens: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><circle cx="5" cy="5" r="3.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7.5 7.5L11 11" stroke="currentColor" stroke-width="1.6"/></svg>',
   };
   const VICON = { done: 'check', ontrack: 'check', effort: 'plus', focus: 'target', hard: 'warn', record: 'warn', nearly_impossible: 'cross', impossible: 'cross', failed: 'cross', unknown: 'dots' };
-  const pill = (v) => `<span class="pill v-${v}">${ICON[VICON[v] || 'dots']}${esc(t('v.' + v))}</span>`;
+  const pill = (v, label) => `<span class="pill v-${v}">${ICON[VICON[v] || 'dots']}${esc(label || t('v.' + v))}</span>`;
   const medalSvg = '<svg class="medal" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 1h10l-2 8h-6z" fill="var(--info)"/><circle cx="13" cy="16" r="8" fill="none" stroke="var(--yellow)" stroke-width="2"/><path d="M13 11.5l1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="var(--yellow)"/></svg>';
 
   function taskText(r) {
@@ -149,7 +149,7 @@
         if (v === 'n') v = d.verdict === 'impossible' ? 'nImp' : d.left === 1 ? 'n1' : 'n';
         why = fill(D.liberate.why[v] || D.liberate.why.more, { when: d.hours != null ? clock(d.hours) : '', crowd: crowdText(d.need, d.now), planet: planetName(d.planet), left: fmt(d.left) })
           + (d.region ? fill(D.liberate.region, { region: esc(d.region) }) : '');
-        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : null); ring = libRing(d.planet);
+        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : d.variant === 'more' && d.remaining > 1 ? 'meterNeedAll' : null); ring = libRing(d.planet);
         break;
       }
       case 'defend': {

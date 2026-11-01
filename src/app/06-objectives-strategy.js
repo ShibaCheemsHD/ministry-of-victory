@@ -33,6 +33,8 @@
   function objectivesHTML(res) {
     const H = res.hoursLeft;
     const S = (k, p = {}) => fill(t('s.' + k), p);
+    // one planet of several: "on track" next to an order that isn't reads as a contradiction (audit UX-03)
+    const multiLib = res.tasks.filter(r => r.pw || r.task.type === 11).length > 1;
     const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
     return banner + res.tasks.map((r, i) => {
       const tk = r.task;
@@ -47,7 +49,7 @@
           bar = `<div class="bar lib ${r.net > 0 ? 'moving' : 'stuck'}" role="img" aria-label="${pct(frac)}">${barFill(key, frac)}</div>`;
           const L = res.liberation, seg = L && L.plan && isFinite(L.seqNeed) && L.seqNeed <= 1 ? L.plan.segs.findIndex(sg => sg.target === r) : -1;
           const planned = seg > 0 && !(r.eta <= H) ? fill(t('libPlan'), { prev: planetName(L.plan.segs[seg - 1].target.planet), a: clock(L.plan.segs[seg].start), b: clock(L.plan.segs[seg].end) }) : null;
-          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('falls', { when: clock(r.eta) }) + (r.fc?.band ? ' · ' + S('likely', { a: clock(r.fc.band.lo), b: clock(Math.min(r.fc.band.hi, H)) }) : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
+          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('fallsAt', { when: clock(r.eta) }) + (r.fc?.band ? ` <span class="band" title="${esc(S('fallsTip', { when: clock(r.eta), a: clock(r.fc.band.lo), b: clock(Math.min(r.fc.band.hi, H)) }))}">${S('range', { a: clockNear(r.fc.band.lo, r.eta), b: clockNear(Math.min(r.fc.band.hi, H), r.eta) })}</span>` : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
           if (r.onDss) chips.push(`<span class="chip" style="color:var(--info)">${t('chipDss')}</span>`);
           if (r.onDss && last.hod) chips.push(`<span class="chip" style="color:var(--yellow)">${t('chipHod')}</span>`);
           if (r.holdLost) chips.push(`<span class="chip" style="color:var(--warn)">${t('chipRetake')}</span>`);
@@ -75,7 +77,7 @@
       }
       const check = r.verdict === 'done' ? `<span class="check done">${ICON.check}</span>` : r.verdict === 'impossible' || r.verdict === 'failed' ? `<span class="check fail">${ICON.cross}</span>` : '<span class="check"></span>';
       return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}">
-        ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${pill(r.verdict)}
+        ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${multiLib && r.pw && r.verdict === 'ontrack' ? pill('ontrack', t('vPlanetOk')) : pill(r.verdict)}
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
     }).join('');

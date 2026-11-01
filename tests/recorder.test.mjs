@@ -94,3 +94,28 @@ test('regression (audit ARCH-01): an unreadable history stops the recorder inste
   assert.notEqual(r.status, 0);
   assert.ok(!fs.existsSync(path.join(dir, 'out', 'history.json')), 'nothing written');
 });
+
+test('feed: new orders and results as RSS, game markup removed, text escaped (audit PO-04)', async () => {
+  const { buildFeed, feedItems, notifyDiscord } = await import('../recorder/feed.mjs');
+  const H = 3.6e6, t0 = Date.parse('2026-10-30T12:00:00Z');
+  const calls = {
+    a: { id: 'a', title: 'MAJOR ORDER', brief: 'Liberate <i=1>Fury</i> & hold it. Then more.', start: t0, firstSeen: t0 + H, exp: t0 + 72 * H,
+      first: { v: 'impossible', late: false }, result: 'lost', resultT: t0 + 73 * H },
+    b: { id: 'b', title: 'Operation <Swift>', brief: '', start: t0 + 80 * H },
+  };
+  const items = feedItems(calls, t0 + 90 * H);
+  assert.deepEqual(items.map(x => x.id), ['mo-b-new', 'mo-a-lost', 'mo-a-new']);
+  assert.equal(items[2].title, 'New Major Order: Liberate Fury & hold it.');
+  assert.match(items[1].text, /Impossible/);
+  const xml = buildFeed(calls, t0 + 90 * H);
+  assert.match(xml, /<title>New Major Order: Operation &lt;Swift&gt;<\/title>/);
+  assert.match(xml, /Liberate Fury &amp; hold it\./);
+  assert.ok(!/<i=1>/.test(xml));
+  // Discord: only fresh news, each once
+  const posts = [], send = async (url, o) => { posts.push(JSON.parse(o.body).content); return { ok: true }; };
+  const hist = { calls };
+  assert.equal(await notifyDiscord(hist, t0 + 82 * H, 'https://example.invalid/hook', send), 1);
+  assert.match(posts[0], /Operation <Swift>/);
+  assert.equal(await notifyDiscord(hist, t0 + 83 * H, 'https://example.invalid/hook', send), 0);
+  assert.equal(await notifyDiscord(hist, t0 + 83 * H, '', send), 0);
+});

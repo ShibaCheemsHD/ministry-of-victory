@@ -4,7 +4,7 @@
   recorder/engine.cjs   the same engine for the recorder
   build/test.html       readable page wired to the mock API (src/mock.js), for tests
 Usage: python3 tools/build.py [--check]   (--check: fail if index.html / engine.cjs are out of date)"""
-import json, os, re, subprocess, sys
+import base64, hashlib, json, os, re, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 S = lambda *p: os.path.join(ROOT, 'src', *p)
 read = lambda p: open(p, encoding='utf-8').read()
@@ -23,6 +23,7 @@ head = '''<!doctype html>
 <meta property="og:image" content="https://shibacheemshd.github.io/ministry-of-victory/preview.png">
 <meta property="og:image:width" content="1920"><meta property="og:image:height" content="1080">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/rss+xml" title="Ministry of Victory · Major Orders" href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
@@ -54,6 +55,19 @@ prod = prod.replace(css, esbuild(css, 'css'), 1)
 for js in re.findall(r'<script>\n(.*?)\n</script>', out, re.S):
     prod = prod.replace(js, esbuild(js, 'js').rstrip('\n'), 1)
 
+# Content-Security-Policy (audit SEC-02): only this page's own scripts run (by hash, so an injected
+# <script> or onerror="" is refused), and the page talks only to the sources it needs.
+# GitHub Pages can't send headers, so it goes in a <meta>; frame-ancestors isn't possible there.
+CONNECT = ['https://api.helldivers2.dev', 'https://raw.githubusercontent.com', 'https://cdn.jsdelivr.net']
+def with_csp(html):
+    hashes = ["'sha256-" + base64.b64encode(hashlib.sha256(s.encode('utf-8')).digest()).decode() + "'" for s in re.findall(r'<script>(.*?)</script>', html, re.S)]
+    csp = '; '.join([
+        "default-src 'none'", 'script-src ' + ' '.join(hashes), 'connect-src ' + ' '.join(CONNECT),
+        "style-src 'unsafe-inline' https://fonts.googleapis.com", 'font-src https://fonts.gstatic.com',
+        "img-src 'self' data: blob:", "base-uri 'none'", "form-action 'none'", "object-src 'none'"])
+    return html.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="' + csp + '">\n', 1)
+prod = with_csp(prod)
+
 engine = read(S('engine.js'))
 targets = {os.path.join(ROOT, 'index.html'): prod, os.path.join(ROOT, 'recorder', 'engine.cjs'): engine}
 if '--check' in sys.argv:
@@ -67,5 +81,5 @@ os.makedirs(os.path.join(ROOT, 'build'), exist_ok=True)
 open(os.path.join(ROOT, 'build', 'app.js'), 'w', encoding='utf-8').write(app)   # the assembled code, for tools
 arch = read(S('mock_archive.json')) if os.path.exists(S('mock_archive.json')) else 'null'
 test = out.replace('<script>', '<script>window.__mockArchive=' + arch + ';\n' + read(S('mock.js')) + '</script>\n<script>', 1)
-open(os.path.join(ROOT, 'build', 'test.html'), 'w', encoding='utf-8').write(test)
+open(os.path.join(ROOT, 'build', 'test.html'), 'w', encoding='utf-8').write(with_csp(test))
 print('built', len(out), 'bytes of source,', len(prod), 'minified')

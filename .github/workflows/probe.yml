@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - if: ${{ inputs.hs == 'yes' }}
@@ -29,10 +29,15 @@ jobs:
         env:
           URLS: ${{ inputs.urls }}
         run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
-      - run: |
+      - env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
           cd "$RUNNER_TEMP/probe"
           git init -q -b probe
           git config user.name "ministry-recorder"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A && git commit -q -m "API probe $(date -u +%FT%TZ)"
-          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" probe:probe
+          # the token goes in a header, never in a URL that git could print (audit SEC-05)
+          AUTH=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0); echo "::add-mask::$AUTH"
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH" push -q -f "https://github.com/$REPO.git" probe:probe

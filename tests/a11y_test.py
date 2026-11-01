@@ -24,7 +24,8 @@ def check(pg, where):
         found.setdefault(v['id'], (v['impact'], v['help'], []))[2].append(where + ': ' + ' | '.join(v['nodes'])[:300])
 
 def open_page(br, sc, width=1366, lang=None):
-    pg = br.new_page(viewport={'width': width, 'height': 900}, locale=lang or 'en-US')
+    # axe is injected as a script: the page's security policy would refuse it (page_test checks the policy itself)
+    pg = br.new_page(viewport={'width': width, 'height': 900}, locale=lang or 'en-US', bypass_csp=True)
     pg.goto(f'{PAGE}?s={sc}&motion=reduced'); pg.wait_for_timeout(1800)
     return pg
 

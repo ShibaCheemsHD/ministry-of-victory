@@ -24,14 +24,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - name: Snapshots every 10 minutes
         env:
           REPO: ${{ github.repository }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # optional: a Discord channel's webhook URL, to post new orders and results there (audit PO-04)
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           H="$RUNNER_TEMP/history.json"; OUT="$RUNNER_TEMP/out"
           # The history is everything measured so far and can't be rebuilt: never start from an empty one
@@ -47,6 +49,8 @@ jobs:
             else echo "::error::the data branch exists but its history.json could not be read: stopping without pushing"; sleep 120; exit 1; fi
           fi
           cp "$H" "$RUNNER_TEMP/history-at-start.json"
+          # the token goes in a header, never in a URL that git could print (audit SEC-05)
+          AUTH=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0); echo "::add-mask::$AUTH"
           end=$(( $(date +%s) + 340*60 ))
           while [ "$(date +%s)" -lt "$end" ]; do
             start=$(date +%s)
@@ -54,8 +58,8 @@ jobs:
               cp "$OUT/history.json" "$H"
               ( cd "$OUT" && rm -rf .git && git init -q -b data && git config user.name "ministry-recorder" \
                 && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
-                && git add history.json intel.json recent.json progress.json live.json archive.json && git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)" \
-                && git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data:data ) || echo "::warning::push failed"
+                && git add history.json intel.json recent.json progress.json live.json archive.json && { [ ! -f feed.xml ] || git add feed.xml; } && git commit -q -m "War record $(date -u +%Y-%m-%dT%H:%MZ)" \
+                && git -c http.extraheader="AUTHORIZATION: basic $AUTH" push -q -f "https://github.com/${REPO}.git" data:data ) || echo "::warning::push failed"
             else
               echo "::warning::snapshot failed, trying again at the next one"
             fi
@@ -68,7 +72,7 @@ jobs:
       # a copy of the history at the start and at the end of every run, kept 30 days (audit ARCH-02)
       - name: Back up the history
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: history-${{ github.run_id }}
           path: |

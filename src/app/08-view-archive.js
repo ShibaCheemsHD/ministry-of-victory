@@ -10,13 +10,13 @@
     const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short" aria-hidden="true">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${directiveHTML(res)}
-      ${railHTML(res, a)}
       <div class="area-tabs" id="tabs-${esc(a.id)}">
         <div class="tabbar">
           <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div>
         </div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}">${panel}</div>
       </div>
+      ${railHTML(res, a)}
     </div>`;
   }
 
@@ -48,15 +48,30 @@
   }
   /* ---------- archive: every Major Order, and whether it was winnable ---------- */
   let archive = null, archiveT = 0, archiveBusy = false, archiveFail = 0;
+  // the forecast's "how right are we?" link lands on the track record, once the archive has loaded
+  let wantAcc = false;
+  function scrollToAcc() {
+    if (!wantAcc || ui.view !== 'archive') return;
+    const el = document.querySelector('.ar-acc');
+    if (!el) return;
+    wantAcc = false;
+    requestAnimationFrame(() => { el.scrollIntoView({ block: 'start' }); const h = el.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } });
+  }
   async function loadArchive() {
     if (archiveBusy || (archive && Date.now() - archiveT < 30 * 60e3) || (!archive && Date.now() - archiveFail < 60e3)) return;
     archiveBusy = true;
     try {
-      const r = await fetch(RECORD + 'archive.json?t=' + Math.floor(Date.now() / 600e3), { cache: 'no-store' });
+      const r = await ghFetch(RECORD + 'archive.json?t=' + Math.floor(Date.now() / 600e3), { cache: 'no-store' });
       const j = r.ok ? await r.json() : null;
-      if (j && Array.isArray(j.orders)) { archive = j; archiveT = Date.now(); } else archiveFail = Date.now();
+      // shape check (audit SEC-06): orders are objects with text names, or they are left out
+      if (j && Array.isArray(j.orders)) {
+        const okText = (x) => x == null || typeof x === 'string';
+        j.orders = j.orders.filter(o => o && typeof o === 'object' && okText(o.name) && okText(o.brief) && okText(o.code));
+        j.watched = Array.isArray(j.watched) ? j.watched.filter(c => c && typeof c === 'object') : [];
+        archive = j; archiveT = Date.now();
+      } else archiveFail = Date.now();
     } catch { archiveFail = Date.now(); } finally { archiveBusy = false; }
-    if (ui.view === 'archive') render();
+    if (ui.view === 'archive') { render(); scrollToAcc(); }
   }
   const callGroup = (v) => v === 'impossible' ? 'impossible' : v === 'nearly_impossible' ? 'long' : v === 'hard' || v === 'record' ? 'hard' : v ? 'fair' : null;
   // an order's name for the record: the game's title, or (when that is just "MAJOR ORDER") what it asked
@@ -212,10 +227,18 @@
       const src = o.live ? fill(t('ar.srcLive'), { age: dur(c.age || 3) }) : t('ar.src.' + (c.src === 'hs' ? 'hs' : c.src === 'attacks' ? 'attacks' : 'log'));
       return `<div class="ar-det">${out.join('')}<p class="ar-small">${esc([...notes, src].join(' '))}</p></div>`;
     }
+    // one closable block per year: only the latest is open, unless a filter already narrowed the list (audit UX-04)
     let rows = '', curY = null;
-    for (const o of list.slice(0, 300)) {
+    const shown = list.slice(0, 300), perYear = {};
+    for (const o of shown) { const y = new Date(o.start || o.end || now).getFullYear(); perYear[y] = (perYear[y] || 0) + 1; }
+    const ui_y = ui.arYears || {};
+    for (const o of shown) {
       const y = new Date(o.start || o.end || now).getFullYear();
-      if (y !== curY) { rows += `${curY ? '</ul>' : ''}<h5 class="fd-day" aria-level="4">${y}</h5><ul class="ar-list">`; curY = y; }
+      if (y !== curY) {
+        const open = ui_y[y] ?? (curY === null || f !== 'all');
+        rows += `${curY ? '</ul></details>' : ''}<details class="ar-year" data-year="${y}" ${open ? 'open' : ''}><summary>${ICON.chev}<span class="fd-day">${y}</span><span class="ar-ycount">${esc(fill(t('ar.yCount'), { n: perYear[y] }))}</span></summary><ul class="ar-list">`;
+        curY = y;
+      }
       const durH = o.start && o.end ? (o.end - o.start) / 3.6e6 : null;
       const res = o.result || 'unknown';
       const detail = detailOf(o);
@@ -226,7 +249,7 @@
           <span class="ar-meta">${o.code ? `<span class="ar-code">${esc(o.code)}</span>` : ''}${orderObj(o) ? `<span>${esc(orderObj(o))}</span>` : ''}<span>${esc(day(o.start))}${durH ? ' · ' + esc(dur(durH)) : ''}</span></span></div>
         ${tag}<span class="ar-badge">${esc(t('ar.r.' + res))}</span>${detail ? `</summary>${detail}</details>` : ''}</li>`;
     }
-    rows += curY ? '</ul>' : '';
+    rows += curY ? '</ul></details>' : '';
     return `<section class="arch">
       <div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button>
         <div><h2>${esc(t('ar.title'))}</h2><p>${esc(fill(t('ar.sub'), { when: day(first) }))}</p></div></div>

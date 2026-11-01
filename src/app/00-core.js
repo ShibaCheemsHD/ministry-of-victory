@@ -4,6 +4,17 @@
     items: 'https://raw.githubusercontent.com/helldivers-2/json/master/items/item_names.json',
     strats: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/lists.py',
   };
+  // GitHub's raw files, with jsDelivr's copy of the same file as the fallback when raw is down or
+  // throttled (audit ARCH-05). jsDelivr can be a few hours behind, which the callers' age checks handle.
+  async function ghFetch(url, opts) {
+    try {
+      const r = await fetch(url, opts);
+      if (r.ok || (r.status < 500 && r.status !== 429)) return r;
+    } catch (e) { if (e && e.name === 'AbortError') throw e; }
+    const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/([^?]+)/.exec(url);
+    if (!m) throw new TypeError('Failed to fetch');
+    return fetch(`https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}`, { cache: 'no-store' });
+  }
   const REFRESH_MS = 60000;
   // damage constant K (HP per second per player per unit of impact multiplier): reference value measured
   // live on 28 Oct 2026; plausible range used to reject bad measurements
@@ -85,6 +96,14 @@
     if (clockUTC) return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     return d.toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   };
+  // the same, without the day when it is the same day as `refHours` (for ranges next to a time)
+  const clockNear = (hoursFromNow, refHours) => {
+    const base = last ? last.now : Date.now(), d = new Date(base + hoursFromNow * 3.6e6), r = new Date(base + refHours * 3.6e6);
+    const opt = clockUTC ? { timeZone: 'UTC' } : {};
+    const same = d.toLocaleDateString('en-GB', opt) === r.toLocaleDateString('en-GB', opt);
+    if (!same) return clock(hoursFromNow);
+    return clockUTC ? d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : d.toLocaleString(locale(), { hour: 'numeric', minute: '2-digit' });
+  };
 
   /* ---------- settings ---------- */
   const settings = Object.assign({ capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus,
@@ -101,9 +120,9 @@
     if (names.enemies && names.items && age < (force ? 15 * 60e3 : 24 * 3600e3)) return;
     try {
       const [enemyList, itemList, py] = await Promise.all([
-        fetch(NAMES.enemies).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(NAMES.strats).then(r => r.ok ? r.text() : null).catch(() => null),
+        ghFetch(NAMES.enemies).then(r => r.ok ? r.json() : null).catch(() => null),
+        ghFetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null),
+        ghFetch(NAMES.strats).then(r => r.ok ? r.text() : null).catch(() => null),
       ]);
       if (enemyList) { names.enemies = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.plural || v.name])); store.set('names.enemies', names.enemies);
         names.enemy1 = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.name || v.plural])); store.set('names.enemy1', names.enemy1); }

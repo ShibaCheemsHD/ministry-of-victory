@@ -61,4 +61,8 @@ for p in problems: print(f'- {p}')
 if not problems: print('All sources answered recently.')
 if notes:
     print('\n**Notes**\n'); [print(f'- {n}') for n in notes]
+# the recorder's last warnings, to see what went wrong without digging in the Actions logs (audit OPS-08)
+warn = [w for w in (intel.get('warnings') or []) if isinstance(w, list) and len(w) == 2]
+if problems and warn:
+    print('\n**Last warnings from the recorder**\n'); [print(f'- {ago(w[0])}: {w[1]}') for w in warn[-5:]]
 sys.exit(1 if problems else 0)

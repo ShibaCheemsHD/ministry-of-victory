@@ -99,8 +99,8 @@
       ${p.meter}
       <div class="dir-actions">
         <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
-        <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>
-        <button type="button" class="btn ghostly" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
+        <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}" aria-label="${esc(t('sh.btn'))}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>
+        <button type="button" class="btn ghostly" data-copy="${esc(res.id)}" aria-label="${esc(t('copy'))}">${ICON.copy}<span data-short="${esc(t('copyShort'))}">${t('copy')}</span></button>
       </div>
     </section></div>`;
   }
