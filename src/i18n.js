@@ -283,7 +283,7 @@ const TEXT = {
   noMovesEnded: 'This order is over: the plan comes back with the next Major Order.',
   libNTable: 'Planets that count, quickest to take first.', keyPrev: 'Previous tab (Q)', keyNext: 'Next tab (E)',
   forecast: 'Forecast',
-  vPlanetOk: 'Falls in time',
+  vPlanetOk: 'Falls in time', fcWhy: 'Why',
   trust: 'How right are we? {p} of planet falls called within 25%, 6 hours ahead',
   v: { done: 'Done', ontrack: 'On track', effort: 'Needs a push', hard: 'Very hard', focus: 'Winnable', record: 'Needs a record', nearly_impossible: 'Nearly impossible', impossible: 'Impossible', failed: 'Failed', unknown: 'Analyzing' },
   m: { done: 'Objective reached.', ontrack: 'At the current pace we make it.', effort: 'Winnable, but it needs a push.', focus: 'Winnable if we focus.', hard: 'Very hard: it needs far more players.', record: 'It needs a record turnout.', nearly_impossible: 'It would take almost every player online.', impossible: 'Not winnable even with every player online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace.' },

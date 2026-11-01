@@ -9,7 +9,7 @@
     const ic = intelCount(entry);
     const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short" aria-hidden="true">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
     return `<div class="order" data-order="${esc(a.id)}">
-      ${directiveHTML(res)}
+      ${directiveHTML(res, a)}
       <div class="area-tabs" id="tabs-${esc(a.id)}">
         <div class="tabbar">
           <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div>

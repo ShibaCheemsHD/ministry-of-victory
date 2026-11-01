@@ -51,3 +51,12 @@
     $('boot-skip').textContent = t('skip');
     const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
   }
+  // "Why ›" in the phone forecast strip: down to the forecast card and its reasons
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-goto-fc]');
+    if (!b) return;
+    const card = b.closest('.order')?.querySelector('.verdict-card');
+    if (!card) return;
+    card.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' });
+    card.setAttribute('tabindex', '-1'); card.focus({ preventScroll: true });
+  });

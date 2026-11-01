@@ -626,7 +626,7 @@ footer a { color: var(--muted); text-decoration: underline; text-underline-offse
 .hint .icon-btn { height: 30px; min-width: 30px; border-color: transparent; background: transparent; color: var(--muted); }
 .order.has-hint { grid-template-areas: "hint hint" "dir rail" "tabs rail"; grid-template-rows: auto auto 1fr; }
 .order > .hint { grid-area: hint; }
-@media (max-width: 980px) { .order.has-hint { grid-template-areas: "hint" "dir" "rail" "tabs"; grid-template-rows: none; } }
+@media (max-width: 980px) { .order.has-hint { grid-template-areas: "hint" "dir" "tabs" "rail"; grid-template-rows: none; } }
 
 /* all-orders strip: one line until opened */
 details.cross { display: block; padding: 0; border-left-width: 3px; }
@@ -1861,3 +1861,17 @@ a { text-underline-offset: 3px; }
   .hud .logo { font-size: 21px; }
   .hud .logo .l1 { font-size: 8px; letter-spacing: .18em; }
 }
+
+/* phones: the verdict and the time left under the order of the day (the forecast card is below the tabs there) */
+.dir-fc { display: none; }
+@media (max-width: 980px) {
+  .dir-fc { display: flex; flex-basis: 100%; padding-right: 14px; box-sizing: border-box; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0 12px; margin-bottom: 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .dir-fc .pill { font-size: 12px; padding: 6px 9px; }
+  @media (max-width: 420px) { .dir-fc { gap: 8px 10px; } .dir-fc-t .label { display: none; } }
+  .dir-fc-t { display: inline-flex; align-items: baseline; gap: 8px; }
+  .dir-fc-t .label { font-size: 10px; }
+  .dir-fc-count { font: 400 16px/1 var(--mono); color: var(--fg); white-space: nowrap; }
+  .dir-fc-count span { color: var(--dim); font-size: 11px; margin: 0 4px 0 1px; }
+  .dir-fc-more { margin-left: auto; font-size: 13px; text-underline-offset: 3px; color: var(--muted); min-height: 32px; display: inline-flex; align-items: center; }
+}
+.verdict-card { scroll-margin-top: 90px; }

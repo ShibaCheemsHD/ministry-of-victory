@@ -80,7 +80,18 @@
     return { list, planet: pick };
   }
 
-  function directiveHTML(res) {
+  // Phones: the forecast card sits below the tabs, so the verdict and the time left also go here, right
+  // under the order of the day (critique 1 Nov 2026: "how realistic" was ~1,500 px down). Hidden above 640 px.
+  function phoneForecast(res, a) {
+    const v = res.verdict, exp = a ? Date.parse(a.expiration) : NaN;
+    if (!v || v === 'unknown') return '';
+    return `<div class="dir-fc" role="group" aria-label="${esc(t('forecast'))}">
+      <span class="pill v-${esc(v)}">${ICON[VICON[v] || 'dots']}${esc(t('v.' + v))}</span>
+      ${isFinite(exp) && !res.ended ? `<span class="dir-fc-t"><span class="label">${t('timeLeft')}</span><span class="dir-fc-count" data-exp="${exp}">—</span></span>` : ''}
+      <button type="button" class="linkish dir-fc-more" data-goto-fc>${esc(t('fcWhy'))} ›</button>
+    </div>`;
+  }
+  function directiveHTML(res, a) {
     const p = directiveParts(res);
     const long = (p.target || '').length > 14;
     const globe = globeHTML(p, res);
@@ -97,7 +108,7 @@
       ${globe}${globe ? '<div class="pc-wrap" hidden></div>' : ''}
       <p class="why">${p.lead ? `<b class="lead v-${esc(res.verdict)}">${esc(p.lead)}</b>` : ''}${p.why}</p>
       ${p.meter}
-      <div class="dir-actions">
+      <div class="dir-actions">${phoneForecast(res, a)}
         <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
         <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}" aria-label="${esc(t('sh.btn'))}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>
         <button type="button" class="btn ghostly" data-copy="${esc(res.id)}" aria-label="${esc(t('copy'))}">${ICON.copy}<span data-short="${esc(t('copyShort'))}">${t('copy')}</span></button>
