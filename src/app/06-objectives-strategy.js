@@ -407,7 +407,7 @@
         ${assess.length ? `<div class="situation ${sitCls}"><h5 class="sit-h">${t('sitTitle')}</h5>${assess.map(r => recItem(r, res, 'div')).join('')}</div>` : ''}
         ${order ? `<div class="the-plan"><h5 class="sit-h">${t(order.partial ? 'planBlockPartial' : res.liberation && !res.liberation.winnableNow ? 'planBlockIf' : 'planBlock')}</h5>
           <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`, res)}</div>` : ''}
-        ${fine.length ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
+        ${fine.length && res.verdict !== 'done' ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
       </section>
       ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
   }

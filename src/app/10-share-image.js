@@ -11,9 +11,9 @@
     try { await Promise.all(['900 40px Saira', '800 40px Saira', '700 20px "Chakra Petch"', '500 20px "Chakra Petch"'].map(f => document.fonts.load(f))); } catch {}
     // the page's own words, with times in UTC
     clockUTC = true;
-    let p, objs, joel;
+    let p, mv, objs, joel;
     try {
-      p = directiveParts(res);
+      p = directiveParts(res); mv = callMove(res, p);
       const box = new DOMParser().parseFromString(objectivesHTML(res), 'text/html').body;
       objs = [...box.querySelectorAll('.race')].map(el => {
         const h = el.querySelector('.race-name'); const opt = h.querySelector('.opt'); if (opt) opt.remove();
@@ -76,15 +76,15 @@
       y += 34;
       // the call
       y += 40;
-      font(16, 800); if (on) ctx.letterSpacing = '2px'; T(t('callTag.' + p.state).toUpperCase(), PAD, y - 20, '#ffe900'); if (on) ctx.letterSpacing = '0px';
-      const big1 = ['steady', 'lost'].includes(p.d.kind) ? '' : p.kicker.toUpperCase();
+      font(16, 800); if (on) ctx.letterSpacing = '2px'; for (const l of wrap(mv.tag.toUpperCase(), IN, 2)) { T(l, PAD, y - 20, '#ffe900'); y += 22; } y -= 22; if (on) ctx.letterSpacing = '0px';
+      const big1 = (mv.verb || '').toUpperCase();
       if (big1) { font(44, 900, SH_D); y += 30; T(big1, PAD, y, '#ffe900'); }
-      font(p.target.length > 14 ? 84 : 120, 900, SH_D);
-      for (const l of wrap(p.target.toUpperCase(), IN, 2)) { y += p.target.length > 14 ? 82 : 112; T(l, PAD, y, '#eef2f8'); }
+      font(mv.target.length > 14 ? 84 : 120, 900, SH_D);
+      for (const l of wrap(mv.target.toUpperCase(), IN, 2)) { y += mv.target.length > 14 ? 82 : 112; T(l, PAD, y, '#eef2f8'); }
       y += 18;
-      const why = [p.lead, plain(p.why)].filter(Boolean).join(' ');
-      font(25, 500); for (const [i, l] of wrap(why, IN, 5).entries()) { y += 35; T(l, PAD, y, i === 0 && p.lead ? vc : '#eef2f8'); }
-      if (p.cap) { y += 22; R(PAD, y, IN, 1, '#484b53'); y += 8; font(22, 700); for (const l of wrap(plain(p.cap), IN, 3)) { y += 32; T(l, PAD, y, '#eef2f8'); } }
+      const why = plain(mv.why);
+      font(25, 500); for (const [i, l] of wrap(why, IN, 5).entries()) { y += 35; T(l, PAD, y, i === 0 && p.lead && !mv.moveOn ? vc : '#eef2f8'); }
+      if (p.cap && !mv.moveOn) { y += 22; R(PAD, y, IN, 1, '#484b53'); y += 8; font(22, 700); for (const l of wrap(plain(p.cap), IN, 3)) { y += 32; T(l, PAD, y, '#eef2f8'); } }
       y += 52;
       // the order's forecast, after the call (the call comes first, as on the page)
       y += 4;
@@ -169,15 +169,15 @@
     } catch { return false; }
   }
   let toastTimer = 0;
-  function toast(msg) {
+  function toast(msg, ms = 2400) {
     const el = $('toast');
     if (!el) return;
     el.textContent = msg; el.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
   document.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
+    const el = e.target.closest('[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart
       const id = el.dataset.legend, k = el.dataset.s, off = (ui.chartOff[id] ||= {});
@@ -188,6 +188,7 @@
     }
     if (el.dataset.hmode) { ui.histMode[el.dataset.hmode] = el.dataset.v; saveUi(); render(); return; }
     if (el.dataset.ifocus) { const c = $(el.dataset.ifocus); if (c) { c.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); } return; }
+    if (el.hasAttribute('data-follow')) { ui.orderManual = false; saveUi(); render(); return; }
     if (el.dataset.otab) { ui.order = el.dataset.otab; ui.orderManual = true; saveUi(); render(); if (el.hasAttribute('data-pick')) window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); return; }
     if (el.dataset.tab) { selectTab(el.dataset.tab); return; }
     if (el.dataset.cycle) { cycleTab(Number(el.dataset.cycle)); return; }
@@ -201,7 +202,8 @@
       if (!entry) return;
       const text = shareText(entry);
       copyText(text).then(ok => {
-        toast(ok ? t('copied') : t('copyFail'));
+        if (!ok) { $('share-title').textContent = t('copy'); $('share-body').innerHTML = `<p class="sh-note">${esc(t('copyBox'))}</p><textarea class="copy-box" readonly rows="8">${esc(text)}</textarea>`; const d = $('dlg-share'); if (!d.open) d.showModal(); const ta = $('share-body').querySelector('textarea'); ta.focus(); ta.select(); return; }
+        toast(t('copied'));
         if (ok) { el.classList.add('done'); setTimeout(() => el.classList.remove('done'), 1600); }
       });
       return;
@@ -252,7 +254,9 @@
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     // a key switches the tab and brings it on screen (critique 1 Nov 2026: the tabs changed off-screen)
     if (k === 'q' || k === 'e') { e.preventDefault(); cycleTab(k === 'q' ? -1 : 1, true); }
-    else if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
+    else if (/^[1-5]$/.test(k)) { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
+    else if (k === 'a') { e.preventDefault(); setView(ui.view === 'archive' ? 'war' : 'archive'); }
+    else if (k === 'p' && document.querySelector('[data-globe]')) { e.preventDefault(); if (ui.pcPinned) closeCard(true); else openCard(true); }
     else if (k === 'Escape' && $('view').querySelector('.pc-wrap.open')) closeCard(true);
     else if (k === 'r') { e.preventDefault(); refresh(); }
     else if (k === '?') { e.preventDefault(); $('dlg-info').showModal(); }
@@ -337,7 +341,7 @@
   document.addEventListener('focusout', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTipOff(g.closest('.war-map')); });
   document.addEventListener('pointerover', (e) => {
     const inGlobe = e.target.closest && e.target.closest('[data-globe]'), inCard = e.target.closest && e.target.closest('.pc-wrap');
-    if ((inGlobe || inCard) && e.pointerType !== 'touch') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 120); }
+    if ((inGlobe || inCard) && e.pointerType !== 'touch') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 450); }
   });
   document.addEventListener('pointerout', (e) => {
     const from = e.target.closest && (e.target.closest('[data-globe]') || e.target.closest('.pc-wrap'));
@@ -358,7 +362,7 @@
     if (op) { ui.pcForce = op.dataset.openPlanet; ui.pcAnchor = 'map'; openCard(true); return; }
     const mp = e.target.closest('.mp[data-mp]');
     if (mp) { mapTipOff(mp.closest('.war-map')); ui.pcForce = mp.dataset.mp; ui.pcAnchor = 'map'; openCard(true); return; }
-    const tq = e.target.closest('[data-tipq]'); if (tq) { toast(tq.dataset.tipq); return; }
+    const tq = e.target.closest('[data-tipq]'); if (tq) { toast(tq.dataset.tipq, 8000); return; }
     const tab = e.target.closest('[data-pcplanet]');
     if (tab) { ui.pcPlanet = tab.dataset.pcplanet; openCard(ui.pcPinned); return; }
     if (ui.pcPinned && !e.target.closest('.pc-wrap')) closeCard(true);

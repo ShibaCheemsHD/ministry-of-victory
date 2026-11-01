@@ -47,7 +47,7 @@ def run(br, query, width):
     tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)
-        for tb in ('strategy', 'history', 'intel', 'map'):
+        for tb in ('races', 'strategy', 'history', 'intel', 'map'):
             el = pg.locator(f'.tab[data-tab="{tb}"]:visible')
             if el.count():
                 el.first.click(timeout=3000); pg.wait_for_timeout(150); check(pg, f'{label} order {oi + 1} {tb}', errs)

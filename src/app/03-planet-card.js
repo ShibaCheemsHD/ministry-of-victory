@@ -65,6 +65,7 @@
         ${permits.map(e => row(ICON.plus, esc(itemKnown(valOf(e.v, 4)) || fxName(e.id) || capFirst(t('in.fx.permitAny'))), esc(t('pc.freeS')), '', '')).join('')}
       </ul>` : ''}
       <p class="pc-foot">${esc(t('pc.foot'))}</p>
+      <button type="button" class="btn ghostly pc-close2" data-pcclose>${esc(t('pc.close'))}</button>
     </div>`;
   }
   // which planet the card shows: the target, or for a whole front its busiest planets
@@ -115,7 +116,7 @@
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
     // one line (the verdict across the orders); the numbers behind it one click away
     const short = cx.verdict === 'all' ? fill(t('xShortAll'), { n: cx.orders.length }) : cx.verdict === 'pick' ? fill(t('xShortPick'), { title: esc(pick.title) }) : t('xShortNone');
-    box.innerHTML = `<details class="xline x-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}><summary>${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${short}</span>${ICON.chev}</summary><p>${msg}${overlap}${note}</p></details>`;
+    box.innerHTML = `<details class="xline x-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}><summary>${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${short}</span>${ICON.chev}</summary><p>${msg}${overlap}${note}</p></details>${cx.verdict === 'pick' && ui.orderManual && String(ui.order) !== String(cx.pick) ? `<button type="button" class="btn ghostly follow" data-follow>${esc(t('followBest'))}${ICON.track}</button>` : ''}`;
   }
 
   // What the main button does: the plan while there is one; once the order is won, share it and point to
@@ -132,58 +133,88 @@
   }
 
   /* ---------- the call: the desk's one move, with the order's forecast beside it ---------- */
+  // What the call says, for the page, the share image and the copied text alike (critique 1 Nov 2026: the
+  // image and the Discord text said "OUT OF REACH" where the page said "Drop on Hellmire"). An order out of
+  // reach (or over) hands the headline to the move still worth making: the other order that can still be
+  // won, else the planet where a mission counts most; a long shot with nothing better keeps its own move.
+  function callMove(res, p = directiveParts(res)) {
+    const v = res.verdict, out = !res.ended && v !== 'done' && lvl(v) === 'out';
+    const state = p.state === 'go' && out ? 'out' : p.state;
+    const stopped = state === 'done' || state === 'out' || state === 'ended';
+    const next = stopped ? nextOrder(res) : null;
+    const mw = stopped && !next && (state === 'ended' || v === 'impossible' || v === 'failed' || p.d.kind === 'lost') ? meanwhilePick() : null;
+    const moveOn = state !== 'done' && !!(next || mw);
+    const verb0 = ['steady', 'lost'].includes(p.d.kind) ? '' : p.d.kind === 'ended' ? p.kicker + ':' : p.kicker;
+    let verb = verb0, target = p.target, why = `${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}`, planet = p.planet;
+    if (moveOn && next) { verb = t('bw.play'); target = titleCase(clean(txt(next.a.title) || 'Major Order')); why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.nextWhy'))}`; planet = null; }
+    else if (moveOn && mw) { verb = t(mw.defend ? 'bw.defend' : 'bw.drop'); target = plain(planetName(mw.p)); why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; planet = mw.p; }
+    const tag = state === 'out' && !moveOn ? t('callTag.outLong') : t('callTag.' + state);
+    return { state, next, mw, moveOn, verb, target, why, tag, planet, suggest: moveOn && !next };
+  }
   function callHTML(res, a) {
-    const p = directiveParts(res), id = String(a.id);
+    const p = directiveParts(res), id = String(a.id), m = callMove(res, p);
     const cx = crossNow();
-    const alt = cx && cx.verdict === 'pick' && String(cx.pick) !== id && !res.ended && res.verdict !== 'done' ? cx.orders.find(o => o.id === String(cx.pick)) : null;
+    const alt = cx && cx.verdict === 'pick' && String(cx.pick) !== id && !res.ended && res.verdict !== 'done' && !m.moveOn ? cx.orders.find(o => o.id === String(cx.pick)) : null;
     // a won order gets one short celebration, the first time this browser sees it won (not at every refresh)
     const party = res.verdict === 'done' && !(ui.celebrated ||= {})[res.id];
     if (party) { ui.celebrated[res.id] = Date.now(); const ids = Object.keys(ui.celebrated); if (ids.length > 30) delete ui.celebrated[ids[0]]; saveUi(); }
-    const verb = ['steady', 'lost'].includes(p.d.kind) ? '' : p.d.kind === 'ended' ? p.kicker + ':' : p.kicker;
-    const long = (p.target || '').length > 16;
-    const fac = p.fac && p.fac !== 'Humans' ? p.fac : null;
+    const long = (m.target || '').length > 16;
+    const fac = m.planet ? factionOfPlanet(m.planet) : p.fac;
+    const facOk = fac && fac !== 'Humans' ? fac : null;
     const exp = Date.parse(a.expiration), medals = medalsOf(a);
     const v = res.verdict, L = lvl(v);
-    const stopped = p.state === 'done' || p.state === 'out' || p.state === 'ended';
     const left = isFinite(exp) ? (exp - Date.now()) / 3.6e6 : null;
-    const clockRow = p.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
+    const lost = res.ended || v === 'failed';
+    const clockRow = m.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
       : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
       : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd></div>`;
-    // out of reach or over: the call becomes the move still worth making (critique 1 Nov 2026: the verdict
-    // shouted twice and the move sat in a small box); a won order keeps its moment and points onward below
-    const next = stopped ? nextOrder(res) : null, mw = stopped && !next ? meanwhilePick() : null;
-    const moveOn = p.state !== 'done' && (next || mw);
-    const meanwhile = p.state === 'done' && !next ? meanwhileHTML() : '';
-    let head = `${verb ? `<span class="verb">${esc(verb)}</span> ` : ''}<span class="tgt">${esc(p.target)}</span>`, why = `${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}`;
-    if (moveOn && next) { head = `<span class="verb">${esc(t('bw.play'))}</span> <span class="tgt">${esc(titleCase(clean(txt(next.a.title) || 'Major Order')))}</span>`; why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.nextWhy'))}`; }
-    // a suggestion, not a call: smaller, and it says why the drop is still worth it
-    else if (moveOn && mw) { head = `<span class="verb">${esc(t(mw.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(mw.p)}</span>`; why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; }
-    const moveBtn = moveOn && !next && mw ? `<button type="button" class="btn primary" data-open-planet="${mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(res.ended || res.verdict === 'failed' ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>` : '';
-    return `<section class="call vl-${L} state-${p.state}${alt ? ' not-pick' : ''}${moveOn && !next ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
+    // the reward: on a won order the medals stand where the planet does; on a lost one they are not earned
+    const reward = medals && m.state !== 'done' ? `<div><dt>${esc(t('reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t(lost ? 'medalsLost' : 'medals'), { n: fmt(medals) })}</span></dd></div>` : '';
+    const meanwhile = m.state === 'done' && !m.next ? meanwhileHTML() : '';
+    // the call's planet as the war table's hologram (also the planet a lost order suggests)
+    const ringOf = (pl) => pl && pl.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (pl.event ? pl.event.health / pl.event.maxHealth : pl.health / pl.maxHealth))), label: t(pl.event ? 'gDef' : 'gLib'), tone: 'lib' } : null;
+    const art = m.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>`
+      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res) : '') : holoPlanet(p, res);
+    // actions: the move first, then one quieter line to pass the call on
+    const primary = m.moveOn && m.next ? endAction(res, null)
+      : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
+      : p.d.kind === 'steady' ? `<button type="button" class="btn primary" data-goto="history">${esc(t('seeProg'))}${ICON.track}</button>`
+      : endAction(res, alt);
+    return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.' + p.state))}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${p.state === 'go' || p.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${fac ? `<span class="call-front"><i class="sw" style="--fc:${FAC_VAR[fac] || 'var(--fg)'}" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${facOk ? `<span class="call-front"><i class="sw" style="--fc:${FAC_VAR[facOk] || 'var(--fg)'}" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
-        ${moveOn ? '' : p.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>` : holoPlanet(p, res)}
-        <h2 class="call-head${long && !moveOn ? ' long' : ''}" id="dir-${esc(id)}">${head}</h2>
-        ${p.req ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
-        <p class="why">${why}</p>
-        ${moveOn ? '' : p.meter}
+        ${art}
+        <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb">${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
+        ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
+        <p class="why">${m.why}</p>
+        ${m.moveOn ? '' : p.meter}
         ${meanwhile}
-        <div class="call-actions">${moveBtn || endAction(res, alt)}
+        <div class="call-actions">${primary}</div>
+        <div class="call-tools">
           ${res.verdict === 'done' ? '' : `<button type="button" class="btn quiet" data-shareimg="${esc(res.id)}">${ICON.image}<span>${t('sh.btn')}</span></button>`}
           <button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
-          ${moveOn ? '' : planetBtn(res)}
+          ${m.moveOn ? '' : planetBtn(res)}
         </div>
       </div>
       <div class="call-side" role="group" aria-labelledby="fc-${esc(id)}">
-        <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || p.state === 'done' ? 'result' : 'forecast'))}</h3>
+        <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || m.state === 'done' ? 'result' : 'forecast'))}</h3>
         <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
         <p class="meaning">${esc(t('m.' + v))}</p>
-        ${res.ended || moveOn ? '' : whyHTML(res, p.d)}
-        <dl class="clock">${clockRow}${medals ? `<div><dt>${esc(t('reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : ''}</dl>
+        ${res.ended || m.moveOn ? '' : whyHTML(res, p.d)}
+        <dl class="clock">${clockRow}${reward}</dl>
+        ${logNote(res, a)}
         ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))}</button>` : ''}
       </div>
     </section>`;
+  }
+  // something new in the command log for this order: said beside the call, one click from the log
+  // (critique 1 Nov 2026: a hand-made change only showed as a badge on a tab far below)
+  function logNote(res, a) {
+    const entry = last.results.find(x => x.a === a);
+    if (!entry) return '';
+    const ic = intelCount(entry);
+    return ic.n ? `<button type="button" class="log-note ${ic.level}" data-goto="intel">${ICON.warn}<span>${esc(fill(t(ic.n === 1 ? 'logNote1' : 'logNoteN'), { n: ic.n }))}</span>${ICON.track}</button>` : '';
   }
 
   const medalsOf = (a) => (a.rewards && a.rewards.length ? a.rewards : [a.reward]).filter(Boolean).reduce((s, x) => s + (x.type === 1 ? Number(x.amount) : 0), 0);

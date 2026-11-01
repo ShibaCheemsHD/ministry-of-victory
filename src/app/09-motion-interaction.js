@@ -165,14 +165,14 @@
     const { a, res } = entry;
     // times in UTC, as on the share image: the text is read all over the world
     clockUTC = true;
-    let p; try { p = directiveParts(res); } finally { clockUTC = false; }
+    let p, m; try { p = directiveParts(res); m = callMove(res, p); } finally { clockUTC = false; }
     const left = Date.parse(a.expiration) - Date.now();
     const lines = [
       `MINISTRY OF VICTORY · ${plain(clean(txt(a.title) || 'Major Order')).toUpperCase()}`,
       pickLine(entry),
-      `${t('callTag.' + p.state)}: ${(['steady', 'lost'].includes(p.d.kind) ? p.target : `${p.kicker} ${p.target}`).toUpperCase()}`,
-      plain(p.why),
-      p.cap ? plain(p.cap) : '',
+      `${m.tag}: ${(m.verb ? `${m.verb} ${m.target}` : m.target).toUpperCase()}`,
+      plain(m.why),
+      p.cap && !m.moveOn ? plain(p.cap) : '',
       `${t('forecast')}: ${t('v.' + res.verdict)} · ${t('timeLeft')}: ${isFinite(left) ? durDown(left / 3.6e6) : '—'}`,
       `https://shibacheemshd.github.io/ministry-of-victory/#order=${encodeURIComponent(String(a.id))}`,
     ];

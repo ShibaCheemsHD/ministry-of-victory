@@ -11,6 +11,7 @@
   window.addEventListener('popstate', () => {
     const h = readHash();
     if (h.view === 'war' && h.order) { ui.order = h.order; ui.orderManual = true; if (h.tab) { ui.tab[h.order] = h.tab; tabScrollDue = true; } }
+    closeCard(true);
     setView(h.view, false);
   });
   if (location.hash === '#archive') ui.view = 'archive';
@@ -75,6 +76,7 @@
     $('settings-title').textContent = t('settings');
     $('info-title').textContent = t('info');
     $('share-title').textContent = t('sh.title');
+    $('dlg-share').addEventListener('close', () => { $('share-title').textContent = t('sh.title'); });
     $('order-tabs').setAttribute('aria-label', t('ordersAria'));
     const lbl = { 'l-cap': 'sCap', 'l-capval': 'sCapVal', 'l-dss': 'sDss', 'l-hod': 'sHod', 'l-rec': 'sRec', 'l-contact': 'sContact', 'l-motion': 'sMotion',
       'h-motion': 'hMotion', 'h-cap': 'hCap', 'h-capval': 'hCapVal', 'h-dss': 'hDss', 'h-hod': 'hHod', 'h-rec': 'hRec', 'h-contact': 'hContact', 'h-model': 'hModel',
@@ -86,7 +88,7 @@
     $('s-motion').options[1].textContent = t('mReduced');
     $('explain').innerHTML = EXPLAIN;
     // a way back to us from the page (audit PO-02): the repo's issue form, no account data sent
-    $('footer').innerHTML = `<p>${esc(t('footer'))}</p><p class="foot-links"><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a><a href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml" target="_blank" rel="noopener">${esc(t('rss'))}</a><a href="https://github.com/ShibaCheemsHD/ministry-of-victory" target="_blank" rel="noopener">${esc(t('source'))}</a></p>`;
+    $('footer').innerHTML = `<p class="foot-keys">${t('keysHint')}</p><p>${esc(t('footer'))}</p><p class="foot-links"><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a><a href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml" target="_blank" rel="noopener">${esc(t('rss'))}</a><a href="https://github.com/ShibaCheemsHD/ministry-of-victory" target="_blank" rel="noopener">${esc(t('source'))}</a></p>`;
     for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) el.textContent = t(k); }
     const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
   }

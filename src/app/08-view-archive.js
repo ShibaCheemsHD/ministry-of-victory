@@ -2,23 +2,25 @@
   // the call and the races are always on screen; the rest is one tab away (critique 1 Nov 2026: the side
   // column of equal boxes — forecast, map, Joel, briefing — became the call's forecast, the map tab and the
   // races' briefing; "What did Joel do?" repeated the Command log and is gone)
-  const TABS = ['strategy', 'history', 'intel', 'map'];
+  // the races are the first tab, so the tab bar sits right under the call (critique 1 Nov 2026: the tabs
+  // were 1,400 px down and a key took the call off screen)
+  const TABS = ['races', 'strategy', 'history', 'intel', 'map'];
   // the tab names in the address (#order=…&tab=plan), so a call can be linked to straight
-  const TAB_SLUG = { strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
+  const TAB_SLUG = { races: 'races', strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
   function curTab(id) {
-    let tab = ui.tab[id] || 'strategy';
+    let tab = ui.tab[id] || 'races';
     if (tab === 'data') tab = 'history';
-    return TABS.includes(tab) ? tab : 'strategy';
+    if (tab === 'objectives') tab = 'races';
+    return TABS.includes(tab) ? tab : 'races';
   }
   function viewHTML(entry) {
     const { a, res } = entry;
     const tab = curTab(a.id);
-    const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
+    const panel = tab === 'races' ? racesHTML(res, a) : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
+    const label = { races: t('tRaces'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
-      ${racesHTML(res, a)}
       <section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
         <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span></div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
@@ -153,12 +155,12 @@
     const out = G.impossible + G.long;
     const head = !checked ? t('ar.hNone') : out ? fill(t(out === 1 ? 'ar.hOut1' : 'ar.hOut'), { n: out, c: checked }) : fill(t('ar.hFair'), { c: checked });
     const sub = checked ? [out ? fill(t('ar.hSubOut'), { i: G.impossible, l: G.long }) : '', G.hard ? fill(t(G.hard === 1 ? 'ar.hSubRec1' : 'ar.hSubRec'), { n: G.hard }) : '', G.fair ? fill(t(G.fair === 1 ? 'ar.hSubWin1' : 'ar.hSubWin'), { n: G.fair }) : ''].filter(Boolean).join(' ') : '';
-    const seg = (g) => G[g] ? `<button type="button" class="sb-seg cg-${g}" style="flex:${G[g]}" data-af="g-${g}" aria-pressed="${f === 'g-' + g}" aria-label="${esc(G[g] + ' ' + t('ar.g.' + g))}"></button>` : '';
+    const seg = (g) => G[g] ? `<i class="sb-seg cg-${g}${f === 'g-' + g ? ' on' : ''}" style="flex:${G[g]}"></i>` : '';
     const verdict = `<section class="ar-verdict">
       <h3 class="mod-h">${esc(t('ar.q'))}</h3>
       <p class="sb-head">${esc(head)}</p>
       ${sub ? `<p class="sb-sub">${esc(sub)}</p>` : ''}
-      <div class="sb-bar" role="group" aria-label="${esc(fill(t('ar.chkA'), { n: defeats.length }))}">${[...GROUPS, 'none'].map(seg).join('')}</div>
+      <div class="sb-bar" role="img" aria-label="${esc(fill(t('ar.chkA'), { n: defeats.length }))}">${[...GROUPS, 'none'].map(seg).join('')}</div>
       <ul class="sb-key">${[...GROUPS, 'none'].filter(g => G[g] || g !== 'none').map(g => `<li class="cg-${g}"><button type="button" data-af="g-${g}" aria-pressed="${f === 'g-' + g}"><i></i><b>${G[g]}</b><span>${esc(t('ar.g.' + g))}</span><small>${esc(t('ar.gs.' + g))}</small></button></li>`).join('')}</ul>
       <details class="ar-how"><summary>${esc(t('ar.howT'))}</summary>
         <ul>${t('ar.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul>
