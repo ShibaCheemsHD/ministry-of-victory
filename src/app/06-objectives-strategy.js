@@ -76,7 +76,7 @@
         if (r.defenses && r.verdict !== 'done') line += ` · ${r.defenses.length > 1 ? S('nAttacks', { n: r.defenses.length }) : r.defenses.length ? S('nAttack1') : S('nNoAttack')}`;
       }
       const check = r.verdict === 'done' ? `<span class="check done">${ICON.check}</span>` : r.verdict === 'impossible' || r.verdict === 'failed' ? `<span class="check fail">${ICON.cross}</span>` : '<span class="check"></span>';
-      return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}">
+      return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
         ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${multiLib && r.pw && r.verdict === 'ontrack' && res.verdict !== 'ontrack' && res.verdict !== 'done' ? pill('planet', t('vPlanetOk')) : multiLib && r.pw && r.verdict === 'ontrack' ? pill('ontrack', t('vPlanetOk')) : pill(r.verdict)}
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
@@ -84,12 +84,12 @@
   }
 
   /* ---------- strategy tab ---------- */
-  function timelineHTML(segs, H, key) {
+  function timelineHTML(segs, H, key, res) {
     if (!segs || !segs.length) return '';
     const span = Math.max(H, segs[segs.length - 1].end);
     const x = (h) => (h / span) * 100;
-    const segHtml = segs.map((s, i) => `<div class="tl-seg${s.end > H + 0.01 ? ' late' : ''}" style="--i:${i};--fc:var(--s${(i % 4) + 1});left:${x(s.start)}%;width:${x(s.end - s.start)}%" title="${esc(txt(s.planet.name))}">${planetName(s.planet)}</div>`).join('');
-    const list = segs.map((s, i) => `<span><i class="sw2" style="--fc:var(--s${(i % 4) + 1})"></i><b>${planetName(s.planet)}</b> ${s.start < 0.05 ? t('now') : clock(s.start)} → ${clock(s.end)}</span>`).join('');
+    const segHtml = segs.map((s, i) => `<div class="tl-seg${s.end > H + 0.01 ? ' late' : ''}" style="--i:${i};--fc:${planetTone(res, s.planet)};left:${x(s.start)}%;width:${x(s.end - s.start)}%" title="${esc(txt(s.planet.name))}">${planetName(s.planet)}</div>`).join('');
+    const list = segs.map((s, i) => `<span><i class="sw2" style="--fc:${planetTone(res, s.planet)}"></i><b>${planetName(s.planet)}</b> ${s.start < 0.05 ? t('now') : clock(s.start)} → ${clock(s.end)}</span>`).join('');
     return `<div class="timeline" data-tl="${esc(key)}">
       <div class="tl-track" aria-hidden="true">${segHtml}<div class="tl-deadline" style="left:calc(${Math.min(100, x(H))}% - 1px)" title="${esc(t('deadline'))}"></div></div>
       <div class="tl-list">${list}<span>· ${t('deadline')}: <b>${clock(H)}</b></span></div></div>`;
@@ -120,7 +120,7 @@
       case 'libOrder':
         if (rec.partial) key = 'libOrderPartial';
         params = { order: rec.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: P(s.planet) })).join('') + '.' };
-        extra = timelineHTML(rec.segs, rec.H, `plan:${res.id}`); break;
+        extra = timelineHTML(rec.segs, rec.H, `plan:${res.id}`, res); break;
       case 'libRegion':
         params = { planet: P(rec.planet), region: esc(rec.region || '?'), knock: rec.knock != null ? pct(rec.knock) : '—', hp: big(rec.hp), regen: big(rec.regen),
           order: rec.order.map(esc).join(' → '), spread: rec.spread ? fill(R('libRegionSpread'), { n: rec.spread }) : '' };
@@ -176,7 +176,7 @@
       <div class="big">${esc(bigTxt)}</div>
       <div class="sub">${fill(t('simShare'), { pct: `<b>${pct(share)}</b>`, players: people(share * N) })}</div>
       <div class="sub">${sub}</div>
-      ${sm.wins || sm.count ? timelineHTML(sm.wins ? sm.segs : sm.segs.filter(s => sm.taken.includes(s.planet)), res.model.H, `sim:${res.id}`) : ''}
+      ${sm.wins || sm.count ? timelineHTML(sm.wins ? sm.segs : sm.segs.filter(s => sm.taken.includes(s.planet)), res.model.H, `sim:${res.id}`, res) : ''}
     </div>`;
   }
 
@@ -385,7 +385,7 @@
         ${assess.length || order ? `<span class="label sub-label">${t('bigPicture')}</span>` : ''}
         ${assess.length ? `<div class="situation ${sitCls}"><span class="label">${t('sitTitle')}</span>${assess.map(r => recItem(r, res, 'div')).join('')}</div>` : ''}
         ${order ? `<div class="the-plan"><span class="label">${t(order.partial ? 'planBlockPartial' : res.liberation && !res.liberation.winnableNow ? 'planBlockIf' : 'planBlock')}</span>
-          <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`)}</div>` : ''}
+          <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`, res)}</div>` : ''}
         ${fine.length ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
       </section>
       ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;

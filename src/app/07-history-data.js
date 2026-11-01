@@ -24,7 +24,7 @@
     const pctX = (x) => Math.max(0, Math.min(100, ((x - c.x0) / (c.x1 - c.x0)) * 100));
     const pctY = (y) => Math.max(0, Math.min(100, ((y - c.y0) / (c.y1 - c.y0)) * 100));
     const hidden = ui.chartOff[c.id] || {};
-    const lines = c.series.filter(sr => sr.pts.length > 1).map(sr => `<path class="ln ${sr.cls}${hidden[sr.key] ? ' off' : ''}" data-s="${sr.key}" d="${path(sr.pts)}" vector-effect="non-scaling-stroke"/>`
+    const lines = c.series.filter(sr => sr.pts.length > 1).map(sr => `<path class="ln ${sr.cls}${hidden[sr.key] ? ' off' : ''}"${sr.sty ? ` style="${sr.sty}"` : ''} data-s="${sr.key}" d="${path(sr.pts)}" vector-effect="non-scaling-stroke"/>`
       + (sr.area ? `<path class="area ${sr.cls}${hidden[sr.key] ? ' off' : ''}" data-s="${sr.key}" d="${path(sr.pts)}L${X(sr.pts[sr.pts.length - 1][0]).toFixed(1)},${CH}L${X(sr.pts[0][0]).toFixed(1)},${CH}Z"/>` : '')).join('');
     const bars = (c.bars || []).map(b => `<rect class="bar-r ${b.cls || ''}" x="${X(b.x0).toFixed(1)}" width="${Math.max(1, X(b.x1) - X(b.x0) - 3).toFixed(1)}" y="${Y(b.y).toFixed(1)}" height="${(CH - Y(b.y)).toFixed(1)}"/>`).join('');
     const gaps = (c.gaps || []).map(g => `<div class="ch-gap" style="left:${pctX(g[0])}%;width:${pctX(g[1]) - pctX(g[0])}%"><span>${esc(t('h.unrecorded'))}</span></div>`).join('');
@@ -33,7 +33,7 @@
     const marks = (c.marks || []).map(m => `<div class="ch-mark ${m.cls}" style="left:${pctX(m.x)}%"><i class="hd"></i></div>`).join('');
     const hl = (c.hlines || []).map(h => `<div class="ch-h ${h.cls}" style="bottom:${pctY(h.y)}%"><span>${esc(h.label)}</span></div>`).join('');
     const edge = (g) => pctX(g.x) > 98.5;
-    const tags = (c.tags || []).map(g => `<span class="ch-tag ${g.cls}${edge(g) ? ' edge' : ''}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" style="${edge(g) ? '' : `left:${pctX(g.x)}%;`}bottom:${pctY(g.y)}%">${esc(g.text)}</span>`).join('');
+    const tags = (c.tags || []).map(g => `<span class="ch-tag ${g.cls}${edge(g) ? ' edge' : ''}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" style="${g.sty ? g.sty + ';' : ''}${edge(g) ? '' : `left:${pctX(g.x)}%;`}bottom:${pctY(g.y)}%">${esc(g.text)}</span>`).join('');
     charts[c.id] = c;
     return `<div class="chart${(c.tags || []).some(edge) ? ' has-edge' : ''}" data-chart="${esc(c.id)}" role="img" aria-label="${esc(c.aria || '')}">
       <div class="plot">${yt}${gaps}<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none" aria-hidden="true">${bars}${lines}</svg>${hl}${marks}${tags}
@@ -42,7 +42,7 @@
   }
   function legendHTML(id, items) {
     const hidden = ui.chartOff[id] || {};
-    return `<div class="ch-legend">${items.map(it => `<button type="button" class="lg ${it.cls}" data-legend="${esc(id)}" data-s="${it.key}" aria-pressed="${!hidden[it.key]}"><i></i>${esc(it.label)}</button>`).join('')}</div>`;
+    return `<div class="ch-legend">${items.map(it => `<button type="button" class="lg ${it.cls}"${it.sty ? ` style="${it.sty}"` : ''} data-legend="${esc(id)}" data-s="${it.key}" aria-pressed="${!hidden[it.key]}"><i></i>${esc(it.label)}</button>`).join('')}</div>`;
   }
   function niceTicks(max, n = 4) {
     if (!(max > 0)) return [0];
@@ -169,20 +169,20 @@
     const x0 = Math.min(entry.start || now, ...all.map(x => x.pts[0][0])), x1 = Math.max(end, now);
     const series = [], tags = [];
     all.forEach(({ r, k, pts }) => {
-      const key = 'p' + r.planet.index, cls = `pl s${(k % 4) + 1}`;
-      series.push({ key, cls, pts, name: plain(planetName(r.planet)), tip: t('h.lnPlanet') });
+      const key = 'p' + r.planet.index, cls = 'pl', sty = `--sc:${planetTone(entry.res, r.planet)}`;
+      series.push({ key, cls, sty, pts, name: plain(planetName(r.planet)), tip: t('h.lnPlanet') });
       if (r.pw && isFinite(r.eta) && r.eta > 0 && !entry.res.ended) {
         const tEnd = now + Math.min(r.eta, H * 1.6) * 3.6e6, frac = pts[pts.length - 1][1];
         const reach = r.eta <= H * 1.6 ? 1 : frac + (1 - frac) * (H * 1.6 / r.eta);
-        series.push({ key, cls: cls + ' proj', pts: [[now, frac], [tEnd, reach]], name: plain(planetName(r.planet)), tip: r.eta <= H ? fill(t('h.lnFalls'), { when: clock(r.eta) }) : t('h.lnLate') });
-        if (r.eta <= H) tags.push({ key, cls: 'pl s' + ((k % 4) + 1), x: tEnd, y: 1, text: clock(r.eta) });
+        series.push({ key, cls: cls + ' proj', sty, pts: [[now, frac], [tEnd, reach]], name: plain(planetName(r.planet)), tip: r.eta <= H ? fill(t('h.lnFalls'), { when: clock(r.eta) }) : t('h.lnLate') });
+        if (r.eta <= H) tags.push({ key, cls: 'pl', sty, x: tEnd, y: 1, text: clock(r.eta) });
       }
     });
     const c = { id, x0, x1: Math.max(x1, ...series.map(sr => sr.pts[sr.pts.length - 1][0])), y0: 0, y1: 1.06, series, tags,
       fmtY: (v) => pct(v), yTicks: [0, 0.25, 0.5, 0.75, 1], xTicks: dayTicks(x0, x1),
       hlines: [], marks: [{ x: now, cls: 'now', label: t('h.now'), tip: hhmm(now) }, { x: end, cls: 'end', label: t('h.deadline'), tip: fill(t('h.endTip'), { when: hhmm(end) }) }],
       kind: 'lib', now, planets: all.map(({ r, pts }) => ({ key: 'p' + r.planet.index, name: plain(planetName(r.planet)), pts, proj: (series.find(sr => sr.key === 'p' + r.planet.index && sr.cls.includes('proj')) || {}).pts || null })), aria: t('h.libAria') };
-    return chartHTML(c) + legendHTML(id, all.map(({ r, k }) => ({ key: 'p' + r.planet.index, cls: `pl s${(k % 4) + 1}`, label: plain(planetName(r.planet)) })));
+    return chartHTML(c) + legendHTML(id, all.map(({ r }) => ({ key: 'p' + r.planet.index, cls: 'pl', sty: `--sc:${planetTone(entry.res, r.planet)}`, label: plain(planetName(r.planet)) })));
   }
   function historyHTML(entry) {
     const { res } = entry;

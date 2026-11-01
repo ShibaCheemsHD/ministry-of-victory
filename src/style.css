@@ -347,6 +347,9 @@ button { cursor: pointer; }
 .bar .proj { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(255, 233, 0, .45) 4px 8px); transition: left 1.1s var(--ease), width 1.1s var(--ease); }
 .bar .goal { position: absolute; right: 0; top: -1px; bottom: -1px; width: 2px; background: var(--fg); }
 .bar.lib { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--fc) 70%, transparent) 0 3px, color-mix(in srgb, var(--fc) 25%, transparent) 3px 6px); }
+/* what is still to take: quiet stripes in the planet's colour, so only the part done reads as the planet's
+   (a bar of solid Automaton red read as an alarm next to the red of a bad verdict; critique 1 Nov 2026) */
+.objective .bar.lib { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--fc) 26%, transparent) 0 2px, transparent 2px 7px), var(--panel-3); }
 .bar.lib .fill { background: var(--f-human); box-shadow: 0 0 12px rgba(107, 183, 234, .5); }
 /* advancing front line: a bright edge that flickers while we're gaining ground */
 .bar.lib.moving .fill::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: #fff; box-shadow: 0 0 8px 2px rgba(190, 230, 255, .9); animation: edge 1.6s ease-in-out infinite; }

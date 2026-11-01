@@ -60,6 +60,17 @@
       default: return capFirst(facWhat(fac, tk.type));
     }
   }
+  // One colour per planet, the same in every tab (critique 1 Nov 2026: Fury was red in Objectives and blue
+  // in the Plan): its faction's colour, in a lighter or darker shade when the order has several planets of
+  // that faction, in a fixed order (by planet number) so a planet keeps its shade as the plan changes.
+  const SHADES = [(c) => c, (c) => `color-mix(in oklab, ${c} 62%, #fff)`, (c) => `color-mix(in oklab, ${c} 66%, #000)`, (c) => `color-mix(in oklab, ${c} 40%, #fff)`];
+  function planetTone(res, planet) {
+    if (!planet) return 'var(--fg)';
+    const fac = factionOfPlanet(planet);
+    const same = [...new Set((res?.tasks || []).flatMap(r => [r.planet, ...(r.libN?.rank || []).map(x => x.planet)]).filter(p => p && factionOfPlanet(p) === fac).map(p => p.index))].sort((a, b) => a - b);
+    const k = Math.max(0, same.indexOf(planet.index));
+    return SHADES[k % SHADES.length](FAC_VAR[fac] || 'var(--fg)');   // FAC_VAR: 05-war-map.js
+  }
   function taskText(r) {
     const tk = r.task, n = big(tk.goal);
     // "Liberate 1 planet", not "1 planets"
