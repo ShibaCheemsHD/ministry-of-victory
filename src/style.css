@@ -1160,7 +1160,7 @@ body::after { background: repeating-linear-gradient(to bottom, transparent 0 2px
    CLARITY PASS — yellow means "do this", colours mean one thing each, fewer capitals,
    labels you can read, features that announce themselves.
    ===================================================================================== */
-:root { --dim: #8b8d93; --f-terminid: #ff9a2e; }
+:root { --dim: #9b9da3; --f-terminid: #ff9a2e; }   /* dim text at 4.5:1 or more on the lightest panels (was #8b8d93: 4.1-4.4) */
 
 /* yellow only for the action: the hero label/verb, the main button, targets on charts.
    Section labels, bars, selections go neutral. */
@@ -1895,3 +1895,24 @@ a { text-underline-offset: 3px; }
 .meanwhile .ico { width: 16px; height: 16px; color: var(--yellow); }
 .meanwhile > span { flex: 1 1 260px; }
 .meanwhile b { color: var(--yellow); font-weight: 700; }
+
+/* ---------- polish (critique 1 Nov 2026, priority 5) ---------- */
+/* no functional text under 11 px (the logo's small line is the wordmark, not a label) */
+.otab .new-tag, .lvl, .stat .label, .ch-mark span, .ch-gap span, .it-now, .pc-stats .label, .pc-list .src, .nk-tag, .ar-meter s::after, .dir-fc-t .label { font-size: 11px; }
+.chart .yt { font-size: 11px; }
+.g-val span { font-size: 11px; letter-spacing: .08em; }
+.g-val i { font-size: 11px; letter-spacing: .08em; }
+.globe[data-globe]::after { font-size: 11px; }
+.tab-badge { font-size: 11px; }
+@media (max-width: 640px) { .g-val span { font-size: 11px; letter-spacing: .04em; } .stat .label { font-size: 11px; } .tab-badge { min-width: 17px; height: 17px; font-size: 11px; } }
+/* touch targets: 44 px where a thumb has to hit them */
+.intel summary { min-height: 44px; }
+@media (max-width: 980px) {
+  .btn { min-height: 44px; }
+  .hud-actions .icon-btn { position: relative; }
+  .hud-actions .icon-btn::before { content: ""; position: absolute; inset: -4px -2px; }
+  .linkish, .linkbtn { min-height: 36px; display: inline-flex; align-items: center; }
+}
+/* the countdown never breaks "S" onto its own line */
+.timer .count, .dir-fc-count { white-space: nowrap; }
+.verdict-card .timer .count { font-size: clamp(20px, 2.1vw, 28px); }
