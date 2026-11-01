@@ -51,8 +51,9 @@ with sync_playwright() as p:
     br = p.chromium.launch()
     for s in SCENARIOS: run(br, s, 1366)
     for s in ('default', 'none', 'sniper'): run(br, s, 390)
+    for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
     for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
     br.close()
 for x in problems[:60]: print('PROBLEM', x)
-print(f'{len(SCENARIOS) + 3 + FUZZ} pages, {len(problems)} problems')
+print(f'{len(SCENARIOS) + 5 + FUZZ} pages, {len(problems)} problems')
 sys.exit(1 if problems else 0)

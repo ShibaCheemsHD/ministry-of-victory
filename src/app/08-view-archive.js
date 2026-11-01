@@ -7,7 +7,7 @@
     if (!TABS.includes(tab)) tab = 'objectives';
     const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : objectivesHTML(res);
     const ic = intelCount(entry);
-    const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
+    const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short" aria-hidden="true">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${directiveHTML(res)}
       ${railHTML(res, a)}

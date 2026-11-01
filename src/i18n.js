@@ -288,7 +288,7 @@ const TEXT = {
   dhms: ['D', 'H', 'M', 'S'],
   help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
-  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log',
+  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log', tIntelS: 'Log',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', likely: 'most likely between {a} and {b}', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
     defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
     cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cOkBy: 'On track: done by {when}', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',

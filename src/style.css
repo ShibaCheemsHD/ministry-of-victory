@@ -1726,3 +1726,29 @@ a { text-underline-offset: 3px; }
 .ar-acc .ar-how ul { margin: 8px 0 0; padding: 0 0 0 18px; display: grid; gap: 6px; color: var(--muted); max-width: 85ch; }
 @media (max-width: 900px) { .acc-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .ar-acc { padding: 16px; } }
+
+/* ---------- the four order tabs, bigger (Nov 2026) ----------
+   They are the way into the plan, the charts and the log: they span the width of the order column,
+   with a larger label and a taller hit area (48 px and up) instead of four small chips on the left. */
+.tabbar .tabs { flex: 1 1 auto; gap: 8px; }
+.tab { flex: 1 1 0; min-width: 0; padding: 16px 30px 22px 14px; font-size: 18px; letter-spacing: .08em; color: var(--muted); }
+.tab::before { height: 16px; }
+.tab .idx { font-size: 12px; bottom: 6px; }
+.tab[aria-selected="true"]::after { bottom: 7px; height: 6px; }
+.tab-badge { min-width: 22px; height: 22px; font-size: 12px; vertical-align: 3px; }
+@media (max-width: 980px) { .tab { font-size: 16px; padding: 15px 22px 20px 10px; } }
+.tab .tl-short { display: none; }
+@media (max-width: 640px) {
+  /* each tab as wide as its label, "Command log" shortened to "Log" so all four fit */
+  .tabbar .tabs { gap: 4px; }
+  .tab { flex: 1 1 auto; padding: 15px 6px 20px; font-size: 14px; letter-spacing: .04em; }
+  .tab .tl-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tab .tl-short { display: inline; }
+  .tab-badge { min-width: 16px; height: 16px; font-size: 10px; }
+}
+@media (max-width: 380px) { .tab { font-size: 13px; letter-spacing: .02em; padding-inline: 4px; } }
+/* very narrow phones (320 px): the order tabs and the forecast bars may shrink below their usual minimum */
+@media (max-width: 360px) { .otab { min-width: 0; } .why-m, .wm-top, .fwhy, .meaning { min-width: 0; max-width: 100%; } }
+.rail-card { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 360px) { .stamp { font-size: 22px; white-space: normal; } }
+@media (max-width: 360px) { .timer { flex-wrap: wrap; row-gap: 8px; } }
