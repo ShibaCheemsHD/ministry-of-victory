@@ -42,7 +42,7 @@
         <div class="rc-bar"><i style="width:${(x.frac * 100).toFixed(1)}%"></i></div>
         <span class="rc-num">${x.goal > 1 ? `${big(x.val)} / ${big(x.goal)} · ${pct(x.frac)}` : esc(t(x.done ? 'rc.libDone' : 'rc.libNo'))}</span></div>${spark(x)}</li>`).join('');
     const hasSpark = rows.some(x => x.goal > 1) && R.pts.length > 1;
-    return `<section class="recap panel br">
+    return `<section class="recap">
       <h2 class="mod-h">${esc(t('rc.label'))}</h2>
       <div class="rc-head"><div><h3 aria-level="2">${esc(clean(R.title || 'Major Order'))}</h3>
         <p class="rc-when">${esc(fill(t('rc.when'), { a: fmtDay(R.start || t0), b: fmtDay(R.exp), d: dur(durH) }))}</p></div>
@@ -156,23 +156,44 @@
     const all = [...events, ...disp].sort((x, y) => y.t - x.t).slice(0, 14);
     if (!all.length) return '';
     const kinds = [...new Set(all.map(x => x.k))];
-    const f = kinds.includes(ui.nf) ? ui.nf : null;
+    const f = kinds.includes(ui.nf) && all.filter(x => x.k === ui.nf).length > 1 ? ui.nf : null;
     const shown = all.filter(x => !f || x.k === f);
-    const filters = kinds.length > 1 ? `<div class="nk-filter" role="group" aria-label="${esc(t('nw.filter'))}"><button type="button" data-nf="" aria-pressed="${!f}">${esc(t('nw.all'))} <small>${all.length}</small></button>${kinds.map(k => `<button type="button" class="nk-${k}" data-nf="${k}" aria-pressed="${f === k}">${ICON[NEWS_ICON[k]]}${esc(t('nk.' + k))} <small>${all.filter(x => x.k === k).length}</small></button>`).join('')}</div>` : '';
+    // at most four kinds to filter by, the commonest (critique 1 Nov 2026: nine chips of one item each)
+    const top = kinds.map(k => [k, all.filter(x => x.k === k).length]).sort((x, y) => y[1] - x[1]).filter(([, n]) => n > 1).slice(0, 4).map(([k]) => k);
+    const filters = top.length > 1 ? `<div class="nk-filter" role="group" aria-label="${esc(t('nw.filter'))}"><button type="button" data-nf="" aria-pressed="${!f}">${esc(t('nw.all'))} <small>${all.length}</small></button>${top.map(k => `<button type="button" class="nk-${k}" data-nf="${k}" aria-pressed="${f === k}">${ICON[NEWS_ICON[k]]}${esc(t('nk.' + k))} <small>${all.filter(x => x.k === k).length}</small></button>`).join('')}</div>` : '';
     return `<section class="newsbox"><h2 class="mod-h">${esc(t('nw.title'))}</h2>${filters}${feedHTML(shown)}</section>`;
   }
-  // No order running: one concrete place to fight meanwhile (critique 1 Nov 2026). A defense that ends
-  // soonest comes first (losing it costs a planet), else the planet most Helldivers are on.
-  function meanwhileHTML() {
+  // No order running, or this one is over: one concrete place to fight meanwhile (critique 1 Nov 2026).
+  // A defense that ends soonest comes first (losing it costs a planet), else the planet most Helldivers are on.
+  function meanwhilePick() {
     const P = Object.values(last.planets || {}).filter(p => p && p.currentOwner);
     const now = last.now;
     const defs = P.filter(p => p.event && Date.parse(p.event.endTime) > now).sort((a, b) => Date.parse(a.event.endTime) - Date.parse(b.event.endTime));
     const busy = [...P].filter(p => p.currentOwner !== 'Humans' || p.event).sort((a, b) => (b.statistics?.playerCount || 0) - (a.statistics?.playerCount || 0));
     const p = defs[0] || busy[0];
-    if (!p) return '';
+    if (!p) return null;
     const why = p.event ? fill(t('mw.def'), { when: clock((Date.parse(p.event.endTime) - now) / 3.6e6) }) : fill(t('mw.busy'), { n: people(p.statistics?.playerCount || 0) });
-    return `<p class="meanwhile">${ICON.target}<span><b>${esc(t('mw.head'))}</b> ${fill(t('mw.go'), { p: planetName(p) })} ${why}</span>
-      <button type="button" class="linkish" data-open-planet="${p.index}">${esc(t('mw.open'))} ›</button></p>`;
+    return { p, why, defend: !!p.event };
+  }
+  function meanwhileHTML() {
+    const m = meanwhilePick();
+    if (!m) return '';
+    return `<p class="meanwhile">${ICON.target}<span><b>${esc(t('mw.head'))}</b> ${fill(t('mw.go'), { p: planetName(m.p) })} ${m.why}</span>
+      <button type="button" class="linkish" data-open-planet="${m.p.index}">${esc(t('mw.open'))} ›</button></p>`;
+  }
+  // Between orders the call still comes first: where to drop now; the last order's report sits below it
+  function betweenCallHTML() {
+    const m = meanwhilePick();
+    if (!m) return `<p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>`;
+    const fac = factionOfPlanet(m.p);
+    return `<section class="call vl-wait state-between" aria-labelledby="dir-between">
+      <div class="call-main">
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.between'))}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${fac && fac !== 'Humans' ? `<span class="call-front"><i class="sw" style="--fc:${FAC_VAR[fac]}" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
+        <h2 class="call-head" id="dir-between"><span class="verb">${esc(t(m.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(m.p)}</span></h2>
+        <p class="why">${capFirst(m.why)} ${esc(t('noOrders'))}</p>
+        <div class="call-actions"><button type="button" class="btn primary" data-open-planet="${m.p.index}">${esc(t('gCta'))}${ICON.track}</button></div>
+      </div>
+    </section>`;
   }
   function frontsHTML() {
     const P = Object.values(last.planets || {}).filter(p => p && p.currentOwner);

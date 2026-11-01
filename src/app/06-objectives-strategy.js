@@ -38,7 +38,7 @@
     const desc = txt(a.description) && txt(a.description) !== txt(a.briefing) ? clean(txt(a.description)) : '';
     const open = !!ui.briefOpen[id];
     return `<section class="races" aria-labelledby="races-${esc(id)}">
-      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t('races.title'))}</h2><p class="sec-note">${esc(t('races.note'))}</p></div>
+      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2><p class="sec-note">${esc(t(res.ended ? 'races.noteEnded' : 'races.note'))}</p></div>
       <div class="race-list">${objectivesHTML(res)}</div>
       ${brief || desc ? `<details class="brief" data-brief="${esc(id)}" ${open ? 'open' : ''}><summary>${ICON.chev}<span>${esc(t('brief'))}</span></summary><div class="brief-text"><p>${brief}</p>${desc ? `<p>${desc}</p>` : ''}</div></details>` : ''}
     </section>`;
@@ -47,8 +47,6 @@
   function objectivesHTML(res) {
     const H = res.hoursLeft;
     const S = (k, p = {}) => fill(t('s.' + k), p);
-    // one planet of several: "on track" next to an order that isn't reads as a contradiction (audit UX-03)
-    const multiLib = res.tasks.filter(r => r.pw || r.task.type === 11).length > 1;
     const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
     return banner + res.tasks.map((r, i) => {
       const tk = r.task;
@@ -91,13 +89,15 @@
       }
       // the race's own call: per objective, on the same five-step scale as the order (a planet that falls in
       // time inside an order that is still short says so in words, not with a green tick)
-      const pv = multiLib && r.pw && r.verdict === 'ontrack' ? pill(res.verdict !== 'ontrack' && res.verdict !== 'done' ? 'planet' : 'ontrack', t('vPlanetOk')) : pill(r.verdict);
-      const called = r.verdict === 'done' || res.ended;
+      // every race says one of the five calls (critique 1 Nov 2026: "Falls in time", "on pace" and "Called: done"
+      // sat beside them); on track only if players switch over is a push, not on track
+      const rv = res.ended && r.verdict !== 'done' ? 'failed' : r.verdict === 'ontrack' && r.freed ? 'effort' : r.verdict;
+      const pv = pill(rv);
       // liberation that falls before the deadline: the bracket runs to the goal line
       if (r.pw && r.eta <= H && !res.ended && r.verdict !== 'done') { const frac = Math.max(0, 1 - p.health / p.maxHealth); bar = bar.replace('<div class="fill"', `<div class="proj" style="left:${frac * 100}%;width:${(1 - frac) * 100}%"></div><div class="fill"`).replace(/<\/div>$/, '<div class="goal"></div></div>'); }
-      return `<article class="race vl-${lvl(r.verdict)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
+      return `<article class="race vl-${lvl(rv)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
         <div class="race-head"><h3 class="race-name">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h3>
-          <span class="race-call">${called ? `<span class="called">${esc(t(r.verdict === 'done' ? 'calledWon' : 'calledLost'))}</span>` : pv}</span></div>
+          <span class="race-call">${pv}</span></div>
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
     }).join('');

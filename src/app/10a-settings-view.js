@@ -42,6 +42,8 @@
 
   // The address carries the order and the tab (#order=123&tab=plan), so a call can be linked to straight
   // (critique 1 Nov 2026: no deep link for Discord); the archive keeps #archive.
+  // a link that names a tab lands on that tab, scrolled into view, once the first data is drawn
+  let tabScrollDue = false;
   function readHash() {
     const h = location.hash.replace(/^#/, '');
     if (h === 'archive') return { view: 'archive' };
@@ -58,7 +60,7 @@
   }
   {
     const h = readHash();
-    if (h.order) { ui.order = h.order; ui.orderManual = true; if (h.tab) ui.tab[h.order] = h.tab; }
+    if (h.order) { ui.order = h.order; ui.orderManual = true; if (h.tab) { ui.tab[h.order] = h.tab; tabScrollDue = true; } }
   }
 
   function applyTexts() {

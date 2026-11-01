@@ -272,3 +272,40 @@
       <i class="sw" style="--fc:${planetTone(res, pl)}" aria-hidden="true"></i><span class="pb-n">${planetName(pl)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span>
       <span class="pb-t">${esc(t('gCta'))}</span>${dss ? `<span class="pb-dss" title="${esc(t(last.hod ? 'gDssHodT' : 'gDssT'))}">${esc(t(last.hod ? 'gDssHod' : 'gDss'))}</span>` : ''}${ICON.chev}</button>`;
   }
+
+  // The planet of the call as the game's war-table hologram: its faction's colour, slowly turning, with the
+  // objective's progress as an orbit ring and the DSS in orbit when it is there. Decoration beside the
+  // headline (the planet button carries the same planet for keyboards and screen readers); wide screens only.
+  function surfaceSVG(seed) {
+    let s = (Math.abs(Math.floor(seed)) % 233280) || 7;
+    const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    const blobs = Array.from({ length: 10 }, () => ({ x: rnd() * 156, y: 46 + rnd() * 148, rx: 8 + rnd() * 30, ry: 3 + rnd() * 9, d: rnd() > 0.45 }));
+    const copy = (off) => blobs.map(b => `<ellipse cx="${(42 + off + b.x).toFixed(1)}" cy="${b.y.toFixed(1)}" rx="${b.rx.toFixed(1)}" ry="${b.ry.toFixed(1)}" class="${b.d ? 'd' : 'l'}"/>`).join('');
+    return copy(-156) + copy(0) + copy(156);
+  }
+  function holoPlanet(p, res) {
+    const r = p.ring;
+    if (!r) return '';
+    const id = 'gl' + String(res.id).replace(/[^\w-]/g, '');
+    const seed = p.planet ? Number(p.planet.index) * 37 + 11 : String(p.fac || 'x').length * 131;
+    const dss = !!(p.planet && last && last.dssIdx === p.planet.index);
+    const fc = p.planet ? planetTone(res, p.planet) : FAC_VAR[p.fac] || 'var(--fg)';
+    return `<div class="holo ${r.tone}" style="--fc:${fc}" aria-hidden="true">
+      <svg viewBox="0 0 240 240" focusable="false">
+        <defs>
+          <radialGradient id="${id}b" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient>
+          <radialGradient id="${id}t" cx="32%" cy="28%" r="92%"><stop offset=".42" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></radialGradient>
+          <clipPath id="${id}c"><circle cx="120" cy="120" r="78"/></clipPath>
+        </defs>
+        <circle class="g-ticks" cx="120" cy="120" r="114"/>
+        <circle class="g-track" cx="120" cy="120" r="102"/>
+        <circle class="g-arc" cx="120" cy="120" r="102" pathLength="100" transform="rotate(-90 120 120)" data-ring="ring:${esc(res.id)}" data-frac="${(r.frac * 100).toFixed(2)}"/>
+        <circle cx="120" cy="120" r="78" fill="url(#${id}b)"/>
+        <g clip-path="url(#${id}c)"><g class="g-surf">${surfaceSVG(seed)}</g><g class="g-scan"><rect x="0" y="0" width="240" height="3"/><rect x="0" y="12" width="240" height="3"/><rect x="0" y="24" width="240" height="3"/></g></g>
+        <circle cx="120" cy="120" r="78" fill="url(#${id}t)"/>
+        <circle class="g-rim" cx="120" cy="120" r="78"/>
+        ${dss ? `<g class="g-sat ${last.hod ? 'hod' : ''}"><path d="M120 6.5l6.5 6.5-6.5 6.5-6.5-6.5z"/></g>` : ''}
+      </svg>
+      <div class="g-val"><b>${pct(r.frac)}</b><span>${esc(r.label)}</span></div>
+    </div>`;
+  }

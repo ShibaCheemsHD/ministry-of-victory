@@ -2,13 +2,13 @@
      Everything that matters in one PNG, so people get the call without opening the site.
      Drawn on a canvas from the same parts the page shows; times are in UTC (readers are everywhere). */
   // the page's colours: the five-step call scale, and the factions for the bars
-  const SH_LV = { done: '#3fc483', ok: '#58acff', push: '#f5b225', record: '#ff8040', out: '#a0a9bb', wait: '#a0a9bb' };
+  const SH_LV = { done: '#3fc483', ok: '#2fc6b8', push: '#efc63a', record: '#ff8040', out: '#a0a9bb', wait: '#a0a9bb' };
   const SH_VC = Object.fromEntries(Object.keys(LVL).map(v => [v, SH_LV[lvl(v)]]));
   const SH_FAC = { Terminids: '#f5a83c', Automaton: '#ff6159', Illuminate: '#b48eff', Humans: '#67b7ee' };
-  const SH_D = 'Big Shoulders Display', SH_U = 'Public Sans';
+  const SH_D = 'Saira', SH_U = 'Chakra Petch';
   async function shareImage(entry) {
     const { a, res } = entry;
-    try { await Promise.all(['900 40px "Big Shoulders Display"', '800 40px "Big Shoulders Display"', '700 20px "Public Sans"', '500 20px "Public Sans"'].map(f => document.fonts.load(f))); } catch {}
+    try { await Promise.all(['900 40px Saira', '800 40px Saira', '700 20px "Chakra Petch"', '500 20px "Chakra Petch"'].map(f => document.fonts.load(f))); } catch {}
     // the page's own words, with times in UTC
     clockUTC = true;
     let p, objs, joel;
@@ -31,7 +31,8 @@
     } finally { clockUTC = false; }
     const W = 1080, PAD = 64, IN = W - PAD * 2, S = 2;
     const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
-    const font = (px, w = 600, fam = SH_U) => { ctx.font = `${w} ${px}px "${fam}", sans-serif`; };
+    // titles in the page's wide capitals, the rest in its interface face (sizes scaled for the wide face)
+    const font = (px, w = 600, fam = SH_U) => { const wide = fam === SH_D; ctx.font = `${w} ${wide ? Math.round(px * 0.74) : px}px "${fam}", sans-serif`; try { ctx.fontStretch = wide ? 'expanded' : 'normal'; } catch {} };
     const wrap = (text, maxW, max = 9) => {
       const words = String(text || '').split(/\s+/).filter(Boolean), lines = []; let cur = '';
       for (const w of words) { const t2 = cur ? cur + ' ' + w : w; if (ctx.measureText(t2).width <= maxW || !cur) cur = t2; else { lines.push(cur); cur = w; } }
@@ -53,7 +54,9 @@
       const T = (s, x, yy, c, align = 'left') => { if (on) { ctx.fillStyle = c; ctx.textAlign = align; ctx.fillText(s, x, yy); } };
       // header: the network band, Super Earth yellow with black type
       y = 0;
-      R(0, 0, W, 96, '#ffe600');
+      R(0, 0, W, 96, '#ffe900');
+      // the game's hazard stripe under the band
+      if (on) { for (let x = -20; x < W + 20; x += 24) { ctx.fillStyle = '#ffe900'; ctx.beginPath(); ctx.moveTo(x, 110); ctx.lineTo(x + 12, 98); ctx.lineTo(x + 24, 98); ctx.lineTo(x + 12, 110); ctx.closePath(); ctx.fill(); } }
       if (on) {
         ctx.save(); ctx.translate(PAD + 20, 48); ctx.strokeStyle = '#0a0a07'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(19, 0); ctx.lineTo(0, 19); ctx.lineTo(-19, 0); ctx.closePath(); ctx.stroke();
         ctx.fillStyle = '#0a0a07'; ctx.beginPath(); ctx.moveTo(-7, -4); ctx.lineTo(7, -4); ctx.lineTo(4.8, 0.5); ctx.lineTo(2, 0.5); ctx.lineTo(2, 8); ctx.lineTo(-2, 8); ctx.lineTo(-2, 0.5); ctx.lineTo(-4.8, 0.5); ctx.closePath(); ctx.fill(); ctx.restore();
@@ -69,38 +72,41 @@
       const tpx = title.length > 30 ? 50 : 62; font(tpx, 900, SH_D);
       for (const l of wrap(title, IN, 3)) { y += tpx; T(l, PAD, y, '#eef2f8'); }
       // several orders: the desk's best bet, so a shared call never sends people to the worse order
-      if (pickTxt) { y += 26; font(21, 700); const pl = wrap(pickTxt, IN - 30, 3); const ph = pl.length * 30 + 22; R(PAD, y, IN, ph, '#16202f'); R(PAD, y, 5, ph, '#ffe600'); let py = y + 8; for (const l of pl) { py += 28; T(l, PAD + 22, py - 6, '#eef2f8'); } y += ph; }
+      if (pickTxt) { y += 26; font(21, 700); const pl = wrap(pickTxt, IN - 30, 3); const ph = pl.length * 30 + 22; R(PAD, y, IN, ph, '#1c1d22'); R(PAD, y, 5, ph, '#ffe900'); let py = y + 8; for (const l of pl) { py += 28; T(l, PAD + 22, py - 6, '#eef2f8'); } y += ph; }
       y += 34;
-      // forecast
-      const fy = y; font(46, 900, SH_D); const vLines = wrap(t('v.' + res.verdict).toUpperCase(), IN - 60, 2);
-      font(22, 500); const mLines = wrap(t('m')[res.verdict] || '', IN - 60, 2);
-      const fh = 34 + 16 + vLines.length * 44 + 10 + mLines.length * 30 + 26;
-      if (on) { ctx.fillStyle = '#111b2f'; ctx.fillRect(PAD, fy, IN, fh); ctx.fillStyle = vc; ctx.fillRect(PAD, fy, 6, fh); }
-      y = fy + 40; font(15, 700); if (on) ctx.letterSpacing = '2px'; T(t('forecast').toUpperCase(), PAD + 30, y, '#b4bdce'); if (on) ctx.letterSpacing = '0px';
-      font(46, 900, SH_D); for (const l of vLines) { y += 46; T(l, PAD + 30, y, vc); }
-      y += 6; font(22, 500); for (const l of mLines) { y += 30; T(l, PAD + 30, y, '#eef2f8'); }
-      y = fy + fh + 84;
-      // what to do now
-      font(16, 800); if (on) ctx.letterSpacing = '2px'; T(t('callTag.' + p.state).toUpperCase(), PAD, y - 20, '#ffe600'); if (on) ctx.letterSpacing = '0px';
+      // the call
+      y += 40;
+      font(16, 800); if (on) ctx.letterSpacing = '2px'; T(t('callTag.' + p.state).toUpperCase(), PAD, y - 20, '#ffe900'); if (on) ctx.letterSpacing = '0px';
       const big1 = ['steady', 'lost'].includes(p.d.kind) ? '' : p.kicker.toUpperCase();
-      if (big1) { font(44, 900, SH_D); y += 30; T(big1, PAD, y, '#ffe600'); }
+      if (big1) { font(44, 900, SH_D); y += 30; T(big1, PAD, y, '#ffe900'); }
       font(p.target.length > 14 ? 84 : 120, 900, SH_D);
       for (const l of wrap(p.target.toUpperCase(), IN, 2)) { y += p.target.length > 14 ? 82 : 112; T(l, PAD, y, '#eef2f8'); }
       y += 18;
       const why = [p.lead, plain(p.why)].filter(Boolean).join(' ');
       font(25, 500); for (const [i, l] of wrap(why, IN, 5).entries()) { y += 35; T(l, PAD, y, i === 0 && p.lead ? vc : '#eef2f8'); }
-      if (p.cap) { y += 22; R(PAD, y, IN, 1, '#2f3d5c'); y += 8; font(22, 700); for (const l of wrap(plain(p.cap), IN, 3)) { y += 32; T(l, PAD, y, '#eef2f8'); } }
+      if (p.cap) { y += 22; R(PAD, y, IN, 1, '#484b53'); y += 8; font(22, 700); for (const l of wrap(plain(p.cap), IN, 3)) { y += 32; T(l, PAD, y, '#eef2f8'); } }
       y += 52;
+      // the order's forecast, after the call (the call comes first, as on the page)
+      y += 4;
+      // forecast
+      const fy = y; font(46, 900, SH_D); const vLines = wrap(t('v.' + res.verdict).toUpperCase(), IN - 60, 2);
+      font(22, 500); const mLines = wrap(t('m')[res.verdict] || '', IN - 60, 2);
+      const fh = 34 + 16 + vLines.length * 44 + 10 + mLines.length * 30 + 26;
+      if (on) { ctx.fillStyle = '#1c1d22'; ctx.fillRect(PAD, fy, IN, fh); ctx.fillStyle = vc; ctx.fillRect(PAD, fy, 6, fh); }
+      y = fy + 40; font(15, 700); if (on) ctx.letterSpacing = '2px'; T(t('forecast').toUpperCase(), PAD + 30, y, '#b4bdce'); if (on) ctx.letterSpacing = '0px';
+      font(46, 900, SH_D); for (const l of vLines) { y += 46; T(l, PAD + 30, y, vc); }
+      y += 6; font(22, 500); for (const l of mLines) { y += 30; T(l, PAD + 30, y, '#eef2f8'); }
+      y = fy + fh + 40;
       // objectives
       y += 20; font(34, 900, SH_D); T(t('races.title').toUpperCase(), PAD, y, '#eef2f8'); y += 18;
       for (const o of objs.slice(0, 6)) {
-        y += 14; R(PAD, y, IN, 1, '#1e2a43'); y += 36;
+        y += 14; R(PAD, y, IN, 1, '#2b2d33'); y += 36;
         font(17, 700); ctx.letterSpacing = '1.5px'; const pw = o.pill ? ctx.measureText(o.pill.toUpperCase()).width + 26 : 0; ctx.letterSpacing = '0px';
         if (o.pill && on) { const c = SH_LV[o.lv] || '#a0a9bb'; ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.strokeRect(W - PAD - pw, y - 24, pw, 32); ctx.letterSpacing = '1.5px'; T(o.pill.toUpperCase(), W - PAD - pw / 2 + 0.75, y - 2, c, 'center'); ctx.letterSpacing = '0px'; }
         font(30, 800, SH_D); const tl = wrap(o.title.toUpperCase(), IN - pw - 24, 2); for (const [i, l] of tl.entries()) { if (i) y += 32; T(l, PAD, y, '#eef2f8'); }
         if (o.frac != null) {
           y += 18; const fc = SH_FAC[o.fac] || SH_LV[o.lv] || '#eef2f8';
-          R(PAD, y, IN, 12, '#17233b'); R(PAD + IN - 2, y - 4, 2, 20, '#eef2f8');
+          R(PAD, y, IN, 12, '#25272d'); R(PAD + IN - 2, y - 4, 2, 20, '#eef2f8');
           if (o.proj != null && o.proj > o.frac && on) { ctx.fillStyle = fc + '40'; ctx.fillRect(PAD + IN * o.frac, y, IN * (Math.min(1, o.proj) - o.frac), 12); }
           R(PAD, y, Math.max(3, IN * Math.min(1, o.frac)), 12, fc); y += 12;
         }
@@ -113,7 +119,7 @@
         for (const j of joel) { y += 36; font(22, 700); T(j.title, PAD, y, '#eef2f8'); font(19, 500); T(j.when, W - PAD, y, '#b4bdce', 'right'); if (j.detail) { font(19, 500); for (const l of wrap(j.detail, IN, 1)) { y += 28; T(l, PAD, y, '#b4bdce'); } } }
       }
       // footer
-      y += 70; R(PAD, y, IN, 2, '#eef2f8'); R(PAD, y - 1, 64, 4, '#ffe600'); y += 46;
+      y += 70; R(PAD, y, IN, 2, '#eef2f8'); R(PAD, y - 1, 64, 4, '#ffe900'); y += 46;
       font(23, 700); T('shibacheemshd.github.io/ministry-of-victory', PAD, y, '#eef2f8');
       font(17, 500); T(t('sh.foot'), W - PAD, y, '#b4bdce', 'right');
       // a screenshot travels without the page: one line on what the verdict is and isn't (audit PO-06)
@@ -122,7 +128,7 @@
     }
     cv.width = W; cv.height = 10; const H = Math.max(1350, Math.ceil(draw(false)));
     cv.width = W * S; cv.height = H * S; ctx.scale(S, S);
-    ctx.fillStyle = '#0c1424'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#121317'; ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = 'alphabetic';
     if (H > 1350) { /* taller than 4:5 for long orders: fine for Reddit */ }
     draw(true);
@@ -223,6 +229,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastRun > REFRESH_MS) refresh(); });
   document.addEventListener('input', (e) => {
     const el = e.target;
+    if (el.id === 'ar-q') { ui.arq = el.value; cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(() => { render(); const q = $('ar-q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }); return; }
     if (el.dataset && el.dataset.sim) { const v = Number(el.value), id = el.dataset.sim; el.style.setProperty('--p', ((v - 5) / 95) * 100 + '%'); cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(() => updateSim(id, v)); }
     if (el.dataset && el.dataset.pace) { const v = Number(el.value), id = el.dataset.pace; cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(() => updatePace(id, v)); }
   });
@@ -243,8 +250,9 @@
     if (['input', 'select', 'textarea'].includes(tag) || (e.target && e.target.isContentEditable)) return;
     if (document.querySelector('dialog[open]') || !last) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (k === 'q' || k === 'e') { e.preventDefault(); cycleTab(k === 'q' ? -1 : 1); }
-    else if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); selectTab(TABS[Number(k) - 1]); }
+    // a key switches the tab and brings it on screen (critique 1 Nov 2026: the tabs changed off-screen)
+    if (k === 'q' || k === 'e') { e.preventDefault(); cycleTab(k === 'q' ? -1 : 1, true); }
+    else if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
     else if (k === 'Escape' && $('view').querySelector('.pc-wrap.open')) closeCard(true);
     else if (k === 'r') { e.preventDefault(); refresh(); }
     else if (k === '?') { e.preventDefault(); $('dlg-info').showModal(); }

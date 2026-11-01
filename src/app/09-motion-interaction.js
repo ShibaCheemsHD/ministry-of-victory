@@ -41,6 +41,7 @@
     if (head) {
       const id = String(entry.a.id), text = head.textContent.replace(/\s+/g, ' ').trim();
       if (prev.dir[id] != null && prev.dir[id] !== text) toast(fill(t('dirChanged'), { x: text }));
+      if (!reduced() && prev.dir[id] !== text) { const c = head.closest('.call'); if (c) { c.classList.add('scan'); setTimeout(() => c.classList.remove('scan'), 1300); } }
       prev.dir[id] = text;
     }
   }
@@ -138,10 +139,10 @@
     if (btn && !scrollTo) btn.focus({ preventScroll: true });
   }
 
-  function cycleTab(step) {
+  function cycleTab(step, show = false) {
     if (!ui.order) return;
     const cur = TABS.indexOf(curTab(ui.order));
-    selectTab(TABS[((cur < 0 ? 0 : cur) + step + TABS.length) % TABS.length]);
+    selectTab(TABS[((cur < 0 ? 0 : cur) + step + TABS.length) % TABS.length], show ? 'tabs' : undefined);
   }
 
   /* share the order of the day as plain text (Discord, Reddit, chat) */

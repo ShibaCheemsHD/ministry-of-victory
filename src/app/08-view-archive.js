@@ -15,12 +15,12 @@
     const tab = curTab(a.id);
     const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
+    const label = { strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
       ${racesHTML(res, a)}
       <section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
-        <div class="tabbar"><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div></div>
+        <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span></div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
       </section>
     </div>`;
@@ -108,7 +108,7 @@
   }
   const orderObj = (o) => o.obj || [...new Set((o.tasks || []).map(tk => TASK_OBJ[tk.type]).filter(Boolean))].join('/');
   function archiveHTML() {
-    if (!archive) { loadArchive(); return `<section class="arch"><div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button></div><p class="arch-load">${ICON.dots}<span>${esc(t(archiveFail ? 'ar.notYet' : 'ar.loading'))}</span></p></section>`; }
+    if (!archive) { loadArchive(); return `<section class="arch"><div class="ar-head"><button type="button" class="ghost back" data-view="war">${ICON.track}<span>${esc(t('ar.back'))}</span></button></div><p class="arch-load">${ICON.dots}<span>${esc(t(archiveFail ? 'ar.notYet' : 'ar.loading'))}</span></p></section>`; }
     const now = Date.now();
     const running = new Set((last && last.results || []).map(x => String(x.a.id)));
     const starts = (last && last.results || []).map(x => x.start).filter(Boolean);
@@ -135,7 +135,9 @@
     const FILTERS = ['all', 'won', 'lost', ...GROUPS.map(g => 'g-' + g), 'g-none'];
     const f = FILTERS.includes(ui.af) ? ui.af : 'all';
     const match = (o) => f === 'all' || (f.startsWith('g-') ? o.result === 'lost' && (o.grp || 'none') === f.slice(2) : o.result === f);
-    const list = all.filter(match);
+    // a search over names, codes and objective types (critique 1 Nov 2026: 232 orders and only All / Won / Lost)
+    const q = String(ui.arq || '').trim().toLowerCase();
+    const list = all.filter(match).filter(o => !q || `${orderName(o)} ${o.code || ''} ${orderObj(o)} ${o.name || ''}`.toLowerCase().includes(q));
     const pctx = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
     const day = (ms) => ms ? new Date(ms).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
     const first = all.length ? Math.min(...all.map(o => o.start || o.end || now)) : now;
@@ -199,7 +201,7 @@
         <details class="ar-how"><summary>${esc(t('acc.howT'))}</summary><ul>${t('acc.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>
       </section>`;
     })();
-    const tools = `<div class="ar-tools"><h3>${esc(t('ar.listT'))}</h3><div class="nk-filter ar-filter" role="group" aria-label="${esc(t('nw.filter'))}">${['all', 'won', 'lost'].map(k => `<button type="button" data-af="${k}" aria-pressed="${f === k || (k === 'lost' && f.startsWith('g-'))}">${esc(t('ar.f.' + k))}</button>`).join('')}</div>
+    const tools = `<div class="ar-tools"><h3>${esc(t('ar.listT'))}</h3><label class="ar-search"><span class="sr-only">${esc(t('ar.qL'))}</span>${ICON.lens}<input type="search" id="ar-q" placeholder="${esc(t('ar.qP'))}" value="${esc(ui.arq || '')}" autocomplete="off"></label>${q ? `<p class="ar-fnow">${esc(fill(t('ar.qN'), { n: list.length }))}</p>` : ''}<div class="nk-filter ar-filter" role="group" aria-label="${esc(t('nw.filter'))}">${['all', 'won', 'lost'].map(k => `<button type="button" data-af="${k}" aria-pressed="${f === k || (k === 'lost' && f.startsWith('g-'))}">${esc(t('ar.f.' + k))}</button>`).join('')}</div>
       ${f.startsWith('g-') ? `<p class="ar-fnow">${esc(fill(t('ar.fNow'), { what: t('ar.g.' + f.slice(2)), n: list.length }))} <button type="button" class="linkish" data-af="all">${esc(t('ar.fClear'))}</button></p>` : ''}</div>`;
     // the bar an order sat on: share of everyone needed (liberation) or best-day pace vs goal (counts)
     const meter = (x, marks, max, g, label) => `<div class="ar-meter cg-${g}" role="img" aria-label="${esc(label)}"><i style="width:${(Math.min(max, x) / max * 100).toFixed(1)}%"></i>${marks.map(s => `<s style="left:${(s / max * 100).toFixed(1)}%" data-l="${Math.round(s * 100)}%"></s>`).join('')}</div>`;
@@ -243,7 +245,7 @@
     for (const o of shown) {
       const y = new Date(o.start || o.end || now).getFullYear();
       if (y !== curY) {
-        const open = ui_y[y] ?? (curY === null || f !== 'all');
+        const open = q ? true : ui_y[y] ?? (curY === null || f !== 'all');
         rows += `${curY ? '</ul></details>' : ''}<details class="ar-year" data-year="${y}" ${open ? 'open' : ''}><summary>${ICON.chev}<span class="fd-day">${y}</span><span class="ar-ycount">${esc(fill(t('ar.yCount'), { n: perYear[y] }))}</span></summary><ul class="ar-list">`;
         curY = y;
       }
@@ -259,7 +261,7 @@
     }
     rows += curY ? '</ul></details>' : '';
     return `<section class="arch">
-      <div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button>
+      <div class="ar-head"><button type="button" class="ghost back" data-view="war">${ICON.track}<span>${esc(t('ar.back'))}</span></button>
         <div><h2>${esc(t('ar.title'))}</h2><p>${esc(fill(t('ar.sub'), { when: day(first) }))}</p></div></div>
       ${stats}${verdict}${accuracy}${tools}
       <div class="feed">${rows || `<p class="ar-note">${esc(t('ar.empty'))}</p>`}</div>
@@ -285,8 +287,7 @@
     const view = $('view');
     if (!entry) {
       view.innerHTML = `<div class="empty-wrap"><div class="empty-main">
-          <p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>
-          ${meanwhileHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
+          ${betweenCallHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
       syncHash();
       document.title = 'Ministry of Victory';
@@ -301,6 +302,7 @@
     document.title = `${title ? title.charAt(0).toUpperCase() + title.slice(1) + ' · ' : ''}Ministry of Victory`;
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }
     syncHash();
+    if (tabScrollDue) { tabScrollDue = false; requestAnimationFrame(() => { const el = $('tabs-' + entry.a.id); if (el) el.scrollIntoView({ block: 'start' }); }); }
     try { tick(); } catch {}
   }
 

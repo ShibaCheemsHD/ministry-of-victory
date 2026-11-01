@@ -27,7 +27,7 @@ head = '''<!doctype html>
 <link rel="alternate" type="application/rss+xml" title="Ministry of Victory · Major Orders" href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@100..125,500..900&family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap">
 <style>
 '''
 out = head + read(S('style.css')) + '</style>\n</head>\n<body>\n' + read(S('body.html'))
