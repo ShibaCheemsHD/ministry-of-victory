@@ -113,7 +113,9 @@
     const sum = cx.orders.reduce((a, o) => a + (o.unknown ? 0 : o.need || 0), 0);
     const overlap = sum > cx.total + 0.02 ? ' ' + t('xOverlap') : '';
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
-    box.innerHTML = `<p class="xline x-${cx.verdict}">${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${msg}${overlap}${note}</span></p>`;
+    // one line (the verdict across the orders); the numbers behind it one click away
+    const short = cx.verdict === 'all' ? fill(t('xShortAll'), { n: cx.orders.length }) : cx.verdict === 'pick' ? fill(t('xShortPick'), { title: esc(pick.title) }) : t('xShortNone');
+    box.innerHTML = `<details class="xline x-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}><summary>${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${short}</span>${ICON.chev}</summary><p>${msg}${overlap}${note}</p></details>`;
   }
 
   // What the main button does: the plan while there is one; once the order is won, share it and point to
