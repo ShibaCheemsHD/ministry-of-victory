@@ -114,7 +114,7 @@
       if (k(d) === k(n)) return t('fd.today'); const y = new Date(n); y.setDate(y.getDate() - 1); if (k(d) === k(y)) return t('fd.yesterday');
       return d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'short' }); };
     let out = '', cur = null;
-    for (const r of rows) { const d = day(r.t); if (d !== cur) { out += `${cur ? '</ul>' : ''}<h5 class="fd-day" aria-level="3">${esc(d)}</h5><ul class="fd-list">`; cur = d; } out += feedRow(r); }
+    for (const r of rows) { const d = day(r.t); if (d !== cur) { out += `${cur ? '</ul>' : ''}<h3 class="fd-day">${esc(d)}</h3><ul class="fd-list">`; cur = d; } out += feedRow(r); }
     return `<div class="feed ${cls}">${out}${cur ? '</ul>' : ''}</div>`;
   }
   // game titles come in capitals: "VICTORY ON MERIDIA" -> "Victory on Meridia"
@@ -208,7 +208,7 @@
     const N = last.N || F.reduce((n, x) => n + x.pl, 0) || 1;
     return `<section class="fronts"><h2 class="mod-h">${esc(t('rc.fronts'))}</h2>
       <div class="fr-grid">${F.map(x => `<div class="fr" style="--c:${FAC_VAR[x.f]}">
-        <h4 aria-level="3">${esc(plain(facName(x.f)))}</h4>
+        <h3>${esc(plain(facName(x.f)))}</h3>
         <p class="fr-n"><b>${people(x.pl)}</b> ${esc(t('rc.divers'))} · ${pct(x.pl / N)}</p>
         <div class="fr-bar"><i style="width:${Math.min(100, x.pl / N * 100).toFixed(1)}%"></i></div>
         <p class="fr-s">${esc(fill(t(x.ps.length > 1 ? 'rc.planetsN' : 'rc.planets1'), { n: x.ps.length }))}${x.defs.length ? ` · <b class="fr-def">${esc(fill(t(x.defs.length > 1 ? 'rc.defsN' : 'rc.defs1'), { n: x.defs.length }))}</b>` : ''}</p>

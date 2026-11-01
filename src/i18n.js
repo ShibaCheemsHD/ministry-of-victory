@@ -185,7 +185,7 @@ const TEXT = {
   fd: { today: 'Today', yesterday: 'Yesterday', moStart: 'Major Order started: {name}', moWon: 'Major Order won: {name}', moLost: 'Major Order failed: {name}', moLostSub: '{k} of {n} objectives done', cutSo: 'Goals cut: Strategic Opportunity won' },
   nw: { title: 'Command log', reward: 'Reward:', all: 'All', filter: 'Show only' },
   nk: { info: 'News', win: 'Victory', loss: 'Defeat', so: 'Opportunity won', solost: 'Opportunity missed', order: 'Orders', gear: 'Arsenal', threat: 'Enemy move' },
-  jo: { title: 'Command log: Joel\'s moves', sub: 'Moves made by hand: Joel is Arrowhead\'s Game Master, steering the war through Super Earth Command.',
+  jo: { title: 'Joel\'s moves', sub: 'Moves made by hand: Joel is Arrowhead\'s Game Master, steering the war through Super Earth Command.',
     soWon: 'earned by the Helldivers', soWhy: 'Not Joel: the Helldivers won a Strategic Opportunity, and lower goals were the reward.', cut: 'Goals cut', raised: 'Goals raised', edited: 'Objectives changed', launch: 'since launch', none: 'Nothing done by hand. Changes the Helldivers earned, like a won Strategic Opportunity, are in the news.', more: 'Full Command log' },
   map: { help: 'Each dot is a planet being fought over, sized by its Helldivers. Hover or tap one for its numbers; click it for its conditions and loadout.', title: 'War map', aria: 'Galactic map of the planets being fought over', kOrder: 'In this order', kNow: 'The call', kAttack: 'Under attack',
     tipP: '{n} Helldivers', tipL: '{p}% liberated', tipD: 'defense {p}%' },
