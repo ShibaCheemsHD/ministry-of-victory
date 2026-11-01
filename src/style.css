@@ -193,7 +193,7 @@ code { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); }
 .req-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; justify-self: start; padding: 6px 10px; border: 1px solid var(--rule-2); font-size: 14px; }
 .req-chip .ico { color: var(--se); }
 .req-chip b { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--se); }
-.why { font-size: 18px; line-height: 1.5; max-width: 62ch; color: var(--fg); }
+.why { font-size: 18px; line-height: 1.5; max-width: 50ch; color: var(--fg); }
 .why .lead { display: block; margin-bottom: 4px; color: var(--lv, var(--fg)); font-weight: 700; }
 .call.vl-ok .why .lead, .call.vl-done .why .lead { color: var(--fg); }
 .call .why b, .call .cap b { font-weight: 700; }
@@ -621,7 +621,7 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 26px; background: v
 .lg i { width: 18px; height: 0; border-top: 2px solid var(--fc, var(--fg)); }
 .lg.need i { border-top: 2px dashed var(--se); } .lg.proj i { border-top: 2px dotted var(--muted); } .lg.proj2 i { border-top: 2px dotted var(--v-ok); } .lg.pl i { border-top-color: var(--sc); }
 .done-card { gap: 8px; } .done-card h4 { font-size: 18px; color: var(--muted); }
-.ch-empty { font-size: 14px; color: var(--muted); padding: 30px 0; text-align: center; border: 1px dashed var(--rule-2); }
+.ch-empty { font-size: 14px; color: var(--muted); padding: 30px 16px; text-align: center; border: 1px dashed var(--rule-2); }
 .foot { font-size: 13px; color: var(--dim); }
 @media (max-width: 640px) {
   .hist-card { padding: 14px 12px 12px; }
@@ -732,6 +732,7 @@ input[type="range"]::-moz-range-thumb { width: 18px; height: 26px; background: v
 /* ---------- between orders ---------- */
 .empty-wrap { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
 .empty-main, .empty-side { display: grid; gap: 24px; min-width: 0; align-content: start; }
+@media (min-width: 901px) { .empty-side { position: sticky; top: 84px; } }
 @media (max-width: 900px) { .empty-wrap { grid-template-columns: minmax(0, 1fr); } }
 .empty-line { display: flex; gap: 10px; align-items: center; padding: 14px 16px; background: var(--desk); font-size: 16px; }
 .empty-line .ico { color: var(--se); }
@@ -1013,7 +1014,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: 70; pointer-event
 .ot-n { font-size: 17px; }
 .pc-name { font-size: 21px; }
 .mast-stats .v { font-size: 20px; }
-.label, .side-h, .clock dt, .ot-top, .pc-sec, .stat-l, .pill, .btn, .mbtn, .ghost, .call-bar { letter-spacing: .12em; }
+.label, .side-h, .clock dt, .ot-top, .pc-sec, .pill, .btn, .mbtn, .ghost, .call-bar { letter-spacing: .12em; }
 .btn, .mbtn, .ghost, .planet-btn .pb-t, .lvl, .pill, .chip, .nk-filter button, .seg button, .lg, .intel summary, .brief summary, .more-tips summary, .sim-box > summary { text-transform: uppercase; font-weight: 600; letter-spacing: .08em; }
 
 /* panels: the game's cut corners (top-left and bottom-right), charcoal over the dark */
