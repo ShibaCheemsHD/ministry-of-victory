@@ -78,7 +78,17 @@ const txt = (m) => m && typeof m === 'object' ? (m['en-US'] || Object.values(m)[
 
 const [, , histPath = 'history.json', outDir = '.'] = process.argv;
 let hist = { v: 1, samples: [], orders: {}, edits: [], names: {} };
-try { hist = { ...hist, ...JSON.parse(fs.readFileSync(histPath, 'utf8')) }; } catch { /* first run */ }
+// A missing file is a first run; a file that is there but can't be read is not: stop rather than carry on
+// with an empty history that would overwrite the real one at the next push (audit ARCH-01)
+{
+  let raw = null;
+  try { raw = fs.readFileSync(histPath, 'utf8'); } catch { /* first run */ }
+  if (raw != null && raw.trim() !== '' && raw.trim() !== '{}') {
+    try { hist = { ...hist, ...JSON.parse(raw) }; }
+    catch (e) { console.log('::error::history.json is unreadable, not overwriting it: ' + String(e).slice(0, 200)); process.exit(1); }
+    if (!Array.isArray(hist.samples)) { console.log('::error::history.json has no samples, not overwriting it'); process.exit(1); }
+  }
+}
 
 // the community API first; if it's down, the same data built from the game's own API
 let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null, commErr = null;

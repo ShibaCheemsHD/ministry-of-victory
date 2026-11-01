@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -38,3 +38,30 @@ jobs:
         run: |
           npm i --no-save axe-core@4.10.2
           python3 tests/a11y_test.py
+
+  # The page goes online only once every test above has passed (audit OPS-01).
+  # Needs Settings -> Pages -> Source: "GitHub Actions".
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: The site's files
+        run: mkdir _site && cp index.html preview.png _site/ && touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

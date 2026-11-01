@@ -86,3 +86,11 @@ test('DSS and city planets are measured too, each against plain planets of the s
   assert.ok(hist.measure.kv.lib.base.length > 0 && hist.measure.kv.def.base.length > 0);
   assert.equal(m.seen.hod, 0);
 });
+
+test('regression (audit ARCH-01): an unreadable history stops the recorder instead of starting over', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mov-'));
+  fs.writeFileSync(path.join(dir, 'history.json'), '{"samples": [ {"t": 1, "pl"');   // cut off half way
+  const r = runRecorder(dir);
+  assert.notEqual(r.status, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'out', 'history.json')), 'nothing written');
+});

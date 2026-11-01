@@ -26,18 +26,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Snapshots every 10 minutes
         env:
           REPO: ${{ github.repository }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           H="$RUNNER_TEMP/history.json"; OUT="$RUNNER_TEMP/out"
-          git fetch -q --depth 1 origin data 2>/dev/null && git show origin/data:history.json > "$H" || echo '{}' > "$H"
+          # The history is everything measured so far and can't be rebuilt: never start from an empty one
+          # unless the data branch really doesn't exist yet (first run). A failed fetch is retried, then the
+          # run stops without pushing anything (audit ARCH-01).
+          for i in 1 2 3 4 5; do
+            git fetch -q --depth 1 origin data && git show origin/data:history.json > "$H" && [ -s "$H" ] && break
+            rm -f "$H"; sleep 30
+          done
+          if [ ! -s "$H" ]; then
+            rc=0; git ls-remote --exit-code --heads origin data > /dev/null || rc=$?
+            if [ "$rc" = "2" ]; then echo "first run: no data branch yet"; echo '{}' > "$H"
+            else echo "::error::the data branch exists but its history.json could not be read: stopping without pushing"; sleep 120; exit 1; fi
+          fi
+          cp "$H" "$RUNNER_TEMP/history-at-start.json"
           end=$(( $(date +%s) + 340*60 ))
           while [ "$(date +%s)" -lt "$end" ]; do
             start=$(date +%s)
-            if node recorder/record.mjs "$H" "$OUT"; then
+            if timeout 540 node recorder/record.mjs "$H" "$OUT"; then
               cp "$OUT/history.json" "$H"
               ( cd "$OUT" && rm -rf .git && git init -q -b data && git config user.name "ministry-recorder" \
                 && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
@@ -48,6 +60,17 @@ jobs:
             fi
             sleep $(( 600 - ( $(date +%s) - start ) % 600 ))
           done
+      # a copy of the history at the start and at the end of every run, kept 30 days (audit ARCH-02)
+      - name: Back up the history
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: history-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/history-at-start.json
+            ${{ runner.temp }}/history.json
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Start the next run
         if: ${{ !cancelled() }}
         env:

@@ -1810,3 +1810,11 @@ a { text-underline-offset: 3px; }
 .boot::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18vh; pointer-events: none;
   background: linear-gradient(180deg, transparent, rgba(255, 233, 0, .05) 70%, rgba(255, 233, 0, .14) 98%, transparent); animation: bootScan 2.2s linear infinite; }
 .boot pre .caret { animation: blink .7s steps(1) infinite; }
+/* phones: the plan's tiles and labels shrink and wrap instead of running off the right edge (audit UX-01) */
+.pm-tiles { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+.pm-tile, .plan > *, .longshot > * { min-width: 0; }
+.pm-tile { grid-template-columns: minmax(0, 1fr); }
+.pm-tile .label, .pm-tile .v, .pm-tile .s { white-space: normal; max-width: 100%; overflow-wrap: break-word; }
+@media (max-width: 640px) { .longshot .pm-tile .label { padding-right: 22px; letter-spacing: .1em; } }
+.the-plan { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.the-plan > *, .situation > * { min-width: 0; }
