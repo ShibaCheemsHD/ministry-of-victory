@@ -58,7 +58,7 @@ const TEXT = {
       partial: 'The Major Order can no longer be fully won, but {planet} can still fall. Let\'s focus there.' },
       region: ' Start with the {region} region: one region at a time.' },
     defend: { k: 'Defend', why: 'We have until {when} to win this defense. If the planet falls, the Major Order is lost.' },
-    front: { k: 'Move to the', target: '{f} front', why: '{f} {what} are the furthest behind: at this pace we reach {proj} of the goal by the deadline.', whyItem: ' Only kills with the {item} count.', whyFrom: ' {from} {what} are already on track, so players there can switch.', whyIdle: ' Anyone on the {from} front isn\'t helping this order right now.', whyIdleN: ' Anyone on the {from} fronts isn\'t helping this order right now.' },
+    front: { k: 'Move to the', target: '{f} front', why: '{f} {what} are the furthest behind: at this pace we reach {proj} of the goal by the deadline.', whyTask: '{what} are the furthest behind: at this pace we reach {proj} of the goal by the deadline.', whyItem: ' Only kills with the {item} count.', whyFrom: ' {from} {what} are already on track, so players there can switch.', whyIdle: ' Anyone on the {from} front isn\'t helping this order right now.', whyIdleN: ' Anyone on the {from} fronts isn\'t helping this order right now.' },
     weapon: { k: 'Use the', why: 'Only kills with this weapon count, and at this pace we\'ll only reach {proj} of the goal before time runs out.' },
     kill: { k: 'Kill', why: 'At this pace we\'ll only reach {proj} of the goal before time runs out: this front needs more players.' },
     extract: { k: 'Extract', why: 'At this pace we\'ll only reach {proj} of the goal before time runs out: we need more successful extractions.' },

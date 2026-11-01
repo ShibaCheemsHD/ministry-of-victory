@@ -195,7 +195,8 @@
         fac = d.faction; kicker = D.front.k; target = fill(D.front.target, { f: t('fac')[d.faction] || d.faction });
         const ahead = d.aheadFrom || [];
         const tt = d.task ? d.task.task.type : 3;
-        why = fill(D.front.why, { f: facName(d.faction), what: t('what')[tt] || t('what')[0], proj: projTxt })
+        // what exactly is behind, as the objective names it ("Radical kills", not "Automaton kills")
+        why = (d.task ? fill(D.front.whyTask, { what: taskNoun(d.task.task), proj: projTxt }) : fill(D.front.why, { f: facName(d.faction), what: t('what')[tt] || t('what')[0], proj: projTxt }))
           + (ahead.length ? fill(D.front.whyFrom, { from: listJoin(ahead.map(facName)), what: counterNoun(res) }) : '');
         if (d.task && tt === 3 && d.task.task.itemId) req = itemName(d.task.task.itemId);
         meter = meterPips(d.now, d.need, fill(t('onFront'), { f: facName(d.faction) }), !!(d.task && tt === 3 && d.task.task.itemId));
