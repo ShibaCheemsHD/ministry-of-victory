@@ -247,7 +247,6 @@
     if (!MV) return recItem(m, res);
     const P = (p) => planetName(p);
     const R = (k) => tHas('r.' + k);
-    const weapon = m.weapon ? fill(t('mvWeapon'), { item: esc(itemName(m.weapon)) }) : '';
     let p = {}, why = MV.why, extra = '';
     switch (m.kind) {
       case 'libFocus': {
@@ -342,7 +341,7 @@
     return `<ol class="pm-story">${items.map(it => `<li class="${it.cls || ''}"><span class="when">${esc(it.cls === 'now' ? t('h.now') : it.cls === 'ok' ? t('pm.so') : at(it.t))}</span><p>${it.html}</p></li>`).join('')}</ol>`;
   }
   function postmortemHTML(entry) {
-    const { res, a } = entry, lost = res.ended || res.verdict === 'failed';
+    const { res } = entry, lost = res.ended || res.verdict === 'failed';
     return `<section class="plan postmortem" id="steps-${esc(res.id)}">
       <div class="pm-head">${ICON.cross}<div><h3>${esc(t(lost ? 'pm.lostTitle' : 'pm.title'))}</h3><p>${esc(t(lost ? 'pm.lostSub' : 'pm.sub'))}</p></div></div>
       ${factsHTML(entry)}

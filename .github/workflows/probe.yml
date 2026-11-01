@@ -25,7 +25,10 @@ jobs:
       - if: ${{ inputs.hs == 'yes' }}
         run: node recorder/hsdump.mjs "$RUNNER_TEMP/probe"
       - if: ${{ inputs.hs != 'yes' }}
-        run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && URLS="${{ inputs.urls }}" node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
+        # the input goes in as a variable, never pasted into the script (audit SEC-03)
+        env:
+          URLS: ${{ inputs.urls }}
+        run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
       - run: |
           cd "$RUNNER_TEMP/probe"
           git init -q -b probe

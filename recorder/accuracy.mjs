@@ -166,6 +166,30 @@ export function liveAccuracy(calls, E, { horizons = [6, 12, 24] } = {}) {
   return { lib: byHz, cnt: { n: cnt.length, calledRight: cnt.length ? +share(cnt, x => (x.proj >= 1) === x.done).toFixed(2) : null }, verdicts };
 }
 
+// Finished orders keep only the forecasts liveAccuracy reads (audit CR-03): for each planet that fell, the
+// one nearest to each horizon; for each count, the one nearest to day 1. The record gives the same numbers,
+// and an order's track shrinks from up to 240 hourly forecasts per planet to a handful.
+// (hist.hs, the community series behind the backtests, is already thinned to hourly after the first 30 h.)
+export function compactCalls(calls, now, { horizons = [6, 12, 24], after = 7 * 24 * H } = {}) {
+  let n = 0;
+  for (const c of Object.values(calls || {})) {
+    const T = c.track;
+    if (!T || T.compact || !c.result || !(now > (c.exp || 0) + after)) continue;
+    const nearest = (list, want, tol) => list.filter(p => Math.abs(p[0] - want) <= tol).sort((a, b) => Math.abs(a[0] - want) - Math.abs(b[0] - want))[0];
+    for (const i of Object.keys(T.lib || {})) {
+      const fell = T.fell?.[i];
+      const keep = fell ? [...new Set(horizons.map(hz => nearest(T.lib[i], fell - hz * H, H)).filter(Boolean))] : [];
+      if (keep.length) T.lib[i] = keep.sort((a, b) => a[0] - b[0]); else delete T.lib[i];
+    }
+    for (const k of Object.keys(T.cnt || {})) {
+      const p = c.prog ? nearest(T.cnt[k], c.start + 24 * H, 2 * H) : null;
+      if (p) T.cnt[k] = [p]; else delete T.cnt[k];
+    }
+    T.compact = 1; n++;
+  }
+  return n;
+}
+
 // Defenses. The community war log has no defense health, so they can't be replayed on the past: they are
 // replayed on the recorder's own snapshots instead (every 10 minutes, kept 2-8 days), with the page's own
 // defenseInfo, every 2 hours of each attack, and kept for good once the attack is over.

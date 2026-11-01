@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { liberationBacktest, countBacktest, liveAccuracy } from '../recorder/accuracy.mjs';
+import { liberationBacktest, countBacktest, liveAccuracy, compactCalls } from '../recorder/accuracy.mjs';
 const E = createRequire(import.meta.url)('../src/engine.js');
 const H = 3.6e6, t0 = Date.parse('2026-03-01T00:00:00Z');
 const stamp = (t) => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
@@ -55,6 +55,22 @@ test('live record: hourly forecasts checked when the planet falls and the order 
   assert.equal(r.lib[24].medErrH, 2); assert.equal(r.lib[12].medErrH, 0); assert.equal(r.lib[6].medErrH, 1);
   assert.deepEqual(r.cnt, { n: 1, calledRight: 1 });
   assert.deepEqual(r.verdicts.map(v => [v.v, v.result]), [['record', 'lost']]);
+});
+
+test('finished orders keep only the forecasts the record reads, with the same numbers (audit CR-03)', () => {
+  const fell = t0 + 40 * H, exp = t0 + 72 * H;
+  const lib = Array.from({ length: 41 }, (_, h) => [t0 + h * H, fell + (h % 5 - 2) * H]);   // one forecast an hour
+  const cnt = Array.from({ length: 72 }, (_, h) => [t0 + h * H, 0.5 + h / 200]);
+  const mk = () => ({ x: { id: 'x', title: 'T', start: t0, exp, result: 'won', prog: [1000], tasks: [{ type: 3, values: [2, 1000], valueTypes: [1, 3] }],
+    track: { fell: { 7: fell }, lib: { 7: lib.map(p => [...p]), 8: lib.map(p => [...p]) }, cnt: { 0: cnt.map(p => [...p]) } } } });
+  const calls = mk(), before = liveAccuracy(calls, E);
+  assert.equal(compactCalls(calls, exp + 24 * H), 0, 'too soon: the order may still be settling');
+  assert.equal(compactCalls(calls, exp + 8 * 24 * H), 1);
+  assert.deepEqual(liveAccuracy(calls, E), before);
+  assert.equal(calls.x.track.lib[7].length, 3);
+  assert.equal(calls.x.track.lib[8], undefined, 'a planet that never fell has nothing to check');
+  assert.equal(calls.x.track.cnt[0].length, 1);
+  assert.equal(compactCalls(calls, exp + 9 * 24 * H), 0, 'once only');
 });
 
 test('defenses: replayed on the recorder\'s snapshots, Command\'s jumps flagged', async () => {

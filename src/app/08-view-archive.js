@@ -1,7 +1,7 @@
   /* ---------- view ---------- */
   const TABS = ['objectives', 'strategy', 'history', 'intel'];
   function viewHTML(entry) {
-    const { a, res, start } = entry;
+    const { a, res } = entry;
     let tab = ui.tab[a.id] || 'objectives';
     if (tab === 'data') tab = 'history';
     if (!TABS.includes(tab)) tab = 'objectives';
@@ -58,7 +58,6 @@
     } catch { archiveFail = Date.now(); } finally { archiveBusy = false; }
     if (ui.view === 'archive') render();
   }
-  const CALL_ORDER = ['ontrack', 'focus', 'effort', 'hard', 'record', 'nearly_impossible', 'impossible'];
   const callGroup = (v) => v === 'impossible' ? 'impossible' : v === 'nearly_impossible' ? 'long' : v === 'hard' || v === 'record' ? 'hard' : v ? 'fair' : null;
   // an order's name for the record: the game's title, or (when that is just "MAJOR ORDER") what it asked
   const TASK_OBJ = { 1: 'Extraction', 2: 'Samples', 3: 'Eradicate', 4: 'Objectives', 5: 'Missions', 6: 'Equipment', 7: 'Missions', 9: 'Operations', 10: 'Donation', 11: 'Liberate', 12: 'Defend', 13: 'Hold', 14: 'Liberate', 15: 'Liberate' };

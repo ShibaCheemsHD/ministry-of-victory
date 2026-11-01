@@ -15,7 +15,7 @@ const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
-import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy } from './accuracy.mjs';
+import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
 import { measure, logStation } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
@@ -440,7 +440,10 @@ for (const r of hist.retro || []) {
 archive.orders.sort((a, b) => (b.start || b.end || 0) - (a.start || a.end || 0));
 
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, 'history.json'), JSON.stringify(hist));
+try { compactCalls(hist.calls, now); } catch (e) { console.log('::warning::compacting the forecast record: ' + e.message); }
+const histJson = JSON.stringify(hist);
+if (histJson.length > 5e6) console.log(`::warning::history.json is ${(histJson.length / 1e6).toFixed(1)} MB: time to prune (audit CR-03)`);
+fs.writeFileSync(path.join(outDir, 'history.json'), histJson);
 // the page's plan B: the war as this snapshot saw it, in the community API's shapes
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,

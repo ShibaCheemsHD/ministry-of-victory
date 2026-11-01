@@ -81,7 +81,6 @@
   /* ---------- HUD ---------- */
   function renderHud() {
     const Ls = last;
-    const dssP = Ls.dssIdx != null ? Ls.planets[Ls.dssIdx] : null;
     $('hud-stats').innerHTML = `
       <div class="stat" title="${esc(t('players'))}"><span class="label">${t('players')}</span><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}"></i><span data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</span><small class="m-only"> ${t('online')}</small></span></div>`;
   }
@@ -161,7 +160,7 @@
       }
       case 'front': {
         fac = d.faction; kicker = D.front.k; target = fill(D.front.target, { f: t('fac')[d.faction] || d.faction });
-        const ahead = d.aheadFrom || [], idle = d.idleFrom || [];
+        const ahead = d.aheadFrom || [];
         const tt = d.task ? d.task.task.type : 3;
         why = fill(D.front.why, { f: facName(d.faction), what: t('what')[tt] || t('what')[0], proj: projTxt })
           + (ahead.length ? fill(D.front.whyFrom, { from: listJoin(ahead.map(facName)), what: counterNoun(res) }) : '');

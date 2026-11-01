@@ -28,11 +28,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          # assigned to the owner, so GitHub sends an email (audit OPS-07)
+          OWNER: ${{ github.repository_owner }}
         run: |
           gh label create health --repo "$REPO" --color d93f0b --description "Recorder health check" 2>/dev/null || true
           num=$(gh issue list --repo "$REPO" --label health --state open --json number --jq '.[0].number')
           if [ "${{ steps.check.outputs.code }}" != "0" ]; then
-            if [ -z "$num" ]; then gh issue create --repo "$REPO" --title "Recorder health" --label health --body-file report.md
+            if [ -z "$num" ]; then gh issue create --repo "$REPO" --title "Recorder health" --label health --assignee "$OWNER" --body-file report.md
             else
               sig=$(head -1 report.md)
               lastsig=$(gh issue view "$num" --repo "$REPO" --json body,comments --jq '([.body] + [.comments[].body]) | last | split("\n")[0]')

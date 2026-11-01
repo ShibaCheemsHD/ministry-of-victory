@@ -363,6 +363,7 @@ const TEXT = {
   helpBlocker: 'If you use an ad blocker or an antivirus web filter, allow api.helldivers2.dev.',
   helpTest: 'Try opening this address: if you see text with numbers, the API is working.',
   techDetails: 'Technical details (send these to whoever helps you)',
+  feedback: 'Something wrong, or an idea? Tell us.',
   footer: 'Unofficial community tool. Data: community API api.helldivers2.dev. Enemy and weapon names from Galactic Wide Web and helldivers-2/json on GitHub. Estimates are based on observed galactic war behavior, not official numbers.',
 };
 

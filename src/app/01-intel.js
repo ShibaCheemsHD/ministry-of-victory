@@ -55,10 +55,21 @@
     } catch { return null; }
   }
   // the recorder's snapshots fill the holes in this browser's own history
+  function thinSamples(list, now, fullMs = 3 * 3600e3, gap = 10 * 60e3) {
+    const out = [];
+    let lastOwn = -Infinity;
+    for (const s of list) {
+      if (s.rec || now - s.t < fullMs) { out.push(s); continue; }
+      if (s.t - lastOwn >= gap) { out.push(s); lastOwn = s.t; }
+    }
+    return out;
+  }
   function mergeRecord(list) {
     if (!recordSamples.length) return list;
     const mine = list.filter(x => !x.rec);
-    const add = recordSamples.filter(r => !mine.some(x => Math.abs(x.t - r.t) < 90e3));
+    // a recorder sample is dropped when this page has its own within about 90 s (linear: a set of time slots)
+    const slot = (t) => Math.round(t / 90e3), have = new Set(mine.map(x => slot(x.t)));
+    const add = recordSamples.filter(r => { const k = slot(r.t); return !have.has(k - 1) && !have.has(k) && !have.has(k + 1); });
     return [...mine, ...add].sort((a, b) => a.t - b.t);
   }
   async function loadNews(now) {
@@ -213,24 +224,6 @@
   // how sure: read from the game, or worked out from the numbers
   const tagOf = (x) => (x.kind === 'jump' || x.kind === 'setback') ? (x.won != null ? t('in.tag.counted') : t('in.tag.deduced')) : t('in.tag.data');
   const ago = (tm) => fill(t('in.ago'), { d: dur(Math.max(0, last.now - tm) / 3.6e6) });
-  function renderIntel(entry) {
-    const box = $('intel');
-    if (!entry) { box.innerHTML = ''; return; }
-    const { items, news: ns, rel } = intelFor(entry);
-    if (!items.length && !ns.length) { box.innerHTML = ''; return; }
-    const sorted = [...items].sort((a, b) => prioOf(a) - prioOf(b) || b.t - a.t);
-    const top = sorted.find(x => prioOf(x) < 5);
-    const n = items.length + ns.length;
-    const short = top ? alertText(top, true, rel) : ns.length ? fill(t('in.s.news'), { title: esc(ns[0].title) }) : alertText(sorted[0], true, rel);
-    const more = n > 1 ? `<span class="more">${fill(t('in.more'), { n: n - 1 })}</span>` : '';
-    const level = top && (top.kind === 'setback' || top.kind === 'attack') ? 'bad' : top ? 'warn' : 'info';
-    const li = sorted.map(x => `<li class="k-${x.kind} ${x.kind === 'active' || x.kind === 'effect' ? (WAR_FX.has(x.type) ? 'war' : 'perk') : ''}"><span class="when">${esc(x.kind === 'active' ? t('in.now') : ago(x.t))} · <span class="tag">${esc(tagOf(x))}</span></span><p>${alertText(x, false, rel)}</p></li>`).join('');
-    const nl = ns.map(d => `<li class="k-news ${d.hit ? 'hit' : ''}"><span class="when">${esc(t('in.news'))} · ${esc(ago(d.t))}</span><p><b>${esc(d.title)}</b> ${clean(d.body).slice(0, 320)}</p></li>`).join('');
-    const rec = record && record.since ? fill(t('in.recorded'), { n: record.every || 10, when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('in.noRecord');
-    box.innerHTML = `<details class="cmdintel v-${level}" data-intelstrip ${ui.intelStripOpen ? 'open' : ''}>
-      <summary><span class="label">${t('in.label')}</span><span class="xs">${short}</span>${more}${ICON.chev}</summary>
-      <ul>${li}${nl}</ul><p class="note">${esc(t('in.note'))} ${esc(rec)}</p></details>`;
-  }
 
   /* ---------- intel tab: what Super Earth Command (and the enemy) did, and the news ---------- */
   // Super Earth dispatches sorted by what they announce: each kind has its own colour and icon
@@ -418,8 +411,14 @@
       await recP;
       samples = mergeRecord(samples.filter(s => now - s.t < KEEP_MS));
       if (!live && (!samples.length || now - samples[samples.length - 1].t > 30e3)) samples.push(sample);
+      // older than 3 hours, this page's own samples thin out to one every 10 minutes (the pace and the
+      // calibration only look at the last 3 hours at full detail)
+      samples = thinSamples(samples, now);
       if (samples.length > 3000) samples = samples.slice(-3000);
-      store.set('samples', samples);
+      // what this browser keeps between visits: its own samples of the last 6 hours, one every 5 minutes.
+      // The recorder's are downloaded again; 48 hours of everything was ~10 MB, past the browser's quota
+      // (audit CR-01), and was written out every minute.
+      store.set('samples', thinSamples(samples.filter(s => !s.rec && now - s.t < 6 * 3600e3), now, 0, 5 * 60e3));
 
       // Capacity = HP per hour that 100% of the players would deal on one planet, worked out live:
       // C = K x impactMultiplier x players online x 3600. K is measured from this browser's own samples,
@@ -480,14 +479,20 @@
       errors.push(e && e.message ? e.message : String(e));
       lastStack = e && e.stack ? String(e.stack) : '';
     } finally {
-      if (seed) { if (last && !firstDone) { firstDone = true; bootFinish('ok'); } return; }
-      try { renderErrors(errors); } catch (e2) { console.error(e2); }
-      lastRun = Date.now();
-      busy = false;
-      $('refresh').classList.remove('busy');
-      if (!firstDone) { firstDone = true; bootFinish(last ? 'ok' : 'fail'); }
-      if (!last && errors.length) { $('view').innerHTML = ''; document.title = `${t('offline')} · Ministry of Victory`; }
-      tick();
+      // seed data (saved snapshot or the recorder's live file) is a first paint: the real refresh
+      // that follows shows any errors, so here they only go to the console (audit CR-04)
+      if (seed) {
+        if (errors.length) console.warn('first paint from saved data:', errors.join(' · '));
+        if (last && !firstDone) { firstDone = true; bootFinish('ok'); }
+      } else {
+        try { renderErrors(errors); } catch (e2) { console.error(e2); }
+        lastRun = Date.now();
+        busy = false;
+        $('refresh').classList.remove('busy');
+        if (!firstDone) { firstDone = true; bootFinish(last ? 'ok' : 'fail'); }
+        if (!last && errors.length) { $('view').innerHTML = ''; document.title = `${t('offline')} · Ministry of Victory`; }
+        tick();
+      }
     }
   }
   window.addEventListener('error', (ev) => { lastStack = String(ev.error && ev.error.stack || ev.message); try { renderErrors([String(ev.message)]); } catch {} });

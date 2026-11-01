@@ -83,7 +83,6 @@
   function directiveHTML(res) {
     const p = directiveParts(res);
     const long = (p.target || '').length > 14;
-    const showSim = !res.ended && ((p.d.kind === 'liberate' && res.liberation) || ((p.d.kind === 'front' || p.d.kind === 'weapon' || p.d.kind === 'counter') && !p.d.measuring));
     const globe = globeHTML(p, res);
     const tint = p.fac ? 'fac-' + esc(p.fac) : `k-${esc(p.d.kind)}`;
     return `<div class="area-dir"><section class="panel br directive ${globe ? 'has-globe' : ''} ${tint}" aria-labelledby="dir-${esc(res.id)}">

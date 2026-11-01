@@ -1,5 +1,5 @@
   /* ---------- boot sequence ---------- */
-  let bootStart = performance.now(), bootTimer = 0, bootLines = 0, bootChars = 0;
+  let bootTimer = 0, bootLines = 0, bootChars = 0;
   // a terminal typing: each line letter by letter, then its OK
   function bootType() {
     const log = $('boot-log');

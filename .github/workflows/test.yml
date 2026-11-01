@@ -25,6 +25,8 @@ jobs:
           python-version: '3.12'
       - name: The published page and the recorder's engine match the source
         run: python3 tools/build.py --check
+      - name: No undefined names or dead code (ESLint)
+        run: npx --yes eslint@9.14.0 -c tools/eslint.config.mjs --max-warnings 0 build/app.js src/engine.js
       - name: Engine and text-reading tests
         run: node --test tests/*.test.mjs
       - name: Recorder scripts parse

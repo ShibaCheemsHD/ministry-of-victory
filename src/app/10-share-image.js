@@ -414,7 +414,8 @@
     $('s-motion').options[0].textContent = t('mFull');
     $('s-motion').options[1].textContent = t('mReduced');
     $('explain').innerHTML = EXPLAIN;
-    $('footer').textContent = t('footer');
+    // a way back to us from the page (audit PO-02): the repo's issue form, no account data sent
+    $('footer').innerHTML = `${esc(t('footer'))} <a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a>`;
     for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) { el.textContent = t(k); el.parentElement.setAttribute('aria-label', t(k)); } }
     $('boot-skip').textContent = t('skip');
     const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
