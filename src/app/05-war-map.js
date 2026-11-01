@@ -91,8 +91,8 @@
       return `<g class="mp ${n.isF ? 'focus' : ''} ${n.isR ? 'rel' : ''} ${p.event ? 'ev' : ''}" style="--c:${FAC_VAR[owner] || 'var(--fg)'}" transform="translate(${f1(n.x)} ${f1(n.y)})" data-mp="${n.i}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(plain(planetName(p)))}">
         <circle class="hit" r="${f1(n.R)}"/>${parts.join('')}<circle class="dot" r="${f1(r)}"/></g>`;
     }).join('');
-    return `<section class="panel br rail-card map-card">
-      <span class="label">${esc(t('map.title'))}</span>
+    return `<section class="map-card" aria-labelledby="map-h-${res ? esc(res.id) : 'all'}">
+      <h3 class="map-h" id="map-h-${res ? esc(res.id) : 'all'}">${esc(t('map.title'))}</h3>
       <div class="war-map ${res ? '' : 'all'}">
         <svg viewBox="-112 -112 224 224" role="group" aria-label="${esc(t('map.aria'))}">
           <circle class="mr" r="106"/><circle class="mr" r="70"/><circle class="mr" r="35"/>
@@ -105,33 +105,3 @@
       <p class="map-key"><span><i class="k-ring"></i>${esc(t('map.kOrder'))}</span>${focus.size ? `<span><i class="k-br"></i>${esc(t('map.kNow'))}</span>` : ''}<span><i class="k-ev"></i>${esc(t('map.kAttack'))}</span>${dssI != null && at.has(dssI) ? `<span><i class="k-dss"></i>DSS</span>` : ''}</p>
     </section>`;
   }
-  function railHTML(res, a) {
-    const v = res.verdict;
-    const alert = v === 'impossible' || v === 'nearly_impossible' || v === 'failed';
-    const exp = Date.parse(a.expiration);
-    const medals = medalsOf(a);
-    const brief = clean(txt(a.briefing));
-    const desc = txt(a.description) && txt(a.description) !== txt(a.briefing) ? clean(txt(a.description)) : '';
-    const open = !!ui.briefOpen[a.id];
-    return `<aside class="area-rail">
-      <section class="panel br rail-card verdict-card ${alert ? 'alert' : ''}">
-        <span class="label">${t('forecast')}</span>
-        <div class="stamp v-${v}" data-stamp="${esc(res.id)}:${v}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></div>
-        <p class="meaning">${esc(t('m.' + v))}</p>
-        ${whyHTML(res)}
-        ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))} ›</button>` : ''}
-        <div class="timer ${v === 'done' || res.ended ? 'finished' : ''}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">
-          <div><span class="label">${t('timeLeft')}</span><div class="count" data-exp="${exp}">—</div></div>
-          ${medals ? `<div class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></div>` : ''}
-        </div>
-      </section>
-      ${mapHTML(res)}
-      ${joelActive(res, a)}
-      ${brief || desc ? `<section class="panel br rail-card brief-card">
-        <span class="label">${t('brief')}</span>
-        <div class="text ${open ? 'open' : ''}" id="brief-${esc(a.id)}"><p>${brief}</p>${desc ? `<p style="margin-top:8px">${desc}</p>` : ''}</div>
-        <button type="button" class="linkbtn" data-brief="${esc(a.id)}" aria-expanded="${open}" aria-controls="brief-${esc(a.id)}">${open ? t('less') : t('more')}</button>
-      </section>` : ''}
-    </aside>`;
-  }
-

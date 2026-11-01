@@ -43,8 +43,8 @@
     const row = (icon, title, body, tip, src) => `<li><span class="pc-ic">${icon}</span><div><b>${title}</b>${body ? `<p>${body}</p>` : ''}${tip ? `<p class="tip"><i>›</i>${esc(tip)}${src ? ` <span class="src">${esc(t('pc.src.' + src))}</span>` : ''}</p>` : ''}</div></li>`;
     return `<div class="pcard fac-${esc(fac || 'none')}" role="dialog" aria-label="${esc(plain(planetName(p)))}">
       ${tabs}
-      <button type="button" class="pc-x" data-pcclose aria-label="${esc(t('pc.close'))}">✕</button>
-      <div class="pc-head"><span class="pc-hex"></span><div><h4>${planetName(p)}</h4><span class="pc-sub">${esc(fac ? fill(t('pc.held'), { f: plain(facName(fac)) }) : t('pc.ours'))}${p.sector ? ' · ' + esc(p.sector) : ''}</span></div></div>
+      <button type="button" class="pc-x mbtn icon-only" data-pcclose aria-label="${esc(t('pc.close'))}">${ICON.cross}</button>
+      <div class="pc-head"><i class="sw" aria-hidden="true"></i><div><h2 class="pc-name">${planetName(p)}</h2><span class="pc-sub">${esc(fac ? fill(t('pc.held'), { f: plain(facName(fac)) }) : t('pc.ours'))}${p.sector ? ' · ' + esc(p.sector) : ''}</span></div></div>
       <div class="pc-stats">
         <div><span class="label">${esc(t(p.event ? 'pc.defended' : 'pc.lib'))}</span><b>${pct(lib, 1)}</b>${sp}</div>
         <div><span class="label">${esc(t('pc.players'))}</span><b>${people(p.statistics?.playerCount || 0)}</b></div>
@@ -80,86 +80,105 @@
     return { list, planet: pick };
   }
 
-  // Phones: the forecast card sits below the tabs, so the verdict and the time left also go here, right
-  // under the order of the day (critique 1 Nov 2026: "how realistic" was ~1,500 px down). Hidden above 640 px.
-  function phoneForecast(res, a) {
-    const v = res.verdict, exp = a ? Date.parse(a.expiration) : NaN;
-    if (!v || v === 'unknown') return '';
-    return `<div class="dir-fc" role="group" aria-label="${esc(t('forecast'))}">
-      <span class="pill v-${esc(v)}">${ICON[VICON[v] || 'dots']}${esc(t('v.' + v))}</span>
-      ${isFinite(exp) && !res.ended ? `<span class="dir-fc-t"><span class="label">${t('timeLeft')}</span><span class="dir-fc-count" data-exp="${exp}">—</span></span>` : ''}
-      <button type="button" class="linkish dir-fc-more" data-goto-fc>${esc(t('fcWhy'))} ›</button>
-    </div>`;
-  }
-  // What the main button does: the plan while there is one; once the order is won, share it and point to
-  // the next order still running; once it is out of reach, the reasons and the order still worth playing
-  // (critique 1 Nov 2026: "See the plan" stayed on a finished order).
+  // The order still worth playing when this one is won or out of reach: the best of the others
   function nextOrder(res) {
     const others = (last.results || []).filter(x => x.res !== res && !x.res.ended && x.res.verdict !== 'done' && x.res.verdict !== 'impossible' && x.res.verdict !== 'failed');
     return others.sort((x, y) => (RANK_V[x.res.verdict] ?? 9) - (RANK_V[y.res.verdict] ?? 9))[0] || null;
   }
   const RANK_V = { ontrack: 0, effort: 1, focus: 1, hard: 2, record: 2, nearly_impossible: 3, unknown: 4 };
-  function endAction(res) {
-    const lost = res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done');
-    const next = (res.verdict === 'done' || lost) ? nextOrder(res) : null;
-    const nextBtn = next ? `<button type="button" class="btn ${res.verdict === 'done' ? 'ghostly' : 'primary'} next-order" data-otab="${esc(next.a.id)}">${esc(fill(t(res.verdict === 'done' ? 'endNextDone' : 'endNextLost'), { title: clean(txt(next.a.title) || 'Major Order') }))} ›</button>` : '';
-    if (res.verdict === 'done') return `<button type="button" class="btn primary" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('shareWin'))}</span></button>${nextBtn}`;
-    if (lost) return `${nextBtn}<button type="button" class="btn ${next ? 'ghostly' : 'primary'}" data-goto="strategy">${t('seeWhy')} ›</button>`;
-    return `<button type="button" class="btn primary" data-goto="strategy">${t('seePlan')} ›</button>`;
-  }
-  function directiveHTML(res, a) {
-    const p = directiveParts(res);
-    const long = (p.target || '').length > 14;
-    const globe = globeHTML(p, res);
-    const tint = p.fac ? 'fac-' + esc(p.fac) : `k-${esc(p.d.kind)}`;
-    // a won order gets one short celebration, the first time this browser sees it won (not at every refresh)
-    const party = res.verdict === 'done' && !(ui.celebrated ||= {})[res.id];
-    if (party) { ui.celebrated[res.id] = Date.now(); const ids = Object.keys(ui.celebrated); if (ids.length > 30) delete ui.celebrated[ids[0]]; saveUi(); }
-    return `<div class="area-dir"><section class="panel br directive ${globe ? 'has-globe' : ''} ${tint}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(res.id)}">
-      <i class="hatch-rail l y" aria-hidden="true"></i>
-      <div class="glow-clip" aria-hidden="true"><div class="glow"></div></div>
-      <div class="dir-head"><span class="label"><i class="live"></i>${t('dirLabel')}</span>${p.fac ? `<span class="fchip">${facName(p.fac)}</span>` : ''}</div>
-      <div class="dir-title">
-        <div class="kicker">${esc(p.kicker)}</div>
-        <h2 class="target ${long ? 'long' : ''}" id="dir-${esc(res.id)}" data-decrypt="${esc(p.target)}">${esc(p.target)}</h2>
-        ${p.req ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
-      </div>
-      ${globe}${globe ? '<div class="pc-wrap" hidden></div>' : ''}
-      <p class="why">${p.lead ? `<b class="lead v-${esc(res.verdict)}">${esc(p.lead)}</b>` : ''}${p.why}</p>
-      ${p.meter}
-      <div class="dir-actions">${phoneForecast(res, a)}
-        ${endAction(res)}
-        ${res.verdict === 'done' ? '' : `<button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}" aria-label="${esc(t('sh.btn'))}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>`}
-        <button type="button" class="btn ghostly" data-copy="${esc(res.id)}" aria-label="${esc(t('copy'))}">${ICON.copy}<span data-short="${esc(t('copyShort'))}">${t('copy')}</span></button>
-      </div>
-    </section></div>`;
-  }
-
-  const medalsOf = (a) => (a.rewards && a.rewards.length ? a.rewards : [a.reward]).filter(Boolean).reduce((s, x) => s + (x.type === 1 ? Number(x.amount) : 0), 0);
 
   /* ---------- several orders at once ---------- */
+  // the desk's comparison of every running order, worked out once per refresh
+  let crossMemo = null, crossFor = null;
+  function crossNow() {
+    if (!last) return null;
+    if (crossFor !== last) {
+      crossFor = last;
+      crossMemo = last.results.length > 1 ? ENGINE.crossOrders(last.results.map(({ a, res }) => ({ id: String(a.id), title: plain(clean(txt(a.title) || 'Major Order')), medals: medalsOf(a), res })), settings.recordShare) : null;
+    }
+    return crossMemo;
+  }
+  // a share of everyone online, said as Helldivers (critique 1 Nov 2026: "1.2x too few", "twice the players
+  // there now" and "79% of everyone online" for one idea): "about 74,500"
+  const divers = (share) => share == null || !isFinite(share) ? '—' : people(share * (last ? last.N : 0));
   function renderCross() {
-    const box = $('cross');
-    const cx = ENGINE.crossOrders(last.results.map(({ a, res }) => ({ id: String(a.id), title: plain(clean(txt(a.title) || 'Major Order')), medals: medalsOf(a), res })), settings.recordShare);
+    const box = $('cross'), cx = crossNow();
     if (!cx) { box.innerHTML = ''; return; }
     const pick = cx.orders.find(o => o.id === cx.pick);
-    const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: shareOf(cx.total) })
-      : cx.verdict === 'pick' ? fill(t('xPick'), { total: shareOf(cx.total), title: esc(pick.title), need: shareOf(pick.need) })
-      : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: shareOf(cx.total) });
+    const n = fmt(last.N);
+    const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: divers(cx.total), n })
+      : cx.verdict === 'pick' ? fill(t('xPick'), { total: divers(cx.total), n, title: esc(pick.title), need: divers(pick.need) })
+      : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: divers(cx.total), n });
     // the total is less than the sum when the orders share an enemy: said, or it reads as a sum gone wrong
     const sum = cx.orders.reduce((a, o) => a + (o.unknown ? 0 : o.need || 0), 0);
     const overlap = sum > cx.total + 0.02 ? ' ' + t('xOverlap') : '';
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
-    const chips = cx.orders.map(o => `<button type="button" class="xchip ${o.id === cx.pick ? 'pick' : ''}" data-otab="${esc(o.id)}">
-      <span>${esc(o.title)}</span><b>${o.unknown ? '?' : sharePct(o.need)}</b></button>`).join('');
-    const short = cx.verdict === 'all' ? fill(t('xShortAll'), { n: cx.orders.length }) : cx.verdict === 'pick' ? fill(t('xShortPick'), { title: esc(pick.title) }) : t('xShortNone');
-    box.innerHTML = `<details class="cross v-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}>
-      <summary><span class="label">${fill(t('xLabelN'), { n: cx.orders.length })}</span><span class="xs">${short}</span>${ICON.chev}</summary>
-      <p>${msg}${overlap}${note}</p><div class="xchips">${chips}</div></details>`;
+    box.innerHTML = `<p class="xline x-${cx.verdict}">${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${msg}${overlap}${note}</span></p>`;
   }
 
-  /* ---------- rail ---------- */
-  // the forecast's "why": what we do against what it takes, one meter per open objective
+  // What the main button does: the plan while there is one; once the order is won, share it and point to
+  // the next order still running; once it is out of reach, the order still worth playing and the reasons.
+  // When the desk's best bet is another order, switching to it is the main button (critique 1 Nov 2026).
+  function endAction(res, alt) {
+    const lost = res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done');
+    const next = (res.verdict === 'done' || lost) ? nextOrder(res) : null;
+    const nextBtn = next ? `<button type="button" class="btn ${res.verdict === 'done' ? 'ghostly' : 'primary'} next-order" data-otab="${esc(next.a.id)}" data-pick>${esc(fill(t(res.verdict === 'done' ? 'endNextDone' : 'endNextLost'), { title: plain(clean(txt(next.a.title) || 'Major Order')) }))}${ICON.track}</button>` : '';
+    if (res.verdict === 'done') return `<button type="button" class="btn primary" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('shareWin'))}</span></button>${nextBtn}`;
+    if (lost) return `${nextBtn}<button type="button" class="btn ${next ? 'ghostly' : 'primary'}" data-goto="strategy">${esc(t(res.ended || res.verdict === 'failed' ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`;
+    if (alt) return `<button type="button" class="btn primary" data-otab="${esc(alt.id)}" data-pick>${esc(fill(t('endNextLost'), { title: alt.title }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t('seePlan'))}${ICON.track}</button>`;
+    return `<button type="button" class="btn primary" data-goto="strategy">${esc(t('seePlan'))}${ICON.track}</button>`;
+  }
+
+  /* ---------- the call: the desk's one move, with the order's forecast beside it ---------- */
+  function callHTML(res, a) {
+    const p = directiveParts(res), id = String(a.id);
+    const cx = crossNow();
+    const alt = cx && cx.verdict === 'pick' && String(cx.pick) !== id && !res.ended && res.verdict !== 'done' ? cx.orders.find(o => o.id === String(cx.pick)) : null;
+    // a won order gets one short celebration, the first time this browser sees it won (not at every refresh)
+    const party = res.verdict === 'done' && !(ui.celebrated ||= {})[res.id];
+    if (party) { ui.celebrated[res.id] = Date.now(); const ids = Object.keys(ui.celebrated); if (ids.length > 30) delete ui.celebrated[ids[0]]; saveUi(); }
+    const verb = ['steady', 'lost'].includes(p.d.kind) ? '' : p.d.kind === 'ended' ? p.kicker + ':' : p.kicker;
+    const long = (p.target || '').length > 16;
+    const fac = p.fac && p.fac !== 'Humans' ? p.fac : null;
+    const exp = Date.parse(a.expiration), medals = medalsOf(a);
+    const v = res.verdict, L = lvl(v);
+    const stopped = p.state === 'done' || p.state === 'out' || p.state === 'ended';
+    const left = isFinite(exp) ? (exp - Date.now()) / 3.6e6 : null;
+    const clockRow = p.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
+      : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
+      : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd></div>`;
+    const meanwhile = stopped && !nextOrder(res) ? meanwhileHTML() : '';
+    return `<section class="call vl-${L} state-${p.state}${alt ? ' not-pick' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
+      <div class="call-main">
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.' + p.state))}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${fac ? `<span class="call-front"><i class="sw" style="--fc:var(--f-${esc(fac.toLowerCase())})" aria-hidden="true"></i>${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
+        ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
+        <h2 class="call-head${long ? ' long' : ''}" id="dir-${esc(id)}">${verb ? `<span class="verb">${esc(verb)}</span> ` : ''}<span class="tgt">${esc(p.target)}</span></h2>
+        ${p.req ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
+        <p class="why">${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}</p>
+        ${p.meter}
+        ${meanwhile}
+        <div class="call-actions">${endAction(res, alt)}
+          ${res.verdict === 'done' ? '' : `<button type="button" class="btn quiet" data-shareimg="${esc(res.id)}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>`}
+          <button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span data-short="${esc(t('copyShort'))}">${t('copy')}</span></button>
+          ${planetBtn(res)}
+        </div>
+        <div class="pc-wrap" hidden></div>
+      </div>
+      <div class="call-side" role="group" aria-labelledby="fc-${esc(id)}">
+        <h3 class="side-h" id="fc-${esc(id)}">${esc(t('forecast'))}</h3>
+        <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
+        <p class="meaning">${esc(t('m.' + v))}</p>
+        ${whyHTML(res)}
+        <dl class="clock">${clockRow}${medals ? `<div><dt>${esc(t('reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : ''}</dl>
+        ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))}</button>` : ''}
+      </div>
+    </section>`;
+  }
+
+  const medalsOf = (a) => (a.rewards && a.rewards.length ? a.rewards : [a.reward]).filter(Boolean).reduce((s, x) => s + (x.type === 1 ? Number(x.amount) : 0), 0);
+
+  // the forecast's "why": what we do against what it takes, one meter per open objective, all in the same
+  // words: Helldivers there and needed, or the pace now and the pace needed
   function whyHTML(res) {
     if (res.verdict === 'done' || res.verdict === 'unknown') return '';
     const meters = [];
@@ -167,8 +186,9 @@
       const ratio = need > 0 ? have / need : 1;
       const ok = ratio >= 1;
       const fillW = Math.max(2, Math.min(100, ratio * 100)), markW = mark != null && need > 0 ? Math.min(100, (mark / need) * 100) : null;
+      const short = few ? fill(t('why.fewBy'), { n: divers(need - have) }) : fill(t('why.slowBy'), { p: pct(1 - Math.max(0, ratio)) });
       meters.push({ sev: ratio, html: `<div class="why-m ${ok ? 'ok' : ratio < 0.5 ? 'bad' : 'warn'}">
-        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${ok ? esc(t('why.ok')) : esc(fill(t(few ? 'why.few' : 'why.slow'), { x: fmt(1 / Math.max(ratio, 0.01), 1, 1) }))}</span></div>
+        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${ok ? esc(t('why.ok')) : esc(short)}</span></div>
         <div class="wm-bar" role="img" aria-label="${esc(plain(sub))}"><div class="fill" data-key="why:${esc(key)}" data-w="${fillW}"></div>${markW != null ? `<i class="wm-mark" style="left:${markW}%"></i>` : ''}</div>
         <div class="wm-sub">${sub}</div></div>` });
     };
@@ -186,13 +206,13 @@
           fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
       } else if (r.defense && !r.defense.outlastsMO) {
         meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,
-          fill(t('why.players'), { have: pct(r.defense.share), need: shareOf(r.defense.need) }), null, `${res.id}:${r.idx}`, true);
+          fill(t('why.players'), { have: divers(r.defense.share), need: divers(r.defense.need) }), null, `${res.id}:${r.idx}`, true);
       }
     }
     const lib = res.liberation;
     if (lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
       meter(esc(t(lib.count > 1 ? 'why.libN' : 'why.lib1')), lib.currentShare, isFinite(lib.seqNeed) ? lib.seqNeed : 5,
-        fill(t('why.players'), { have: pct(lib.currentShare), need: shareOf(lib.seqNeed) }), null, `${res.id}:lib`, true);
+        fill(t('why.players'), { have: divers(lib.currentShare), need: divers(isFinite(lib.seqNeed) ? lib.seqNeed : 5) }), null, `${res.id}:lib`, true);
     if (!meters.length) return '';
     meters.sort((x, y) => x.sev - y.sev);
     const doneN = res.tasks.filter(r => r.verdict === 'done').length;

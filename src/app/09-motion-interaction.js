@@ -34,37 +34,20 @@
       });
     });
     fitTarget();
-    // briefing: no fade or "read more" when the text already fits (skip when hidden, as on phones)
-    view.querySelectorAll('.brief-card .text').forEach(el => {
-      if (el.classList.contains('open') || !el.clientHeight) return;
-      const short = el.scrollHeight <= el.clientHeight + 2;
-      el.classList.toggle('short', short);
-      const btn = el.parentElement.querySelector('[data-brief]');
-      if (btn) btn.hidden = short;
-    });
     // numbers
     document.querySelectorAll('[data-count]').forEach(el => countUp(el));
-    // stamp
-    const stamp = view.querySelector('[data-stamp]');
-    if (stamp) {
-      const id = String(entry.a.id), v = stamp.dataset.stamp;
-      if (motion && prev.verdict[id] !== v) stamp.classList.add('slam');
-      prev.verdict[id] = v;
-    }
-    // directive headline decrypt
-    const tgt = view.querySelector('[data-decrypt]');
-    if (tgt) {
-      const id = String(entry.a.id), text = tgt.dataset.decrypt;
-      if (motion && prev.dir[id] !== text) decrypt(tgt, text);
-      if (prev.dir[id] != null && prev.dir[id] !== text) toast(fill(t('dirChanged'), { x: directiveParts(entry.res).title }));
+    // the call changed since the last refresh: said once, in a toast
+    const head = view.querySelector('.call-head');
+    if (head) {
+      const id = String(entry.a.id), text = head.textContent.replace(/\s+/g, ' ').trim();
+      if (prev.dir[id] != null && prev.dir[id] !== text) toast(fill(t('dirChanged'), { x: text }));
       prev.dir[id] = text;
     }
-    fxAfterRender(entry, firstTime);
   }
 
   // shrink the headline until no single word overflows its column (names vary a lot in length)
   function fitTarget() {
-    const el = $('view').querySelector('.directive .target');
+    const el = $('view').querySelector('.call-head');
     if (!el) return;
     el.style.fontSize = ''; el.style.overflowWrap = '';
     let size = parseFloat(getComputedStyle(el).fontSize) || 60, guard = 0;
@@ -75,39 +58,11 @@
   window.addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTarget()).catch(() => {});
 
+  // numbers are set, not counted up: on a screen read in a glance, a rolling number is noise
   function countUp(el) {
-    const key = el.dataset.count, to = Number(el.dataset.to);
-    const show = el.dataset.pct ? (v) => pct(v) : (v) => fmt(v);
-    // the first time a number shows up it counts up from zero, after that from its last value
-    const from = prev.count[key] ?? 0;
-    const first = prev.count[key] == null;
-    prev.count[key] = to;
-    if (reduced() || from === to || !isFinite(to)) { el.textContent = show(to); return; }
-    const t0 = performance.now(), D = first ? 1200 : 900;
-    const step = (now) => {
-      const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-      el.textContent = show(from + (to - from) * e);
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }
-
-  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$';
-  function decrypt(el, text) {
-    const chars = [...text];
-    let frame = 0;
-    const total = 18 + chars.length;
-    const run = () => {
-      frame++;
-      el.innerHTML = chars.map((c, i) => {
-        if (c === ' ') return ' ';
-        const settle = 6 + i * 1.2;
-        if (frame >= settle) return esc(c);
-        return `<span class="ch scr">${GLYPHS[Math.floor(Math.random() * GLYPHS.length)]}</span>`;
-      }).join('');
-      if (frame < total) setTimeout(run, 34); else el.textContent = text;
-    };
-    run();
+    const to = Number(el.dataset.to);
+    el.textContent = el.dataset.pct ? pct(to) : fmt(to);
+    prev.count[el.dataset.count] = to;
   }
 
   /* ---------- live updates (every second) ---------- */
@@ -118,20 +73,7 @@
     const u = t('dhms'), p2 = (n) => String(n).padStart(2, '0');
     return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>${p2(sec)}<span>${u[3]}</span>`;
   }
-  // the countdown as a split-flap board: every digit in its own cell, and the ones that change roll in
-  function rollDigits(el, html) {
-    const digits = html.replace(/<span>[^<]*<\/span>/g, '|').replace(/[^0-9|]/g, '');
-    const was = el.dataset.dg || '';
-    el.dataset.dg = digits;
-    if (was === digits && el.firstChild) return;
-    let k = 0;
-    el.innerHTML = html.replace(/<span>[^<]*<\/span>|\d/g, (m) => {
-      if (m.length > 1) { k++; return m; }
-      const roll = !reduced() && was.length === digits.length && was[k] !== m;
-      k++;
-      return `<i class="dg${roll ? ' roll' : ''}">${m}</i>`;
-    });
-  }
+  function rollDigits(el, html) { if (el.innerHTML !== html) el.innerHTML = html; }
   // live counters: between refreshes, objectives count up at the pace just measured
   function tickCounters() {
     const now = Date.now();
@@ -146,16 +88,17 @@
       const ms = Number(el.dataset.exp) - Date.now();
       rollDigits(el, fmtCountdown(ms));
       const card = el.closest('.timer');
-      if (card && !card.classList.contains('finished')) { card.classList.toggle('soon', ms < 24 * 3600e3 && ms >= 6 * 3600e3); card.classList.toggle('urgent', ms < 6 * 3600e3); }
+      if (card) { card.classList.toggle('soon', ms < 24 * 3600e3 && ms >= 6 * 3600e3); card.classList.toggle('urgent', ms < 6 * 3600e3); }
     });
-    // live dot goes grey when the data is getting old (failed refreshes)
-    const stale = !lastOk || Date.now() - lastOk > 3 * REFRESH_MS;
-    document.querySelectorAll('.hud .live, .directive .live').forEach(el => el.classList.toggle('off', stale));
+    // the live dot turns amber when the data is getting old (failed refreshes, or the API is down and the
+    // page shows the recorder's copy): the call says it is not live (critique 1 Nov 2026)
+    const stale = !lastOk || Date.now() - lastOk > 3 * REFRESH_MS || !!(last && last.stale);
+    document.querySelectorAll('.mast .live, .call .live').forEach(el => el.classList.toggle('off', stale));
+    document.querySelectorAll('.call').forEach(el => el.classList.toggle('is-stale', stale));
     if (!lastRun) return;
     const left = Math.max(0, REFRESH_MS - (Date.now() - lastRun));
-    const ring = $('ring');
-    if (ring) ring.style.strokeDashoffset = String(RING * (1 - left / REFRESH_MS));
     const btn = $('refresh');
+    btn.style.setProperty('--left', String(left / REFRESH_MS));
     btn.title = (last ? fill(t('updatedAt'), { t: new Date(last.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }) + ' · ' : '') + fill(t('nextIn'), { s: Math.ceil(left / 1000) });
     btn.setAttribute('aria-label', busy ? t('loading') : t('refresh') + '. ' + btn.title);
     if (left === 0 && !document.hidden && !busy) refresh();
@@ -197,8 +140,8 @@
 
   function cycleTab(step) {
     if (!ui.order) return;
-    const cur = TABS.indexOf(ui.tab[ui.order] || 'objectives');
-    selectTab(TABS[(cur + step + TABS.length) % TABS.length]);
+    const cur = TABS.indexOf(curTab(ui.order));
+    selectTab(TABS[((cur < 0 ? 0 : cur) + step + TABS.length) % TABS.length]);
   }
 
   /* share the order of the day as plain text (Discord, Reddit, chat) */
@@ -207,16 +150,27 @@
   const plainDoc = typeof DOMParser !== 'undefined' ? new DOMParser() : null;
   const plain = (html) => (plainDoc ? plainDoc.parseFromString(String(html ?? ''), 'text/html').body.textContent || ''
     : String(html ?? '').replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+  // the desk's pick across several orders, in one line, for the share image and the copied text
+  // (critique 1 Nov 2026: a shared call could send people to the worse order)
+  function pickLine(entry) {
+    const cx = crossNow();
+    if (!cx || cx.verdict !== 'pick') return '';
+    const pick = cx.orders.find(o => o.id === String(cx.pick));
+    if (!pick) return '';
+    return String(cx.pick) === String(entry.a.id) ? fill(t('sh.pickThis'), { n: cx.orders.length }) : fill(t('sh.pickOther'), { title: pick.title, n: cx.orders.length });
+  }
   function shareText(entry) {
     const { a, res } = entry;
     const p = directiveParts(res);
     const left = Date.parse(a.expiration) - Date.now();
     const lines = [
       `MINISTRY OF VICTORY · ${plain(clean(txt(a.title) || 'Major Order')).toUpperCase()}`,
-      `${t('dirLabel')}: ${(['steady', 'lost'].includes(p.d.kind) ? p.target : `${p.kicker} ${p.target}`).toUpperCase()}`,
+      pickLine(entry),
+      `${t('callTag.' + p.state)}: ${(['steady', 'lost'].includes(p.d.kind) ? p.target : `${p.kicker} ${p.target}`).toUpperCase()}`,
       plain(p.why),
       p.cap ? plain(p.cap) : '',
       `${t('forecast')}: ${t('v.' + res.verdict)} · ${t('timeLeft')}: ${isFinite(left) ? durDown(left / 3.6e6) : '—'}`,
+      `https://shibacheemshd.github.io/ministry-of-victory/#order=${encodeURIComponent(String(a.id))}`,
     ];
     return lines.filter(Boolean).join('\n');
   }

@@ -43,7 +43,7 @@
         <span class="rc-num">${x.goal > 1 ? `${big(x.val)} / ${big(x.goal)} · ${pct(x.frac)}` : esc(t(x.done ? 'rc.libDone' : 'rc.libNo'))}</span></div>${spark(x)}</li>`).join('');
     const hasSpark = rows.some(x => x.goal > 1) && R.pts.length > 1;
     return `<section class="recap panel br">
-      <span class="label">${esc(t('rc.label'))}</span>
+      <h2 class="mod-h">${esc(t('rc.label'))}</h2>
       <div class="rc-head"><div><h3 aria-level="2">${esc(clean(R.title || 'Major Order'))}</h3>
         <p class="rc-when">${esc(fill(t('rc.when'), { a: fmtDay(R.start || t0), b: fmtDay(R.exp), d: dur(durH) }))}</p></div>
         <div class="stamp ${won ? 'v-done' : 'v-failed'}">${ICON[won ? 'check' : 'cross']}<span>${esc(t(won ? 'rc.won' : 'rc.lost'))}</span></div></div>
@@ -80,19 +80,14 @@
   function joelHTML(list, tasks, rel, more, ctx) {
     const rows = list.map(x => joelItem(x, tasks, rel, ctx)).filter(r => !r.earned).slice(0, 5);
     return `<section class="panel br rail-card joel">
-      <span class="label">${esc(t('jo.title'))}</span>
+      <h2 class="mod-h">${esc(t('jo.title'))}</h2>
       <p class="jo-sub">${esc(t('jo.sub'))}</p>
       ${rows.length ? `<ul class="jo-list">${rows.map(r => `<li class="${r.earned ? 'earned' : ''}"><span class="jo-ico">${ICON[r.icon] || ''}</span><div><b>${r.title}</b>${r.detail ? `<p>${r.detail}</p>` : ''}</div><span class="jo-when">${esc(r.when || ago(r.t))}</span></li>`).join('')}</ul>`
         : `<p class="jo-none">${esc(t('jo.none'))}</p>`}
       ${more ? `<button type="button" class="linkbtn" data-goto="intel">${esc(t('jo.more'))} ›</button>` : ''}
     </section>`;
   }
-  function joelActive(res, a) {
-    const entry = last.results.find(x => x.res === res); if (!entry) return '';
-    const it = intelFor(entry);
-    const tasks = res.tasks.map(r => r.task);
-    return joelHTML([...it.items].sort((x, y) => prioOf(x) - prioOf(y) || y.t - x.t), tasks, it.rel, true, { start: entry.start, end: Date.parse(a.expiration) });
-  }
+
   function joelRecap() {
     const R = store.get('recap', null);
     if (!R || Date.now() - R.exp > 7 * 24 * 3600e3) return '';
@@ -164,7 +159,7 @@
     const f = kinds.includes(ui.nf) ? ui.nf : null;
     const shown = all.filter(x => !f || x.k === f);
     const filters = kinds.length > 1 ? `<div class="nk-filter" role="group" aria-label="${esc(t('nw.filter'))}"><button type="button" data-nf="" aria-pressed="${!f}">${esc(t('nw.all'))} <small>${all.length}</small></button>${kinds.map(k => `<button type="button" class="nk-${k}" data-nf="${k}" aria-pressed="${f === k}">${ICON[NEWS_ICON[k]]}${esc(t('nk.' + k))} <small>${all.filter(x => x.k === k).length}</small></button>`).join('')}</div>` : '';
-    return `<section class="newsbox panel br"><span class="label">${esc(t('nw.title'))}</span>${filters}${feedHTML(shown)}</section>`;
+    return `<section class="newsbox"><h2 class="mod-h">${esc(t('nw.title'))}</h2>${filters}${feedHTML(shown)}</section>`;
   }
   // No order running: one concrete place to fight meanwhile (critique 1 Nov 2026). A defense that ends
   // soonest comes first (losing it costs a planet), else the planet most Helldivers are on.
@@ -190,7 +185,7 @@
     }).filter(x => x.ps.length);
     if (!F.length) return '';
     const N = last.N || F.reduce((n, x) => n + x.pl, 0) || 1;
-    return `<section class="fronts panel br"><span class="label">${esc(t('rc.fronts'))}</span>
+    return `<section class="fronts"><h2 class="mod-h">${esc(t('rc.fronts'))}</h2>
       <div class="fr-grid">${F.map(x => `<div class="fr" style="--c:${FAC_VAR[x.f]}">
         <h4 aria-level="3">${esc(plain(facName(x.f)))}</h4>
         <p class="fr-n"><b>${people(x.pl)}</b> ${esc(t('rc.divers'))} · ${pct(x.pl / N)}</p>

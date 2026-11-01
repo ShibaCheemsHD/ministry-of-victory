@@ -1,6 +1,6 @@
 /* Ministry of Victory - interface texts (English only) */
 const TEXT = {
-  tagline: 'Major Order tactical terminal',
+  tagline: 'Major Order decision desk',
   boot: ['> CONNECTING TO THE GALACTIC WAR NETWORK', '> READING ACTIVE ORDERS', '> ANALYZING REGEN AND DEPLOYED FORCES', '> COMPUTING STRATEGY'],
   bootOk: 'OK', bootReady: '> READY. FOR SUPER EARTH.', bootFail: '> UNSTABLE UPLINK', bootWait: '> THE API IS SLOW: STILL LOADING IN THE BACKGROUND', skip: 'Skip',
   players: 'Helldivers online', dss: 'DSS', hod: 'Heavy Ordnance', none: 'none', active: 'active until', inactive: 'not active',
@@ -29,11 +29,12 @@ const TEXT = {
       rupture: 'They burst out of the ground: keep moving.', spore: 'They burst into spores when they die: kill them at a distance.',
       incin: 'Flame troops: armor with fire resistance (the Inflammable passive) helps.', dragon: 'They fly: bring a weapon that can hit targets in the air.' } },
   xLabel: 'All active orders',
-  xAll: 'Every active order can be won together: they need about {total}.',
-  xPick: 'There aren\'t enough players for every order at once: together they\'d need {total}. Best bet: {title}, which needs {need}.',
-  xNone: 'No active order looks winnable with today\'s players: together they\'d need {total}.',
+  xAll: 'Every running order can be won together: they need about {total} of the {n} Helldivers online.',
+  xPick: 'Not enough Helldivers for every order at once: together they\'d need about {total} of the {n} online. Best bet: {title}, which needs about {need}.',
+  xNone: 'No running order looks winnable today: together they\'d need about {total} of the {n} Helldivers online.',
+  xBest: 'Best bet', xNotPick: 'The desk\'s best bet is {title}: there aren\'t enough Helldivers for every order at once. If you play this order anyway:',
   xOverlap: 'That is less than the sum: players fighting the same enemy count for both orders.',
-  xNoneU: 'The orders that can be measured don\'t look winnable with today\'s players: together they\'d need {total}.',
+  xNoneU: 'The orders that can be measured don\'t look winnable today: together they\'d need about {total} of the {n} Helldivers online.',
   xUnknown: 'Orders marked ? are still having their pace measured.',
   inSector: 'in the {s} sector', inASector: 'in one sector',
   newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'New advice: {x}',
@@ -42,9 +43,14 @@ const TEXT = {
   stale: '<b>The community API isn\'t answering.</b> Showing the war as of {when} ({ago}), copied by our recorder from {src}. The page keeps trying and switches back by itself.',
   recStale: '<b>Our recorder last updated {ago}.</b> The live forecast is current, but the history, Joel\'s moves and the archive may be missing the latest hours.', staleD: '{n} days ago',
   staleMin: '{n} min ago', staleH: '{n} h ago', staleOff: 'the game\'s official servers', staleCom: 'the community API',
-  dirLabel: 'What to do now',
+  dirLabel: 'Decision desk call',
+  callTag: { go: 'Decision desk call', done: 'Called: order won', out: 'No winning move', ended: 'Order over', wait: 'Too early to call' },
+  frontOf: '{f} front',
+  races: { title: 'The races', note: 'One row per objective. Each bar ends at its goal; the pale band is where today\'s pace lands by the deadline.' },
+  calledWon: 'Called: done', calledLost: 'Called: missed',
+  cl: { won: 'Won with', spare: '{d} to spare', inTime: 'in time', ended: 'Ended' },
   early: 'Early estimate', earlyWhy: 'Early estimate: the pace settles after the first few hours.',
-  lead: { hard: 'Tough but doable: it needs more of us. ', record: 'It needs record numbers. ', nearly_impossible: 'A long shot: only a big surge of players can still win this. If you play for it, play here. ' },
+  lead: { hard: 'It needs record numbers. ', record: 'It needs record numbers. ', nearly_impossible: 'Out of reach unless a huge wave of Helldivers arrives. If you play for it, play here. ' },
   req: 'Required', reqItem: 'only kills with the {item} count',
   d: {
     liberate: { k: 'Everyone to', why: {
@@ -53,8 +59,8 @@ const TEXT = {
       n: 'We still need {left} planets liberated: {planet} is the quickest to take.',
       n1: 'Just one more planet needed: {planet} is the quickest to take.',
       nImp: 'Taking {left} planets in time isn\'t realistic, but {planet} is still the quickest to take.',
-      more: 'It\'s the first planet to take, but we need {crowd}.',
-      moreWasted: 'It\'s the first planet to take. Anyone on the other Major Order planets is wasting their missions: regen erases everything there.',
+      more: 'It\'s the first planet to take, but it needs more Helldivers than are there now.',
+      moreWasted: 'It\'s the first planet to take. Anyone on this order\'s other planets is wasting their missions: regen erases everything there.',
       partial: 'The Major Order can no longer be fully won, but {planet} can still fall. Let\'s focus there.' },
       region: ' Start with the {region} region: one region at a time.' },
     defend: { k: 'Defend', why: 'We have until {when} to win this defense. If the planet falls, the Major Order is lost.' },
@@ -71,7 +77,7 @@ const TEXT = {
     steady: { k: 'All on track', target: 'Keep it up', why: 'Every objective is on track. Play wherever you like, as long as it\'s for the Major Order.' },
     measuring: 'Still measuring the pace: keep the page open for a few minutes to see whether we\'re on time.',
     waitDefense: { k: 'Stand by to', target: 'Defend', why: 'We still need {left} successful defenses. No attack is running right now: as soon as one starts, go there.' },
-    lost: { k: 'Status', target: 'Out of reach', why: 'Not even every player online can take a single planet in time.' },
+    lost: { k: '', target: 'Out of reach', why: 'Not even every player online can take a single planet in time.' },
     play: { k: 'Play for the', target: 'Major Order', why: 'This kind of objective can\'t be forecast: every mission that counts for it helps.' },
     ended: { k: 'Major Order', target: 'Time\'s up', why: 'The deadline has passed. Waiting for new orders from Super Earth High Command.' },
     done: { k: 'Major Order', target: 'Complete', why: 'Objective reached. Great work, Helldivers.' },
@@ -80,37 +86,37 @@ const TEXT = {
   meterAll: 'about {n} needed: {x} times everyone online', meterWeapon: ' (if the required weapon is used as much as today)', meterWeaponTip: 'Assuming players use the required weapon as much as they do today.', onPlanet: 'on {p}', onFront: 'on the {f} front',
   meterProj: 'At this pace: {p} by the deadline',
   crowd: ['roughly the players already there', 'about one and a half times the players there now', 'about twice the players there now', 'about three times the players there now', 'far more players than are online right now'],
-  why: 'Why and how', seePlan: 'See the plan', seeWhy: 'See what happened', simulate: 'Simulate', close: 'Close',
+  why: 'Why and how', seePlan: 'See the plan', seeWhy: 'See what happened', seeWhyOut: 'Why it\'s out of reach', simulate: 'Simulate', close: 'Close',
     simBox: 'What if…? Try other player counts', bigPicture: 'The big picture', online: 'online', fineN: 'Already on track ({n})',
   pm: {
     title: 'Nothing left to win here', sub: 'No plan closes this gap with the players we have. Here is how it got here.',
     lostTitle: 'This order is lost', lostSub: 'Time ran out before the objectives were done. Here is how it went.',
-    longTitle: 'A long shot', longSub: 'Only an exceptional surge of players can still turn this around. The moves below are the best odds, not a plan that wins.',
+    longTitle: 'Out of reach, unless a wave arrives', longSub: 'Only an exceptional surge of players can still turn this around. The moves below are the best odds, not a plan that wins.',
     tStart: 'Needed from day one', tStartS: '{what} an hour, every hour, to finish on time', tAvg: 'What we averaged', tDay: 'Our last 24 hours', tAvgS: '{p} of the pace needed from day one',
     tBest: 'Our best hour', tBestS: 'the fastest recorded so far', tNeed: 'Needed from now on', tNeedS: '{x}× our average, every hour until the deadline',
-    tPlNow: 'Players on it now', tPlNowS: 'of everyone online', tPlNeed: 'Players it needs', tPlNeedS: 'about {n} Helldivers at once', tRecord: 'Most ever on one order', tRecordS: 'the all-time record share',
+    tPlNow: 'Helldivers on it now', tPlNowS: '{p} of everyone online', tPlNeed: 'Helldivers it needs', tPlNeedS: 'all at once: {x}', tRecord: 'Most ever on one order', tRecordS: '{p} of everyone online, the all-time record',
     howTitle: 'How we got here',
     sStart: 'The order begins. To finish on time it needed about <b>{need}</b> {what} an hour from the very first hour.',
     sStartOut: 'The order begins. It needed about <b>{need}</b> {what} an hour from the first hour, more than even our best recorded hour (<b>{best}/h</b>): it was out of reach from the start.',
     sStartAny: 'The order begins: {n} objectives in {d}.', sStartAny1: 'The order begins: 1 objective in {d}.',
-    sNowLib: 'Taking the planets in time needs <b>{need}</b>, all at once. The most ever seen on one order is <b>{rec}</b>.',
+    sNowLib: 'Taking the planets in time needs about <b>{need}</b> Helldivers, all at once. The most ever seen on one order is <b>{rec}</b> of everyone online, about {recN} today.',
     sPonr: 'Past our best hour: from here on, the pace still needed was more than our best recorded hour (<b>{best}/h</b>). The order slipped out of reach.',
     sDone: '{task}: done.', so: 'So far', sNow: 'At our pace we end at about <b>{p}</b> of the hardest objective.',
     chart: 'See it on the chart', stillTitle: 'What still counts',
     still: 'Every kill and mission keeps counting until the deadline, but a Major Order pays its medals only if every objective is done. Your time also counts for your Personal Order and for the next Major Order.',
     stillLost: 'The medals for this order are gone. The next Major Order usually arrives within hours.',
   },
-  why: { title: 'Why', ok: 'on pace', done: '{k} of {n} objectives already done',
+  why: { title: 'Why', ok: 'on pace', done: '{k} of {n} objectives already done', slowBy: '{p} too slow', fewBy: '{n} Helldivers short',
     pace: 'Now <b>{have}</b> an hour ({basis}). Needed to finish in time: <b>{need}</b> an hour.', paceRec: 'Now <b>{have}</b> an hour ({basis}), <b>{rec}</b> in the last hour. Needed to finish in time: <b>{need}</b> an hour.', slow: '{x}× too slow', few: '{x}× too few players', paceFreed: 'Now <b>{have}</b> an hour; about <b>{eff}</b> on average once players from finished objectives switch over. Needed to finish in time: <b>{need}</b> an hour.',
     basis: { start: 'average', day: 'last 24 h', recent: 'last hour' },
-    players: '<b>{have}</b> of all players are there now · it needs <b>{need}</b>', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on all its planets' },
+    players: '<b>{have}</b> Helldivers there now · <b>{need}</b> needed', def: 'Defense of {planet}', lib1: 'Players on the planet', libN: 'Players on all its planets' },
   libPlan: 'In the plan after {prev}: with enough players it falls {a} → {b}', allQuiet: 'Nothing new in the last 48 hours: no Command action on this order\'s planets and no news from Super Earth.',
   rc: { label: 'Last Major Order', when: '{a} → {b} · {d}', won: 'Won', lost: 'Failed', sumWon: 'Every objective was done in time.', sumLost: '{k} of {n} objectives done before the deadline.',
     libDone: 'Liberated', libNo: 'Not liberated', lProg: 'our progress', lPace: 'pace that would have finished on time', since: 'lines start at {when}, when recording began',
     k1: { edited: 'objectives edited once', effect: '1 effect switched on', jump: '1 hand-made jump', setback: '1 setback', regen: '1 resistance change', attack: '1 new attack' },
     kN: { edited: 'objectives edited {n} times', effect: '{n} effects switched on', jump: '{n} hand-made jumps', setback: '{n} setbacks', regen: '{n} resistance changes', attack: '{n} new attacks' },
     fronts: 'The war right now', divers: 'Helldivers', planets1: '1 planet contested', planetsN: '{n} planets contested', defs1: '1 defense running', defsN: '{n} defenses running' },
-  sh: { btn: 'Share image', short: 'Image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', obj: 'Objectives',
+  sh: { pickThis: 'Desk\'s best bet of the {n} running orders.', pickOther: 'Not the desk\'s best bet: there aren\'t enough Helldivers for every running order, so play {title} first.', btn: 'Share image', short: 'Image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', obj: 'Objectives',
     more: '+{n} more objectives on the site', foot: 'Live forecast · updated every 10 min', method: 'An estimate from the game\'s public numbers and today\'s players, not an official statement. Method and track record on the site.', making: 'Drawing the briefing…', fail: 'Couldn\'t draw the image in this browser.',
     alt: 'Major Order briefing image', note: 'Everything that matters in one picture, made for Reddit and Discord. Times are in UTC.',
     dl: 'Download PNG', copy: 'Copy image', share: 'Share…', copied: 'Image copied: paste it into your post.' },
@@ -139,7 +145,7 @@ const TEXT = {
     hNone: 'No defeat could be checked yet.', hOut1: 'Of the {c} defeats we could check, 1 was out of reach from the start.', hOut: 'Of the {c} defeats we could check, {n} were out of reach from the start.',
     hFair: 'No. Every one of the {c} defeats we could check could have been won.', hSubOut: '{i} impossible, {l} beyond any turnout ever seen.',
     hSubRec1: '1 more needed a record turnout.', hSubRec: '{n} more needed a record turnout.', hSubWin1: '1 could have been won and was lost on the battlefield.', hSubWin: '{n} could have been won and were lost on the battlefield.',
-    g: { fair: 'Winnable', hard: 'Record needed', long: 'Beyond any record', impossible: 'Impossible', none: 'Can\'t check' },
+    g: { fair: 'Winnable', hard: 'Needed a record', long: 'Out of reach', impossible: 'Out of reach for anyone', none: 'Can\'t check' },
     gs: { fair: 'lost on the battlefield', hard: 'only our best ever would do', long: 'more than we have ever done', impossible: 'no turnout could win it', none: 'no public numbers' },
     howT: 'How do we know?',
     howL: ['Only defeats are checked: a won order was winnable, obviously.',
@@ -179,7 +185,7 @@ const TEXT = {
   nk: { info: 'News', win: 'Victory', loss: 'Defeat', so: 'Opportunity won', solost: 'Opportunity missed', order: 'Orders', gear: 'Arsenal', threat: 'Enemy move' },
   jo: { title: 'What did Joel do?', sub: 'Moves made by hand: Joel is Arrowhead\'s Game Master, steering the war through Super Earth Command.',
     soWon: 'earned by the Helldivers', soWhy: 'Not Joel: the Helldivers won a Strategic Opportunity, and lower goals were the reward.', cut: 'Goals cut', raised: 'Goals raised', edited: 'Objectives changed', launch: 'since launch', none: 'Nothing done by hand. Changes the Helldivers earned, like a won Strategic Opportunity, are in the news.', more: 'Full Command log' },
-  map: { title: 'War map', aria: 'Galactic map of the planets being fought over', kOrder: 'In this order', kNow: 'What to do now', kAttack: 'Under attack',
+  map: { help: 'Each dot is a planet being fought over, sized by its Helldivers. Hover or tap one for its numbers; click it for its conditions and loadout.', title: 'War map', aria: 'Galactic map of the planets being fought over', kOrder: 'In this order', kNow: 'The call', kAttack: 'Under attack',
     tipP: '{n} Helldivers', tipL: '{p}% liberated', tipD: 'defense {p}%' },
   pc: {
     open: 'Planet briefing: conditions, enemies and what to bring', close: 'Close', held: '{f} controlled', ours: 'Super Earth controlled',
@@ -245,9 +251,9 @@ const TEXT = {
     noRecord: 'The war record can\'t be reached right now: only what this page sees while it\'s open is checked.',
   },
   xLabelN: '{n} active orders', xShortAll: 'All {n} can be won together', xShortPick: 'Not enough players for all: best bet {title}', xShortNone: 'None looks winnable with today\'s players', copy: 'Copy for Discord', copyShort: 'Copy', copied: 'Order copied: paste it in chat or on Discord.', copyFail: 'Couldn\'t copy: the browser blocked it.',
-  gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gProgW: '{what} done', gCta: 'Conditions & loadout', gCtaS: 'Planet', gDss: 'DSS in orbit', gDssHod: 'DSS + HOD',
+  gLib: 'Liberated', gDef: 'Defense', gProg: 'Done', gProgW: '{what} done', gCta: 'Conditions & loadout', gCtaS: 'Planet', gDss: 'DSS in orbit', gDssHod: 'DSS + Heavy Ordnance', gDssT: 'The Democracy Space Station is in orbit here: its effects apply to this planet.', gDssHodT: 'The Democracy Space Station is in orbit here and its Heavy Ordnance is firing on this planet.',
   intel: 'Details', iHp: 'Enemy HP', iRegen: 'Regen', iNet: 'Net progress', iBe: 'Share needed to match regen', iRegions: 'Region HP', iQuickest: 'Quickest to take', iFront: 'Helldivers on that front', iAttacks: 'Attacks running',
-  lv: { critical: 'Critical', high: 'High', helps: 'Helps', tip: 'Tip', long: 'Long shot' },
+  lv: { critical: 'Critical', high: 'High', helps: 'Helps', tip: 'Tip', long: 'Only chance' },
   moreTips: 'More tips ({n})', planBlock: 'The plan', planBlockPartial: 'The plan for the planets we can take', planBlockIf: 'The plan, if enough players join',
   mvWeapon: ' Only kills with the {item} count.', mvReq: 'Required', mvReqS: 'only kills with it count', mvDssFrom: ' It\'s on {from} right now.', mvSpread: ' Right now players are split over {n} of them.',
   mv: {
@@ -278,21 +284,21 @@ const TEXT = {
     projUp: 'Lifts {what} from {now} to about {next} of the goal', projOnly: 'Lifts {what} from {now} to about {next} of the goal, still short', it: 'it', proj: 'At this pace: {now} of the goal',
     region: 'Knocks about {p} off the planet when it falls',
   },
-  sitTitle: 'Situation', movesTitle: 'The moves', fineTitle: 'Already fine', noMoves: 'No moves needed right now: keep it up.', noMovesLost: 'No move changes the outcome: this order is out of reach.',
+  sitTitle: 'Situation', movesTitle: 'The moves', fineTitle: 'Already fine', noMoves: 'No moves needed right now: keep it up.', noMovesDone: 'This order is won: nothing left to do here.', callStale: 'Not live', noMovesLost: 'No move changes the outcome: this order is out of reach.',
   noMovesUnknown: 'There\'s no detailed plan for this kind of objective: the order of the day above is the best general advice.',
   noMovesEnded: 'This order is over: the plan comes back with the next Major Order.',
   libNTable: 'Planets that count, quickest to take first.', keyPrev: 'Previous tab (Q)', keyNext: 'Next tab (E)',
   forecast: 'Forecast',
   vPlanetOk: 'Falls in time', fcWhy: 'Why', shareWin: 'Share the win', endNextDone: 'Next: {title}', endNextLost: 'Play {title} instead',
   mw: { head: 'Meanwhile:', go: 'drop on {p}:', def: 'its defense ends {when}.', busy: 'the most Helldivers are fighting there ({n}).', open: 'Planet' },
-  trust: 'How right are we? {p} of planet falls called within 25%, 6 hours ahead',
-  v: { done: 'Done', ontrack: 'On track', effort: 'Needs a push', hard: 'Very hard', focus: 'Winnable', record: 'Needs a record', nearly_impossible: 'Nearly impossible', impossible: 'Impossible', failed: 'Failed', unknown: 'Analyzing' },
-  m: { done: 'Objective reached.', ontrack: 'At the current pace we make it.', effort: 'Winnable, but it needs a push.', focus: 'Winnable if we focus.', hard: 'Very hard: it needs far more players.', record: 'It needs a record turnout.', nearly_impossible: 'It would take almost every player online.', impossible: 'Not winnable even with every player online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace.' },
+  trust: 'Track record: {p} of planet falls called within 25%, 6 hours ahead',
+  v: { done: 'Done', ontrack: 'On track', effort: 'Needs a push', focus: 'Needs a push', hard: 'Needs a record', record: 'Needs a record', nearly_impossible: 'Out of reach', impossible: 'Out of reach', failed: 'Failed', unknown: 'Too early to call' },
+  m: { done: 'Every objective is done.', ontrack: 'At today\'s pace we make it.', effort: 'Winnable, with more Helldivers than today.', focus: 'Winnable if we focus on the call.', hard: 'It needs record turnout: far more Helldivers than today.', record: 'It needs record turnout.', nearly_impossible: 'It would take almost every Helldiver online.', impossible: 'Not winnable even with every Helldiver online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace: give it a few minutes.' },
   timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', medals: '{n} medals', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
   help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
-  tObj: 'Objectives', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log', tIntelS: 'Log',
+  tObj: 'Objectives', tMap: 'Map', tabsAria: 'Order details', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log', tIntelS: 'Log',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', fallsAt: 'falls ~{when}', range: '({a} – {b})', likely: 'most likely between {a} and {b}', fallsTip: 'Falls around {when} at this rate; most likely between {a} and {b}.', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
     defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
     cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cOkFreed: 'On track if players switch over from finished objectives: about {proj} by the deadline', cOkBy: 'On track: done by {when}', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',
@@ -361,7 +367,17 @@ const TEXT = {
   tgtSamples: 'Samples', tgtOps: 'Operations', tgtMissions: 'Missions', tgtEnemies: 'Enemies', tgtExtractions: 'Extractions', tgtObjectives: 'Objectives', tgtGear: 'Required gear', tgtResources: 'Resources',
   what: { 0: 'objectives', 1: 'extractions', 2: 'extractions', 3: 'kills', 4: 'objectives', 5: 'missions', 6: 'uses', 7: 'missions', 9: 'operations', 10: 'donations' },
   unknownTask: 'New objective type {n}',
-  sCap: 'Playerbase capacity', sAuto: 'Automatic (measured, then reference)', sManual: 'Manual', sCapVal: 'Manual value (HP/h with 100%)', sDss: 'DSS bonus (0.10 = +10%)', sHod: 'Heavy Ordnance multiplier', sRec: 'Record share', sContact: 'API contact (name or handle)', sMotion: 'Animations', mFull: 'Full', mReduced: 'Reduced',
+  sCap: 'Damage of the whole playerbase', sAuto: 'Automatic (measured live)', sManual: 'Set by hand', sCapVal: 'Value set by hand', sDss: 'DSS bonus', sHod: 'Heavy Ordnance multiplier', sRec: 'Record share of players', sContact: 'Your name or handle', sMotion: 'Animations', mFull: 'Full', mReduced: 'Reduced',
+  gDisplay: 'Display', gModel: 'Advanced: forecast model', gApi: 'Community API',
+  hMotion: 'Reduced turns off moving bars and transitions. Your system\'s reduced-motion setting is always respected.',
+  hModel: 'These numbers drive every forecast. The defaults are measured on the war log: change them only to test a theory.',
+  hCap: 'How much damage every Helldiver online deals together in an hour, all on one planet. Automatic measures it live.',
+  hCapVal: 'HP per hour with every Helldiver online on one planet (reference: about 100,000).',
+  hDss: 'Extra liberation on the DSS planet: 0.10 means +10%. The war log shows no visible effect, so the default is 0.',
+  hHod: 'How much more the Heavy Ordnance planet counts. Measured on the war log: about 1.8.',
+  hRec: 'The largest share of all players ever seen on one Major Order (0.77 = 77%): the line between "needs a record" and "out of reach".',
+  hContact: 'Sent to the community API with each request so its maintainers can reach this site. Nothing else is sent.',
+  sReset: 'Reset the model to its defaults', sResetDone: 'Forecast model reset to its defaults.', sBad: 'That value is out of range: the previous one is kept.',
   errApi: 'Can\'t read the API ({e}). Retrying at the next refresh.',
   helpTitle: 'Your browser blocked the connection to the API. What to do:',
   helpPreview: 'You\'re viewing the page inside another app (for example Claude\'s preview), which blocks outside connections. Download the file and double-click it.',
@@ -369,29 +385,46 @@ const TEXT = {
   helpBlocker: 'If you use an ad blocker or an antivirus web filter, allow api.helldivers2.dev.',
   helpTest: 'Try opening this address: if you see text with numbers, the API is working.',
   techDetails: 'Technical details (send these to whoever helps you)',
-  feedback: 'Something wrong, or an idea? Tell us.', rss: 'New orders by RSS',
+  feedback: 'Something wrong, or an idea? Tell us', rss: 'New orders by RSS', source: 'Source code',
   footer: 'Unofficial community tool. Data: community API api.helldivers2.dev. Enemy and weapon names from Galactic Wide Web and helldivers-2/json on GitHub. Estimates are based on observed galactic war behavior, not official numbers.',
 };
 
-const EXPLAIN = `<p>Every enemy planet heals part of its health every hour: <b>regen</b>. If the damage it takes is lower than its regen, progress is zero, even with thousands of players on it.</p>
-<p>How much each player is worth changes all the time: the game weighs every mission by the war's <b>impact multiplier</b>, which drops when more people are playing. The page reads it live from the API, so the numbers follow the current Major Order and the current playerbase, not a fixed reference. The damage constant that turns players into HP is measured by the page itself on the planets being fought over, and saved for your next visit.</p>
-<dl>
-<dt>Command log</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push: a planet that jumps or drops far more than its Helldivers explain, enemy resistance changed, a new attack, objectives edited. Also the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open, so this covers everything since the start of the running orders (from 28 October 2026 on).</dd>
-<dt>War map</dt><dd>Every planet being fought over, at its place in the galaxy and in its owner's colour, sized by its Helldivers. A white ring marks the order's planets, yellow brackets the planets of "What to do now", dashed lines the attacks. Hover or tap a planet for its numbers, click it for its conditions and loadout.</dd>
-<dt>What did Joel do?</dt><dd>Joel is Arrowhead's Game Master. This card lists the changes made by hand through Super Earth Command: goals cut or raised, war effects switched on, planets that jumped or dropped far more than their Helldivers explain. Changes the Helldivers earned, like the reward for a won Strategic Opportunity, go in the news instead.</dd>
-<dt>Early estimate</dt><dd>In the first hours of an order players are still arriving, so the pace is shaky. Until 3 hours of pace are measured, an objective is never called nearly impossible or impossible.</dd>
-<dt>Between orders</dt><dd>With no Major Order running, the page shows how the last one went, the latest Super Earth news and where the Helldivers are fighting.</dd>
-<dt>What to do now</dt><dd>The single move that changes the Major Order's outcome the most right now. The full list of moves is in the Plan tab.</dd>
-<dt>Forecast</dt><dd>The bars under the stamp show why: what we do against what each objective needs, and how many times faster it would have to go. How realistic victory is: from "On track" (we make it as things are) to "Impossible" (not even with every player online).</dd>
-<dt>Progress</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, and the pace hour by hour. Hover or tap a chart to read any moment, tap the legend to hide a line.</dd>
-<dt>When a planet falls</dt><dd>Three things go into it: the planet\'s own pace over the last 6 hours (it already carries the DSS, Joel\'s multipliers and how hard the planet is), everyone\'s strength that week, and the players still to come: a planet with few Helldivers usually gains more, one holding most of them doesn\'t. Close to the end the planet\'s own pace decides, a day or more away everyone\'s strength does. The range next to it is where the real fall landed 8 to 9 times in 10 when the forecast was replayed on the war log. The Archive shows how right it has been.</dd>
-<dt>What if…?</dt><dd>Drag the slider to see what would happen with more or fewer players focused on the order.</dd>
-<dt>Kills, samples, operations</dt><dd>The page compares the pace needed with the pace of the last 24 hours (a full day and night, recorded by the site), or the average since the order started until a day has been recorded, and shows the last hour too.</dd>
-<dt>Option orders</dt><dd>Some orders say Option 1, Option 2: any one of them wins. The forecast and the plan then follow the most winnable option.</dd>
-<dt>All active orders</dt><dd>When more than one order is running, the bar above shows what share of everyone online each one needs, counting players who help two orders at once (killing bots on a bot planet counts for both), and which order is the best bet if there aren't enough players for all of them.</dd>
-<dt>Regions</dt><dd>Planets with regions are taken one region at a time, quickest first. While regions are being captured, the planet's own regen keeps eating into the damage already done, so splitting players across regions slows everything down.</dd>
-<dt>New orders</dt><dd>The page checks the API every minute. When Super Earth issues a new Major Order, or changes the current one, everything on the page is worked out again from the new objectives.</dd>
-<dt>Copy for Discord</dt><dd>Copies the order of the day as text ready to paste on Discord, Reddit or in chat.</dd>
-<dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> to <kbd>4</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
+const EXPLAIN = `<section class="ex-start"><h3>How to read this page</h3>
+<ol><li><b>The call</b> at the top is the one move that changes the Major Order most right now, with the order's forecast beside it.</li>
+<li><b>The races</b> below it are the objectives: each bar ends at its goal, and the pale band is where today's pace lands by the deadline.</li>
+<li><b>The tabs</b> hold the detail: the full plan, progress charts, the command log and the war map.</li></ol></section>
+<section><h3>The five calls</h3>
+<dl class="ex-scale">
+<div class="vl-done"><dt><span class="pill vl-done"><span>Done</span></span></dt><dd>The objective, or the whole order, is complete.</dd></div>
+<div class="vl-ok"><dt><span class="pill vl-ok"><span>On track</span></span></dt><dd>At today's pace we make it in time.</dd></div>
+<div class="vl-push"><dt><span class="pill vl-push"><span>Needs a push</span></span></dt><dd>Winnable, with more Helldivers than today, or with everyone on the call.</dd></div>
+<div class="vl-record"><dt><span class="pill vl-record"><span>Needs a record</span></span></dt><dd>Only a record turnout wins it: more of the playerbase than any order has drawn.</dd></div>
+<div class="vl-out"><dt><span class="pill vl-out"><span>Out of reach</span></span></dt><dd>Not winnable even with (almost) every Helldiver online. The page says so, and points to the order still worth playing.</dd></div>
 </dl>
-<p>Limits: the effect of the DSS and Heavy Ordnance isn't public. Measured on the war log since 2025, the DSS alone adds nothing visible, and Heavy Ordnance makes its planet count about 1.8 times while every other planet drops to about 0.7 (the war's total damage barely moves). the region capture bonus and how planet regen works against it are estimated, weapon-only kill counts can't be turned into a number of players, and the Game Master can change regen at any time.</p>`;
+<p>Before a few hours of pace are measured, an objective is <b>Too early to call</b>, and it is never called out of reach in its first 3 hours.</p></section>
+<section><h3>Words used here</h3>
+<dl>
+<dt>Regen</dt><dd>Every enemy planet heals part of its health every hour. If the damage it takes is lower than its regen, progress is zero, even with thousands of Helldivers on it.</dd>
+<dt>DSS</dt><dd>The Democracy Space Station, voted from planet to planet. Measured on the war log since 2025, it adds nothing visible to liberation on its own.</dd>
+<dt>Heavy Ordnance</dt><dd>The DSS's bombardment: its planet counts about 1.8 times while every other planet drops to about 0.7 (the war's total damage barely moves).</dd>
+<dt>Joel</dt><dd>Arrowhead's Game Master, who steers the war by hand through Super Earth Command: goals cut or raised, planets that jump, new attacks. The Command log lists his moves.</dd>
+<dt>Front</dt><dd>All the planets of one enemy faction. Kill counts usually count anywhere on that front.</dd>
+<dt>Impact multiplier</dt><dd>How much each mission is worth: the game lowers it when more people play. The page reads it live, so the numbers follow today's playerbase.</dd>
+</dl></section>
+<section><h3>The parts of the page</h3>
+<dl>
+<dt>Best bet</dt><dd>When several orders run at once, the desk compares them, counting Helldivers who help two orders at once (killing bots on a bot planet counts for both). If there aren't enough Helldivers for all of them, the best bet is marked on its tab and the page opens on it.</dd>
+<dt>Forecast</dt><dd>Beside the call: the order's call on the five-step scale, and the bars that explain it, Helldivers there against Helldivers needed, or today's pace against the pace needed.</dd>
+<dt>When a planet falls</dt><dd>Three things go into it: the planet's own pace over the last 6 hours (it already carries the DSS, Joel's multipliers and how hard the planet is), everyone's strength that week, and the players still to come. The range next to it is where the real fall landed 8 to 9 times in 10 when the forecast was replayed on the war log. The Archive keeps this track record.</dd>
+<dt>Plan</dt><dd>Every useful move ranked by importance, with what it changes. "What if…?" shows what happens with more or fewer players.</dd>
+<dt>Progress</dt><dd>How the order got here: progress since it began, the pace it needs, where today's pace leads, hour by hour. Hover or tap a chart to read any moment.</dd>
+<dt>Command log</dt><dd>Hand-made changes by Super Earth Command or a scripted enemy push, and the latest Super Earth news. The war is recorded every 10 minutes even while nobody has the page open.</dd>
+<dt>Map</dt><dd>Every planet being fought over, at its place in the galaxy, in its owner's colour and sized by its Helldivers. A ring marks the order's planets, brackets the planet of the call, dashed lines the attacks.</dd>
+<dt>Kills, samples, operations</dt><dd>The pace needed is compared with the last 24 hours (a full day and night), or the average since the start until a day has been recorded, and the last hour.</dd>
+<dt>Option orders</dt><dd>Some orders say Option 1, Option 2: any one of them wins. The forecast and the plan follow the most winnable option.</dd>
+<dt>Regions</dt><dd>Planets with regions are taken one region at a time, quickest first; splitting players across regions slows everything down.</dd>
+<dt>Share image, Copy for Discord</dt><dd>The call as a picture or as text, ready for Reddit, Discord or chat, with the desk's best bet when several orders run.</dd>
+<dt>Links</dt><dd>The address follows the order and the tab you are on (for example <code>#order=…&amp;tab=plan</code>), so you can link to a call directly.</dd>
+<dt>Shortcuts</dt><dd><kbd>Q</kbd> and <kbd>E</kbd> switch tab, <kbd>1</kbd> to <kbd>4</kbd> open a tab, <kbd>R</kbd> refreshes, <kbd>?</kbd> opens this guide.</dd>
+</dl></section>
+<p class="ex-limits">Limits: the effect of the DSS and Heavy Ordnance isn't public, the region capture bonus is estimated, weapon-only kill counts can't be turned into a number of players, and the Game Master can change regen at any time.</p>`;

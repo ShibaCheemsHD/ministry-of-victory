@@ -106,7 +106,7 @@ test('feed: new orders and results as RSS, game markup removed, text escaped (au
   const items = feedItems(calls, t0 + 90 * H);
   assert.deepEqual(items.map(x => x.id), ['mo-b-new', 'mo-a-lost', 'mo-a-new']);
   assert.equal(items[2].title, 'New Major Order: Liberate Fury & hold it.');
-  assert.match(items[1].text, /Impossible/);
+  assert.match(items[1].text, /Out of reach/);
   const xml = buildFeed(calls, t0 + 90 * H);
   assert.match(xml, /<title>New Major Order: Operation &lt;Swift&gt;<\/title>/);
   assert.match(xml, /Liberate Fury &amp; hold it\./);

@@ -18,7 +18,6 @@
   // live on 28 Oct 2026; plausible range used to reject bad measurements
   const K_REF = 0.027, K_MIN = 0.005, K_MAX = 0.2;
   const KEEP_MS = 48 * 3600e3;
-  const RING = 75.4;
 
   /* ---------- storage (per-browser conveniences; never required) ---------- */
   const store = {
@@ -192,7 +191,7 @@
   let samples = store.get('samples', []);
   let last = null, busy = false, lastRun = 0, lastOk = 0, lastStack = '', firstDone = false;
   const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false, histMode: {}, chartOff: {} }, store.get('ui', {}));
-  const saveUi = () => store.set('ui', { order: ui.order, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {} });
+  const saveUi = () => store.set('ui', { order: ui.order, orderManual: !!ui.orderManual, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {}, nf: ui.nf || null, histMode: ui.histMode, simOpen: ui.simOpen });
   const prev = { bars: {}, count: {}, dir: {}, verdict: {}, seen: {} };
   const $ = (id) => document.getElementById(id);
   // An order is identified by its id *and* its task list: if Super Earth edits an order in place,

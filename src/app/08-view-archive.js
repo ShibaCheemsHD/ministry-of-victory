@@ -1,23 +1,32 @@
   /* ---------- view ---------- */
-  const TABS = ['objectives', 'strategy', 'history', 'intel'];
+  // the call and the races are always on screen; the rest is one tab away (critique 1 Nov 2026: the side
+  // column of equal boxes — forecast, map, Joel, briefing — became the call's forecast, the map tab and the
+  // races' briefing; "What did Joel do?" repeated the Command log and is gone)
+  const TABS = ['strategy', 'history', 'intel', 'map'];
+  // the tab names in the address (#order=…&tab=plan), so a call can be linked to straight
+  const TAB_SLUG = { strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
+  function curTab(id) {
+    let tab = ui.tab[id] || 'strategy';
+    if (tab === 'data') tab = 'history';
+    return TABS.includes(tab) ? tab : 'strategy';
+  }
   function viewHTML(entry) {
     const { a, res } = entry;
-    let tab = ui.tab[a.id] || 'objectives';
-    if (tab === 'data') tab = 'history';
-    if (!TABS.includes(tab)) tab = 'objectives';
-    const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : objectivesHTML(res);
+    const tab = curTab(a.id);
+    const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short" aria-hidden="true">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
+    const label = { strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
-      ${directiveHTML(res, a)}
-      <div class="area-tabs" id="tabs-${esc(a.id)}">
-        <div class="tabbar">
-          <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div>
-        </div>
-        <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}">${panel}</div>
-      </div>
-      ${railHTML(res, a)}
+      ${callHTML(res, a)}
+      ${racesHTML(res, a)}
+      <section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
+        <div class="tabbar"><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div></div>
+        <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
+      </section>
     </div>`;
+  }
+  function mapTabHTML(res) {
+    return `<div class="map-tab">${mapHTML(res)}<p class="map-help">${esc(t('map.help'))}</p></div>`;
   }
 
   // where the keyboard focus is, as a selector that still matches after the view is rebuilt
@@ -144,7 +153,7 @@
     const sub = checked ? [out ? fill(t('ar.hSubOut'), { i: G.impossible, l: G.long }) : '', G.hard ? fill(t(G.hard === 1 ? 'ar.hSubRec1' : 'ar.hSubRec'), { n: G.hard }) : '', G.fair ? fill(t(G.fair === 1 ? 'ar.hSubWin1' : 'ar.hSubWin'), { n: G.fair }) : ''].filter(Boolean).join(' ') : '';
     const seg = (g) => G[g] ? `<button type="button" class="sb-seg cg-${g}" style="flex:${G[g]}" data-af="g-${g}" aria-pressed="${f === 'g-' + g}" aria-label="${esc(G[g] + ' ' + t('ar.g.' + g))}"></button>` : '';
     const verdict = `<section class="ar-verdict">
-      <span class="label">${esc(t('ar.q'))}</span>
+      <h3 class="mod-h">${esc(t('ar.q'))}</h3>
       <p class="sb-head">${esc(head)}</p>
       ${sub ? `<p class="sb-sub">${esc(sub)}</p>` : ''}
       <div class="sb-bar" role="group" aria-label="${esc(fill(t('ar.chkA'), { n: defeats.length }))}">${[...GROUPS, 'none'].map(seg).join('')}</div>
@@ -170,7 +179,6 @@
         const on = x.kind ? ' · ' + t('acc.on.' + x.kind) : '';
         return `<li><span>${esc(t(lbl))}</span><b>${esc(v)}</b><small>${esc(wiki + on)}</small></li>`; };
       return `<section class="ar-acc" aria-labelledby="acc-t">
-        <span class="label">${esc(t('acc.kicker'))}</span>
         <h3 id="acc-t">${esc(t('acc.title'))}</h3>
         <p class="sb-sub">${esc(t('acc.sub'))}</p>
         <div class="acc-grid">
@@ -265,7 +273,7 @@
     renderStale();
     $('open-archive').setAttribute('aria-pressed', String(ui.view === 'archive'));
     if (ui.view === 'archive') {
-      $('order-tabs').hidden = true; $('cross').innerHTML = ''; $('intel').innerHTML = '';
+      $('ot-nav').hidden = true; $('cross').innerHTML = ''; $('intel').innerHTML = '';
       $('view').innerHTML = archiveHTML();
       document.title = `${t('ar.title')} · Ministry of Victory`;
       return;
@@ -280,6 +288,7 @@
           <p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>
           ${meanwhileHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
+      syncHash();
       document.title = 'Ministry of Victory';
       return;
     }
@@ -291,6 +300,7 @@
     const title = directiveParts(entry.res).title;
     document.title = `${title ? title.charAt(0).toUpperCase() + title.slice(1) + ' · ' : ''}Ministry of Victory`;
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }
+    syncHash();
     try { tick(); } catch {}
   }
 

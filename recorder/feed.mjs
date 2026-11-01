@@ -5,8 +5,9 @@
 
 const H = 3.6e6;
 const SITE = 'https://shibacheemshd.github.io/ministry-of-victory/';
-const VERDICT = { done: 'Done', ontrack: 'On track', effort: 'Needs a push', focus: 'Winnable', hard: 'Very hard', record: 'Needs a record',
-  nearly_impossible: 'Nearly impossible', impossible: 'Impossible', failed: 'Failed', unknown: 'Analyzing' };
+// the page's five-step scale (Nov 2026 redesign): the same words in the feed and on Discord
+const VERDICT = { done: 'Done', ontrack: 'On track', effort: 'Needs a push', focus: 'Needs a push', hard: 'Needs a record', record: 'Needs a record',
+  nearly_impossible: 'Out of reach', impossible: 'Out of reach', failed: 'Failed', unknown: 'Too early to call' };
 
 const xml = (s) => String(s ?? '').replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]);
 // game texts carry markup like <i=3>…</i>: plain text only

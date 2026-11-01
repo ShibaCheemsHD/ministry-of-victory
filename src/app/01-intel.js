@@ -299,12 +299,12 @@
       <div class="it-head"><div><h3>${esc(t('it.title'))}</h3>${counts.length ? `<p>${counts.join(' · ')}</p>` : ''}</div></div>
       ${events.length ? timeline : ''}
       ${quiet && !ns.length ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('allQuiet'))}</p></div>` : `<div class="it-cols">
-        <section class="it-col"><span class="label">${esc(t('it.cmd'))}</span>
+        <section class="it-col"><h4 class="mod-h">${esc(t('it.cmd'))}</h4>
           ${quiet ? '' : `<p class="it-legend"><span><span class="it-sure data">${ICON.data}${esc(t('in.tag.data'))}</span> ${esc(t('it.keyData'))}</span><span><span class="it-sure lens">${ICON.lens}${esc(t('in.tag.deduced'))}</span> ${esc(t('it.keyDeduced'))}</span></p>`}
           ${quiet ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('it.quiet'))}</p></div>` : ''}
           ${cmd.map(x => card(x, events.indexOf(x))).join('')}
-          ${active.length ? `<span class="label sub">${esc(t('it.activeNow'))}</span>${active.map((x, k) => card(x, 'a' + k)).join('')}` : ''}</section>
-        <section class="it-col"><span class="label">${esc(t('in.news'))}</span>${ns.length ? ns.map(x => card(x, events.indexOf(x))).join('') : `<p class="it-empty">${esc(t('it.noNews'))}</p>`}</section>
+          ${active.length ? `<h4 class="mod-h sub">${esc(t('it.activeNow'))}</h4>${active.map((x, k) => card(x, 'a' + k)).join('')}` : ''}</section>
+        <section class="it-col"><h4 class="mod-h">${esc(t('in.news'))}</h4>${ns.length ? ns.map(x => card(x, events.indexOf(x))).join('') : `<p class="it-empty">${esc(t('it.noNews'))}</p>`}</section>
       </div>`}
       <p class="foot">${esc(record && record.since ? fill(t('it.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('it.footLocal'))}</p>
     </div>`;
