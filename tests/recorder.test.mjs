@@ -126,3 +126,28 @@ test('enemy list: every unit has its singular and plural name (src/game/enemies.
   assert.ok(ids.includes('23741406'), 'the Radicals of order 3291378705');
   for (const k of ids) { assert.match(k, /^\d+$/); assert.ok(foes[k].one && foes[k].many, k); }
 });
+
+test('wiki cross-check: objectives read from the wiki, names compared, unknown units named (recorder/wikicheck.mjs)', async () => {
+  const { parseWiki, checkOrders, sameName, singular, wikiDate } = await import('../recorder/wikicheck.mjs');
+  const raw = fs.readFileSync(path.join(here, 'fixtures', 'wiki-major-orders.txt'), 'utf8');
+  const E = parseWiki(raw);
+  assert.equal(E.length, 4);
+  assert.equal(wikiDate('Octobr 28th, 2186'), Date.UTC(2026, 9, 28));
+  const ca = E.find(e => /Citizen Arrest/.test(e.title));
+  assert.deepEqual(ca.objectives.map(o => [o.goal, o.name]), [[25e6, 'Agitators'], [1e6, 'Vox Engines'], [50e6, 'Obtruders'], [250000, 'Gatekeepers']], 'struck-out old goals are dropped');
+  assert.ok(sameName('Dragon Roaches', 'Dragonroaches') && sameName('Shredder Tanks', 'Automaton Shredder Tanks') && !sameName('Radicals', 'Agitators'));
+  assert.equal(singular('Radicals'), 'Radical'); assert.equal(singular('Voteless'), 'Voteless'); assert.equal(singular('Dragon Roaches'), 'Dragon Roach');
+  const kill = (unit, goal, fac = 3) => ({ type: 3, values: [fac, 0, goal, unit, 0, 0, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] });
+  const orders = [{ id: '3291378705', start: Date.UTC(2026, 9, 30, 9), tasks: [kill(23741406, 60e6)] },
+    { id: 'ca', start: Date.UTC(2026, 8, 1, 12), tasks: [kill(1371180916, 25e6), kill(4066406510, 1e6)] }];
+  const foes = JSON.parse(fs.readFileSync(path.join(here, '..', 'src', 'game', 'enemies.json'), 'utf8'));
+  const ok = checkOrders(E, orders, foes);
+  assert.equal(ok.matched, 2); assert.deepEqual(ok.mismatches, []); assert.deepEqual(ok.hints, {});
+  // a wrong name is caught; a missing one gets the wiki's name as a hint
+  const wrong = { ...foes, 1371180916: { one: 'Radical', many: 'Radicals' } }; delete wrong['23741406'];
+  const r = checkOrders(E, orders, wrong);
+  assert.deepEqual(r.mismatches.map(m => [m.unit, m.ours, m.wiki]), [[1371180916, 'Radicals', 'Agitators']]);
+  assert.deepEqual(r.hints['23741406'], { many: 'Radicals', one: 'Radical', order: '3291378705', wiki: 'Memoriam Eternal - Interrogation Enhancement' });
+  // not on the wiki yet: nothing to say
+  assert.equal(checkOrders(E, [{ id: 'new', start: Date.UTC(2026, 10, 20), tasks: [kill(999, 5e6)] }], foes).matched, 0);
+});

@@ -1,0 +1,69 @@
+Excerpt of https://helldivers.wiki.gg/wiki/Major_Orders (wikitext, 1 Nov 2026), for tests/recorder.test.mjs (CC BY-SA, Helldivers Wiki).
+{{Major Order
+|title = Census Thunder - Repatriation
+|order_id = 3-6-7
+|faction = Illuminate
+|start_date = June 24th, 2186
+|end_date = June 29th, 2186
+|reward_type = Medals
+|reward_amount = 45
+|briefing = The Ministry of Science has commenced construction of a '''Voteless Processing Plant''' on '''[[Alaraph|ALARAPH]]'''. This highly advanced facility will humanely process inert Voteless tissue, preparing it for scientific study in order to advance our understanding of the '''[[Void]]'''. <br> Hold '''ALARAPH''' until the facility is complete. Additionally, prepare '''25,000,000''' Voteless specimens for study, by rendering them inert.
+|overview = Hold the designated planet to enable construction of a Voteless Processing Plant. Kill the designated number of Voteless to prepare them for processing.{{*}}{{Task Hold|Alaraph}}{{*}}Kill 25,000,000 [[Voteless]]
+|events = 
+|dispatches = 
+|outcome = SUCCESS
+|outcome_text = The '''Voteless Processing Plant''' is operational. Its bio-centrifuges have already processed several tons of Voteless tissue, aiding research into the Void. Voteless incursions from the Void have subsided.
+
+The heroic actions of the Helldivers throughout this Campaign made this possible. Their bravery and excellence in FRV operation is the subject of widespread public acclaim.
+
+The SUPPLY FRV has completed experimental testing. It is now available for requisition.
+|notes = 
+}}
+{{Major Order
+|title = Counterdissident Hammer - Citizen Arrest
+|order_id = 3-9-1
+|faction = {{Illuminate|text}} {{Automatons|text}}
+|reward_type = Medals
+|reward_amount = 35 
+|start_date = September 1st, 2186
+|end_date = September 3rd, 2186
+|briefing = The dissident network responsible for the sabotage of the TCS+ has eluded justice. Predictive analytics indicate the network has dispersed domestically, hiding as regular citizens. <br>These dissidents, who exist, must face punishment. High Command has therefore ordered a Full Deputization of Super Earth citizens Class B and above. They have been rapidly trained on traitor identification heuristics, issued printable badges, and granted authority to use necessary force. <br>The Helldivers are ordered to secure material for the production of hunting trophies to reward the capture of suspected dissidents. '''Neutralize the high-value Illuminate and Cyborg/Automaton belligerents''' indicated on the Galactic Map in short order. 
+|overview = Neutralize the designated enemy targets, for conversion into bounty trophies for citizens who arrest suspected dissidents. {{*}}Kill <strike>100,000,000</strike> 25,000,000 [[Agitator]]s{{*}}Kill <strike>7,500,000</strike> 1,000,000 [[Vox Engine]]s{{*}}Kill <strike>150,000,000</strike> 50,000,000 [[Obtruder]]s{{*}}Kill <strike>50,000,000</strike> 250,000 [[Gatekeeper]]s
+|events = MAJOR ORDER ADJUSTMENT - Ongoing analysis of current major order targets has identified current targets to be overestimates. The analysts responsible for this oversight have been removed from their positions and transferred to frontline units where their evident talents will better serve Managed Democracy. <br> The adjusted kill targets for the current Major Order are as follows: '''25,000,000 Agitators, 1,000,000 Vox Engines, 50,000,000 Obtruders, and 250,000 Gatekeepers.'''
+|dispatches =
+|outcome = SUCCESS
+|outcome_text = Deputized citizens have apprehended thousand of suspected dissidents across the Federation. They were motivated and rewarded by premium trophies of Freedom's enemies valiantly secured by the Helldivers. <br>Hundreds of apprehended suspects have already confessed to conspiracy to sabotage the TCS+ and destroy Managed Democracy. The dissident network, which existed, is rapidly being mapped and dismantled.
+|notes = The kill targets were reduced partway through the order.
+}}
+{{Major Order
+|title = Strategic Opportunity - Liberate Nivel 43
+|order_id = 3-10-8
+|faction = Terminids
+|reward_type = 
+|reward_amount =  
+|start_date = Octobr 28th, 2186
+|end_date = October 28th, 2186
+|briefing = '''NEW STRATEGIC OPPORTUNITY''' <br>A Terminid outbreak has occurred on [[Nivel 43]], likely due to the splintered remnants of the eco‑fascistic terrorist network culled in the Counterdissident Hammer campaign. While the threat is assessed as very low, it presents an opportunity to capture vital footage of their wanton aggression. <br>Helldivers must aid in this virtuously expedient cause and liberate [[Nivel 43]]. Securing the footage will reduce remaining major order requirement by 60%. 
+|overview = Liberate the designated planet to secure essential footage for Democratic Sniper. {{*}}Liberate Nivel 43
+|events = 
+|dispatches =
+|outcome = SUCCESS
+|outcome_text = '''STRATEGIC OPPORTUNITY SEIZED''' <br>Helldivers have contained the outbreak on [[Nivel 43]], securing essential footage for Democratic Sniper. Simultaneously, reports of new Terminid mutations have been investigated; the mutations were determined to be merely superficial changes, well within normal Terminid gene expression. <br>The Ministry of Truth has deemed the filmed footage to be of masterfully evocative cinematic quality. As a result, the remaining major order requirements are reduced by 50%.
+|notes = This Strategic Imperative was initiated before the end of Major Order A3-10-7 and was labeled as "Strategic Imperative". It did not receive a standard Major Order briefing and outcome popup, and was instead relayed as a Dispatch. Said Dispatches are used as the Briefing and Outcome text for the sake of this page.
+}}
+{{Major Order
+|title = Memoriam Eternal - Interrogation Enhancement
+|order_id = 3-10-9
+|faction = Automatons
+|reward_type = Medals
+|reward_amount = 35 
+|start_date = October 30th, 2186
+|end_date =
+|briefing = Enemy aggression has made the construction of the Malevelon Creek Memorial & Interrogation Center for Human Rights impossible. <br>The project has therefore been downscoped to solely consist of the Interrogation Center for Human Rights. As the Automatons were the belligerents who attacked Malevelon Creek, it is only fitting that one of the frontiers of research is digital interrogation: the extraction of information from mechanical and cybernetic combatants. Unpleasant Sensory Experience Simulations have been used to great effect since the start of the Galactic War. <br>To aid development of more effective digital interrogation techniques, the Helldivers are ordered to '''acquire 60,000,000 Automaton samples and kill 35,000,000 Radicals'''.  
+|overview = Acquire Automaton samples and kill Cyborgs to aid the development of enhanced digital interrogation techniques. {{*}}Successfully extract with 35,000,000 Common Samples from any Automaton controlled planet{{*}}Kill 60,000,000 Radicals
+|events = 
+|dispatches =
+|outcome = ONGOING
+|outcome_text = 
+|notes = 
+}}

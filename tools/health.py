@@ -49,7 +49,12 @@ hs = h.get('helldiversstats') or {}
 if hs.get('msg') and 'without readable objectives' in hs.get('msg', '') and (hs.get('err') or 0) >= (hs.get('ok') or 0):
     problems.append(f'**helldiversstats.com pages changed?** {hs["msg"]}: recorder/hs.mjs may need a new pattern.')
 for f in intel.get('unknownFoes') or []:
-    problems.append(f'**Unknown enemy in a Major Order**: unit id `{f.get("id")}` (order {f.get("order")}, goal {f.get("goal")}, briefing: "{f.get("brief", "")}"). The page says "targets of one kind" until it is added to `src/game/enemies.json` with the name the game shows.')
+    wiki = f' The Helldivers Wiki calls it **{f["wiki"]}**: the page already uses that name; add it to `src/game/enemies.json` to make it permanent.' if f.get('wiki') else ' The page says "targets of one kind" until it is added to `src/game/enemies.json` with the name the game shows (the wiki has no text for this order yet).'
+    problems.append(f'**Unknown enemy in a Major Order**: unit id `{f.get("id")}` (order {f.get("order")}, goal {f.get("goal")}, briefing: "{f.get("brief", "")}").' + wiki)
+wc = intel.get('wikiCheck') or {}
+for m in wc.get('mismatches') or []:
+    problems.append(f'**Enemy name differs from the wiki**: unit `{m.get("unit")}` is "{m.get("ours")}" in `src/game/enemies.json`, the wiki\'s "{m.get("title")}" says "{m.get("wiki")}". Check which is right.')
+check('wiki', 'Helldivers Wiki (name cross-check)', 72, 'enemy names in Major Orders are not checked against the wiki.')
 up = intel.get('warlogUpTo')
 if up and now - up / 1000 > 10 * 86400:
     notes.append(f'The community war log stops {ago(up)}: recent orders are judged from the recorder\'s own data only.')

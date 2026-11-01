@@ -128,9 +128,10 @@
   const itemKnown = (id) => id ? (names.items?.[id] || names.strats?.[id] || null) : null;
   const itemName = (id) => id ? (itemKnown(id) || t('itemAny')) : null;
   // an enemy unit not in our list yet: said as "Automaton targets of one kind", never as all Automatons
-  const enemyName = (id, fac) => id ? (GAME.foe?.[id]?.many || names.enemies?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyAnyF'), { f: facName(fac) }) : t('enemyAny'))) : null;
-  const enemyOne = (id, fac) => id ? (GAME.foe?.[id]?.one || names.enemy1?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyOneF'), { f: facName(fac) }) : t('enemyAny'))) : null;
-  const enemyKnown = (id) => !!(GAME.foe?.[id] || names.enemies?.[id]);
+  const foeHint = (id) => record && record.foeHints ? record.foeHints[id] : null;
+  const enemyName = (id, fac) => id ? (GAME.foe?.[id]?.many || foeHint(id)?.many || names.enemies?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyAnyF'), { f: facName(fac) }) : t('enemyAny'))) : null;
+  const enemyOne = (id, fac) => id ? (GAME.foe?.[id]?.one || foeHint(id)?.one || names.enemy1?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyOneF'), { f: facName(fac) }) : t('enemyAny'))) : null;
+  const enemyKnown = (id) => !!(GAME.foe?.[id] || foeHint(id) || names.enemies?.[id]);
   const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   const unknownNames = (results) => results.some(({ res }) => res.tasks.some(r =>
     (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || false));
