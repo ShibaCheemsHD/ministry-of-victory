@@ -246,7 +246,7 @@
       rows += `<li class="r-${res} ${detail ? 'has-det' : ''}">${detail ? '<details><summary>' : ''}
         <span class="ar-res">${ICON[res === 'won' ? 'trophy' : res === 'lost' ? 'cross' : res === 'running' ? 'target' : 'dots']}</span>
         <div class="ar-main"><b>${esc(orderName(o))}</b>
-          <span class="ar-meta">${o.code ? `<span class="ar-code">${esc(o.code)}</span>` : ''}${orderObj(o) ? `<span>${esc(orderObj(o))}</span>` : ''}<span>${esc(day(o.start))}${durH ? ' · ' + esc(dur(durH)) : ''}</span></span></div>
+          <span class="ar-meta">${o.code ? `<span class="ar-code">${esc(o.code)}</span>` : ''}${orderObj(o) ? `<span>${esc(orderObj(o))}</span>` : ''}<span>${esc(day(o.start))}${durH ? ' · ' + esc(dur(durH)) : ''}</span>${o.resultSrc === 'wiki' ? `<span class="ar-src" title="${esc(fill(t('ar.resWikiT'), { log: o.logResult ? t('ar.r.' + o.logResult) : t('ar.r.unknown') }))}">${esc(t('ar.resWiki'))}</span>` : ''}</span></div>
         ${tag}<span class="ar-badge">${esc(t('ar.r.' + res))}</span>${detail ? `</summary>${detail}</details>` : ''}</li>`;
     }
     rows += curY ? '</ul></details>' : '';

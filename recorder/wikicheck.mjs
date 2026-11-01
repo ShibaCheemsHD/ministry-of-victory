@@ -10,6 +10,8 @@
 
 const H = 3.6e6;
 export const WIKI_URL = 'https://helldivers.wiki.gg/wiki/Major_Orders?action=raw';
+// the current year's orders, then the earlier years' pages (the archive goes back to 2024)
+export const WIKI_URLS = [WIKI_URL, 'https://helldivers.wiki.gg/wiki/Major_Orders_of_2025?action=raw', 'https://helldivers.wiki.gg/wiki/Major_Orders_of_2024?action=raw'];
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 // "October 30th, 2186" (in-game year: 2186 is 2026), typos like "Octobr" included
@@ -39,7 +41,11 @@ export function parseWiki(raw) {
     const field = (k) => { const m = new RegExp(`\\|\\s*${k}\\s*=([\\s\\S]*?)(?=\\n\\s*\\||\\n\\}\\})`).exec(block); return m ? m[1].trim() : ''; };
     const start = wikiDate(field('start_date'));
     const overview = field('overview');
-    if (!start || !overview) continue;
+    if (!start) continue;
+    const outcome = field('outcome').toUpperCase();
+    const meta = { id: field('order_id').replace(/^A/i, '').trim() || null, end: wikiDate(field('end_date')),
+      result: /SUCCESS/.test(outcome) ? 'won' : /FAIL/.test(outcome) ? 'lost' : null };
+    if (!overview) { out.push({ title: clean(field('title')), start, objectives: [], ...meta }); continue; }
     const objectives = overview.split(/\{\{\*\}\}/).slice(1).map(clean).filter(Boolean).map(text => {
       const num = /(\d{1,3}(?:,\d{3})+|\d+)/.exec(text);
       const goal = num ? Number(num[1].replace(/,/g, '')) : null;
@@ -53,7 +59,7 @@ export function parseWiki(raw) {
       const m = /\b(?:using|with)\s+(?:the\s+)?([A-Z0-9][^.;(]*?)(?:\s+(?:Stratagem|on|in|across|for)\b|[.;(]|$)/.exec(o.text);
       o.item = o.verb === 'kill' || o.verb === 'use' ? (m ? m[1].trim() : null) : null;
     }
-    out.push({ title: clean(field('title')), start, objectives });
+    out.push({ title: clean(field('title')), start, objectives, ...meta });
   }
   return out;
 }
@@ -115,4 +121,25 @@ export function checkOrders(entries, orders, foes, items = {}) {
     }
   }
   return res;
+}
+
+// Outcomes, by order code: the wiki quotes the game's own outcome text ("MAJOR ORDER FAILED ..."),
+// the community war log sometimes has the wrong one or none (1 Nov 2026: A3-9-5 "won" in the log,
+// failed in the game; A3-8-6 never closed in the log). { '3-9-5': { r: 'lost', e: end ms } }
+export function wikiOutcomes(entries) {
+  const out = {};
+  for (const e of entries) if (e.id && e.result) out[e.id] = { r: e.result, e: e.end || null };
+  return out;
+}
+// archive orders ({ code: 'A3-9-5', result, end }) corrected in place; the corrections are returned
+export function reconcileArchive(orders, outcomes) {
+  const fixed = [];
+  for (const o of orders || []) {
+    const w = o.code && outcomes?.[String(o.code).replace(/^A/i, '')];
+    if (!w || w.r === o.result) continue;
+    fixed.push({ code: o.code, name: o.name, from: o.result || null, to: w.r });
+    o.logResult = o.result || null; o.result = w.r; o.resultSrc = 'wiki';
+    if (!o.end && w.e) o.end = w.e + 20 * H;   // the wiki gives the day only: late that day
+  }
+  return fixed;
 }

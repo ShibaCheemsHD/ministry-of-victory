@@ -1916,3 +1916,4 @@ a { text-underline-offset: 3px; }
 /* the countdown never breaks "S" onto its own line */
 .timer .count, .dir-fc-count { white-space: nowrap; }
 .verdict-card .timer .count { font-size: clamp(20px, 2.1vw, 28px); }
+.ar-src { color: var(--info); }

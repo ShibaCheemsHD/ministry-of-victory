@@ -172,3 +172,16 @@ test('wiki cross-check: weapons named by objectives, matched even when the goal 
   assert.deepEqual(ok.itemHints, {}); assert.deepEqual(ok.itemMismatches, []);
   assert.equal(checkOrders(E, orders, {}, { ...named, 2197477188: 'Orbital Laser' }).itemMismatches[0].wiki, 'Orbital Railcannon Strike');
 });
+
+test('wiki outcomes correct the archive: the game\'s outcome text wins over the war log', async () => {
+  const { parseWiki, wikiOutcomes, reconcileArchive } = await import('../recorder/wikicheck.mjs');
+  const E = parseWiki(fs.readFileSync(path.join(here, 'fixtures', 'wiki-major-orders.txt'), 'utf8'));
+  const out = wikiOutcomes(E);
+  assert.equal(out['3-6-7'].r, 'won'); assert.equal(out['3-10-9'], undefined, 'an order still running has no outcome');
+  // 1 Nov 2026: the war log had A3-9-5 as won (the game said failed) and A3-8-6 never closed
+  const orders = [{ code: 'A3-6-7', result: 'lost', name: 'Census Thunder' }, { code: 'A3-9-1', name: 'x' }, { code: 'A3-10-9', result: null }, { code: null, result: 'won' }];
+  const fixed = reconcileArchive(orders, out);
+  assert.deepEqual(fixed.map(f => [f.code, f.from, f.to]), [['A3-6-7', 'lost', 'won'], ['A3-9-1', null, 'won']]);
+  assert.equal(orders[0].resultSrc, 'wiki'); assert.equal(orders[0].logResult, 'lost'); assert.ok(orders[1].end > 0);
+  assert.equal(orders[2].result, null);
+});

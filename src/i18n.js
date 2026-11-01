@@ -148,7 +148,7 @@ const TEXT = {
       'Defend orders: we count the attacks the enemy actually launched. Fewer attacks than the goal means the order could never be won.',
       'Hold orders, and older orders with no public numbers, can\'t be judged: we show what happened instead.'],
     howN: 'Orders running now are checked live by the Ministry 3 hours in (since 28 October 2026). Past orders are rebuilt from the community war log by CrossWaveOmega (since 2024) and from helldiversstats.com records (exact objectives and progress, since May 2026).',
-    listT: 'Every order', yCount: '{n} orders', f: { all: 'All', won: 'Won', lost: 'Lost' },
+    listT: 'Every order', yCount: '{n} orders', resWiki: 'result from the game\'s outcome text', resWikiT: 'The community war log says "{log}"; the game\'s own outcome text (quoted on the Helldivers Wiki) says otherwise, and that is what counts here.', f: { all: 'All', won: 'Won', lost: 'Lost' },
     fNow: 'Defeats: {what} ({n})', fClear: 'Show all',
     need: { fair: 'It needed {p} of all Helldivers online, fighting every hour until the deadline.', hard: 'It needed {p} of all Helldivers online every hour until the deadline: about the best turnout ever seen on one front.',
       long: 'It needed {p} of all Helldivers online every hour until the deadline: more than any turnout ever seen.', impossible: 'It needed {p} of all Helldivers online every hour until the deadline: more than everyone.' },

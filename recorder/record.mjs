@@ -16,7 +16,7 @@ import { loadStatic, mapOfficial } from './official.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
 import { buildFeed, notifyDiscord } from './feed.mjs';
-import { WIKI_URL, parseWiki, checkOrders } from './wikicheck.mjs';
+import { WIKI_URLS, parseWiki, checkOrders, wikiOutcomes, reconcileArchive } from './wikicheck.mjs';
 import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
 import { measure, logStation } from './measure.mjs';
 // failures show up as annotations on the run page
@@ -484,10 +484,14 @@ if (process.env.DISCORD_WEBHOOK) { try { const n = await notifyDiscord(hist, now
   const W = hist.wikiCheck, due = !W || now - (W.t || 0) > 24 * H || ((unknownFoes.length || (W.missingItems || []).length) && now - (W.t || 0) > 2 * H);
   if (due && !process.env.OFFICIAL_DIR) {
     try {
-      const r = await fetch(WIKI_URL, { headers: { 'User-Agent': 'ministry-of-victory (https://github.com/ShibaCheemsHD/ministry-of-victory)' }, signal: AbortSignal.timeout(30000) });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const entries = parseWiki(await r.text());
-      if (entries.length < 5) throw new Error('only ' + entries.length + ' orders read: has the page changed?');
+      const pages = [];
+      for (const u of WIKI_URLS) {
+        const r = await fetch(u, { headers: { 'User-Agent': 'ministry-of-victory (https://github.com/ShibaCheemsHD/ministry-of-victory)' }, signal: AbortSignal.timeout(30000) });
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + u);
+        pages.push(await r.text());
+      }
+      const entries = parseWiki(pages.join('\n'));
+      if (entries.length < 50) throw new Error('only ' + entries.length + ' orders read: have the pages changed?');
       const orders = [...Object.entries(hist.orders || {}).map(([id, o]) => ({ id, start: o.start, tasks: o.tasks })),
         ...Object.values(hist.hs || {}).map(o => ({ id: String(o.id), start: o.start, tasks: o.tasks }))];
       // the item names the page uses: our list first, then the community item list
@@ -498,10 +502,13 @@ if (process.env.DISCORD_WEBHOOK) { try { const n = await notifyDiscord(hist, now
       const missingItems = [...new Set((assignments || []).flatMap(a => (a.tasks || []).map(tk => { const i = (tk.valueTypes || []).indexOf(5); return i >= 0 ? Number(tk.values?.[i]) || 0 : 0; })))].filter(id => id && !items[String(id)]);
       hist.wikiCheck = { t: now, entries: entries.length, itemsKnown: Object.keys(items).length, ...checkOrders(entries, orders, foes, items) };
       hist.wikiCheck.missingItems = missingItems.filter(id => !hist.wikiCheck.itemHints[String(id)]);
+      hist.wikiCheck.outcomes = wikiOutcomes(entries);
       ok('wiki');
     } catch (e) { bad('wiki', String(e.message || e)); console.log('::warning::wiki cross-check: ' + String(e.message || e).slice(0, 200)); }
   }
   for (const f of unknownFoes) { const h = hist.wikiCheck?.hints?.[String(f.id)]; if (h) f.wiki = h.many; }
+  // the archive's results, checked against the outcomes the wiki quotes from the game (every run)
+  if (hist.wikiCheck?.outcomes) archive.corrected = reconcileArchive(archive.orders, hist.wikiCheck.outcomes);
 }
 hist.warnings = [...(Array.isArray(hist.warnings) ? hist.warnings : []), ...warnings].slice(-50);
 try { compactCalls(hist.calls, now); } catch (e) { console.log('::warning::compacting the forecast record: ' + e.message); }
@@ -516,7 +523,7 @@ fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated
   // names the wiki gives for units our list doesn't have yet: the page uses them until the list does
   itemHints: hist.wikiCheck?.itemHints || {},
   foeHints: Object.fromEntries(Object.entries(hist.wikiCheck?.hints || {}).filter(([id]) => !foes[id]).map(([id, h]) => [id, { one: h.one, many: h.many }])),
-  wikiCheck: hist.wikiCheck ? { t: hist.wikiCheck.t, entries: hist.wikiCheck.entries, checked: hist.wikiCheck.checked, matched: hist.wikiCheck.matched, mismatches: hist.wikiCheck.mismatches, itemMismatches: hist.wikiCheck.itemMismatches || [], notes: (hist.wikiCheck.notes || []).length } : null,
+  wikiCheck: hist.wikiCheck ? { t: hist.wikiCheck.t, entries: hist.wikiCheck.entries, checked: hist.wikiCheck.checked, matched: hist.wikiCheck.matched, mismatches: hist.wikiCheck.mismatches, itemMismatches: hist.wikiCheck.itemMismatches || [], corrected: archive.corrected || [], notes: (hist.wikiCheck.notes || []).length } : null,
   // how right the forecasts are, for the link next to the page's forecast (audit PO-03)
   trust: hist.backtest?.lib?.v2?.[6]?.within25 != null ? { fall6: hist.backtest.lib.v2[6].within25, n: hist.backtest.lib.v2[6].n, cnt: hist.backtest.cnt?.calledRight ?? null } : null }));
 // progress history for the page's charts: every running order since recording began (one point per
