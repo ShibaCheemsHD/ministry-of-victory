@@ -1752,3 +1752,61 @@ a { text-underline-offset: 3px; }
 .rail-card { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 360px) { .stamp { font-size: 22px; white-space: normal; } }
 @media (max-width: 360px) { .timer { flex-wrap: wrap; row-gap: 8px; } }
+
+/* ---------- holographic interface + live numbers (Nov 2026) ----------
+   Decoration only: transform / opacity (and a little filter on tiny elements), off with reduced motion
+   (.calm turns every animation off), hover effects only with a real mouse. */
+@keyframes dgRoll { from { transform: translateY(-60%); opacity: 0; filter: blur(2px); } }
+@keyframes scanDown { from { transform: translateY(0); opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } to { transform: translateY(var(--scan-h, 300px)); opacity: 0; } }
+@keyframes glint { 0%, 72% { transform: translateX(-110%); } 100% { transform: translateX(110%); } }
+@keyframes pipWave { 0%, 76%, 100% { filter: none; } 84% { filter: brightness(1.55) saturate(1.2); } }
+@keyframes glareIn { from { opacity: 0; } }
+@keyframes holoShift { to { background-position: 200% 0; } }
+
+/* countdown: a split-flap board */
+.timer .count .dg { display: inline-block; font-variant-numeric: tabular-nums; }
+.timer .count .dg.roll { animation: dgRoll 320ms var(--ease-out) both; }
+
+/* the meter pips: a pulse of energy runs along the lit ones every few seconds */
+.dir-meter .pip.on { animation: pipWave 4.2s ease-in-out infinite; animation-delay: calc(var(--i) * 55ms + 1.4s); }
+.anim .dir-meter .pip.on { animation: pipIn .45s var(--ease) both, pipWave 4.2s ease-in-out calc(var(--i) * 55ms + 1.4s) infinite; animation-delay: calc(var(--i) * 28ms), calc(var(--i) * 55ms + 1.4s); }
+
+/* progress bars: a glint crosses the filled part now and then */
+.bar .fill, .wm-bar .fill { overflow: hidden; }
+.wm-bar .fill { position: relative; }
+.bar .fill::after, .wm-bar .fill::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .32) 50%, transparent 70%); transform: translateX(-110%);
+  animation: glint 6s cubic-bezier(.77, 0, .175, 1) infinite; animation-delay: 2s; }
+.objective:nth-child(2n) .bar .fill::after { animation-delay: 3.4s; }
+.objective:nth-child(3n) .bar .fill::after { animation-delay: 4.6s; }
+
+/* the order of the day: one scanner pass when it first shows or changes */
+.directive.scan::before { display: block; content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; width: auto; border: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--yellow) 20%, #fff 50%, var(--yellow) 80%, transparent);
+  box-shadow: 0 0 22px 6px rgba(255, 233, 0, .22), 0 -40px 60px -20px rgba(255, 233, 0, .10);
+  animation: scanDown 1.4s cubic-bezier(.77, 0, .175, 1) both; }
+
+/* hover light and holographic foil on the cards (real mouse only) */
+.directive, .rail-card, .objective, .hist-card, .acc-card { transition: transform 420ms var(--ease-out); }
+.holo-on { position: relative; box-shadow: inset 0 0 0 1px rgba(255, 233, 0, .22), 0 10px 40px -18px rgba(255, 233, 0, .25); }
+.holo-glare { position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; animation: glareIn 240ms var(--ease-out) both;
+  background:
+    radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, .11), transparent 60%),
+    radial-gradient(140px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 233, 0, .07), transparent 70%),
+    linear-gradient(115deg, transparent 20%, rgba(120, 220, 255, .07) 35%, rgba(255, 233, 0, .075) 45%, rgba(255, 120, 220, .06) 55%, transparent 70%) 0 0 / 200% 100%;
+  mix-blend-mode: screen; transition: opacity 260ms ease; }
+.holo-glare.out { opacity: 0; }
+.holo-on .holo-glare { animation: glareIn 240ms var(--ease-out) both, holoShift 6s linear infinite; }
+
+/* the globe's ring end glows, and the planet breathes */
+.globe .g-arc { filter: drop-shadow(0 0 6px rgba(107, 183, 234, .8)); }
+@media (prefers-reduced-motion: reduce) { .timer .count .dg.roll, .dir-meter .pip.on, .bar .fill::after, .wm-bar .fill::after, .directive.scan::before, .holo-glare { animation: none !important; } }
+/* boot: a terminal powering on (first visit only) */
+@keyframes crtOn { 0% { transform: scaleY(.004) scaleX(.6); opacity: 0; filter: brightness(3); } 35% { transform: scaleY(.004) scaleX(1); opacity: 1; } 70% { transform: scaleY(1.04); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
+@keyframes logoGlitch { 0%, 100% { transform: none; text-shadow: none; } 8% { transform: translateX(-3px) skewX(-8deg); text-shadow: 3px 0 rgba(255, 60, 60, .7), -3px 0 rgba(60, 200, 255, .7); } 12% { transform: translateX(2px); text-shadow: -2px 0 rgba(255, 60, 60, .6), 2px 0 rgba(60, 200, 255, .6); } 16% { transform: none; text-shadow: none; } 62% { transform: none; } 64% { transform: translateX(4px) skewX(6deg); text-shadow: -3px 0 rgba(255, 60, 60, .6), 3px 0 rgba(60, 200, 255, .6); } 67% { transform: none; text-shadow: none; } }
+@keyframes bootScan { from { transform: translateY(-10vh); } to { transform: translateY(110vh); } }
+.boot .boot-in { animation: crtOn .7s var(--ease-out) both; transform-origin: 50% 50%; }
+.boot .logo b { display: inline-block; animation: logoGlitch 2.4s steps(1) .5s infinite; }
+.boot::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18vh; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(255, 233, 0, .05) 70%, rgba(255, 233, 0, .14) 98%, transparent); animation: bootScan 2.2s linear infinite; }
+.boot pre .caret { animation: blink .7s steps(1) infinite; }

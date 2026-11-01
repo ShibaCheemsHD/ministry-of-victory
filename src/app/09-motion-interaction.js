@@ -59,6 +59,7 @@
       if (prev.dir[id] != null && prev.dir[id] !== text) toast(fill(t('dirChanged'), { x: directiveParts(entry.res).title }));
       prev.dir[id] = text;
     }
+    fxAfterRender(entry, firstTime);
   }
 
   // shrink the headline until no single word overflows its column (names vary a lot in length)
@@ -76,13 +77,16 @@
 
   function countUp(el) {
     const key = el.dataset.count, to = Number(el.dataset.to);
-    const from = prev.count[key];
+    const show = el.dataset.pct ? (v) => pct(v) : (v) => fmt(v);
+    // the first time a number shows up it counts up from zero, after that from its last value
+    const from = prev.count[key] ?? 0;
+    const first = prev.count[key] == null;
     prev.count[key] = to;
-    if (reduced() || from == null || from === to || !isFinite(to)) { el.textContent = fmt(to); return; }
-    const t0 = performance.now(), D = 900;
+    if (reduced() || from === to || !isFinite(to)) { el.textContent = show(to); return; }
+    const t0 = performance.now(), D = first ? 1200 : 900;
     const step = (now) => {
       const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-      el.textContent = fmt(from + (to - from) * e);
+      el.textContent = show(from + (to - from) * e);
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -114,6 +118,20 @@
     const u = t('dhms'), p2 = (n) => String(n).padStart(2, '0');
     return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>${p2(sec)}<span>${u[3]}</span>`;
   }
+  // the countdown as a split-flap board: every digit in its own cell, and the ones that change roll in
+  function rollDigits(el, html) {
+    const digits = html.replace(/<span>[^<]*<\/span>/g, '|').replace(/[^0-9|]/g, '');
+    const was = el.dataset.dg || '';
+    el.dataset.dg = digits;
+    if (was === digits && el.firstChild) return;
+    let k = 0;
+    el.innerHTML = html.replace(/<span>[^<]*<\/span>|\d/g, (m) => {
+      if (m.length > 1) { k++; return m; }
+      const roll = !reduced() && was.length === digits.length && was[k] !== m;
+      k++;
+      return `<i class="dg${roll ? ' roll' : ''}">${m}</i>`;
+    });
+  }
   // live counters: between refreshes, objectives count up at the pace just measured
   function tickCounters() {
     const now = Date.now();
@@ -126,7 +144,7 @@
   function tick() {
     document.querySelectorAll('[data-exp]').forEach(el => {
       const ms = Number(el.dataset.exp) - Date.now();
-      el.innerHTML = fmtCountdown(ms);
+      rollDigits(el, fmtCountdown(ms));
       const card = el.closest('.timer');
       if (card && !card.classList.contains('finished')) { card.classList.toggle('soon', ms < 24 * 3600e3 && ms >= 6 * 3600e3); card.classList.toggle('urgent', ms < 6 * 3600e3); }
     });

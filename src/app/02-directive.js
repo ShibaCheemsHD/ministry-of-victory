@@ -250,7 +250,7 @@
         <circle cx="120" cy="120" r="78" fill="url(#${id}t)"/>
         ${dss ? `<g class="g-sat ${last.hod ? 'hod' : ''}"><path d="M120 6.5l6.5 6.5-6.5 6.5-6.5-6.5z"/></g>` : ''}
       </svg>
-      <div class="g-val"><b>${pct(r.frac)}</b><span>${esc(r.label)}</span>${dss ? `<i>${esc(last.hod ? t('gDssHod') : t('gDss'))}</i>` : ''}</div>
+      <div class="g-val"><b data-count="globe:${esc(res.id)}" data-to="${r.frac}" data-pct="1">${pct(r.frac)}</b><span>${esc(r.label)}</span>${dss ? `<i>${esc(last.hod ? t('gDssHod') : t('gDss'))}</i>` : ''}</div>
       ${cta}
     </div>`;
   }

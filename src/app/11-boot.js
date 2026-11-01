@@ -1,13 +1,16 @@
   /* ---------- boot sequence ---------- */
-  let bootStart = performance.now(), bootTimer = 0, bootLines = 0;
+  let bootStart = performance.now(), bootTimer = 0, bootLines = 0, bootChars = 0;
+  // a terminal typing: each line letter by letter, then its OK
   function bootType() {
     const log = $('boot-log');
     const lines = t('boot');
-    if (bootLines < lines.length) {
-      bootLines++;
-      log.innerHTML = lines.slice(0, bootLines).map((l, i) => esc(l) + (i < bootLines - 1 ? ` <span class="ok">${t('bootOk')}</span>` : ' <span class="caret"></span>')).join('\n');
-      bootTimer = setTimeout(bootType, 320);
-    }
+    if (bootLines >= lines.length) return;
+    const line = lines[bootLines];
+    bootChars = Math.min(line.length, bootChars + 3);
+    const done = lines.slice(0, bootLines).map(l => `${esc(l)} <span class="ok">${t('bootOk')}</span>`);
+    log.innerHTML = [...done, esc(line.slice(0, bootChars)) + '<span class="caret"></span>'].join('\n');
+    if (bootChars >= line.length) { bootLines++; bootChars = 0; bootTimer = setTimeout(bootType, 140); }
+    else bootTimer = setTimeout(bootType, 16);
   }
   // state: 'ok' (data in), 'fail' (first load failed), 'wait' (API slow: show the page and keep loading)
   let bootDone = false;
