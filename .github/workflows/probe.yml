@@ -28,7 +28,10 @@ jobs:
         # the input goes in as a variable, never pasted into the script (audit SEC-03)
         env:
           URLS: ${{ inputs.urls }}
-        run: node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe" && node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
+        # with pages to save, only those (a full dump of the APIs fails while the community API is down)
+        run: |
+          if [ -n "$URLS" ]; then node recorder/probe3.mjs "$RUNNER_TEMP/probe/web"
+          else node recorder/probe.mjs "$RUNNER_TEMP/probe" && node recorder/probe2.mjs "$RUNNER_TEMP/probe"; fi
       - env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
