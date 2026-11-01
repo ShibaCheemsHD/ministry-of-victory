@@ -119,3 +119,10 @@ test('feed: new orders and results as RSS, game markup removed, text escaped (au
   assert.equal(await notifyDiscord(hist, t0 + 83 * H, 'https://example.invalid/hook', send), 0);
   assert.equal(await notifyDiscord(hist, t0 + 83 * H, '', send), 0);
 });
+
+test('enemy list: every unit has its singular and plural name (src/game/enemies.json)', () => {
+  const foes = JSON.parse(fs.readFileSync(path.join(here, '..', 'src', 'game', 'enemies.json'), 'utf8'));
+  const ids = Object.keys(foes).filter(k => !k.startsWith('_'));
+  assert.ok(ids.includes('23741406'), 'the Radicals of order 3291378705');
+  for (const k of ids) { assert.match(k, /^\d+$/); assert.ok(foes[k].one && foes[k].many, k); }
+});

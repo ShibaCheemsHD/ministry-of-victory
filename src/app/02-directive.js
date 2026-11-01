@@ -39,6 +39,27 @@
   const pill = (v, label) => `<span class="pill v-${v}">${ICON[VICON[v] || 'dots']}${esc(label || t('v.' + v))}</span>`;
   const medalSvg = '<svg class="medal" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 1h10l-2 8h-6z" fill="var(--info)"/><circle cx="13" cy="16" r="8" fill="none" stroke="var(--yellow)" stroke-width="2"/><path d="M13 11.5l1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="var(--yellow)"/></svg>';
 
+  // "Common Sample" -> "Common Samples" when there are several (the item lists name one)
+  const pluralItem = (name, n) => n === 1 || !name ? name : /sample$/i.test(name) ? name + 's' : name;
+  // What an objective counts, precisely, for labels and sentences ("Radical kills", "Common Samples from
+  // Automaton worlds"): the enemy, item and faction the objective names, never a generic "Automaton kills"
+  // when it asks for one kind of enemy (1 Nov 2026: a Cyborg Radicals order showed as "Automaton kills").
+  function taskNoun(tk) {
+    if (!tk) return '';
+    const fac = tk.faction && tk.faction !== 'Humans' ? tk.faction : null;
+    const item = tk.itemId ? esc(itemName(tk.itemId)) : '';
+    switch (tk.type) {
+      case 3: {
+        const who = tk.enemyId ? (enemyKnown(tk.enemyId) ? esc(enemyOne(tk.enemyId)) : null) : fac ? facName(fac) : '';
+        if (who === null) return fill(t('nKillsUnit'), { f: fac ? facName(fac) : t('enemy') }) + (item ? ` ${t('with')} ${item}` : '');
+        return fill(t(who ? 'nKills' : 'nKillsAny'), { who }) + (item ? ` ${t('with')} ${item}` : '');
+      }
+      case 2: return (item ? esc(pluralItem(itemName(tk.itemId), 2)) : capFirst(t('samples'))) + (fac ? ' ' + fill(t('fromFac'), { f: facName(fac) }) : '');
+      case 6: return fill(t('nUses'), { item: item || t('itemAny') });
+      case 10: return fill(t('nDonations'), { item: item || t('resources') });
+      default: return capFirst(facWhat(fac, tk.type));
+    }
+  }
   function taskText(r) {
     const tk = r.task, n = big(tk.goal);
     // "Liberate 1 planet", not "1 planets"
@@ -51,12 +72,13 @@
       case 3: {
         // "Kill 1 Terminid", not "Kill 1 Terminids"
         const one = tk.goal === 1;
-        const target = tk.enemyId ? esc(one ? enemyOne(tk.enemyId) : enemyName(tk.enemyId)) : fac ? (one ? facName(fac) : facPlural(fac)) : t(one ? 'enemy' : 'enemies');
+        const target = tk.enemyId ? esc(one ? enemyOne(tk.enemyId, fac) : enemyName(tk.enemyId, fac)) : fac ? (one ? facName(fac) : facPlural(fac)) : t(one ? 'enemy' : 'enemies');
         const item = tk.itemId ? ` ${t('with')} ${esc(itemName(tk.itemId))}` : '';
         return `${t('kill')} ${n} ${target}${item}${where}${diff}`;
       }
       case 1: return fillN('extractN', { n }) + (fac ? ` · ${facName(fac)}` : '') + where + diff;
-      case 2: return `${t('extract')} ${n} ${tk.itemId ? esc(itemName(tk.itemId)) : t('samples')}${where}`;
+      // "Extract 35M Common Samples from Automaton worlds": the faction says where they come from (1 Nov 2026)
+      case 2: return fill(t('extractWith'), { n, item: tk.itemId ? esc(pluralItem(itemName(tk.itemId), tk.goal)) : t('samples') }) + (fac ? ' ' + fill(t('fromFac'), { f: facName(fac) }) : '') + where;
       case 4: return fillN('objectives', { n }) + where + diff;
       case 5: return fillN('play', { n }) + where + diff;
       case 6: return fillN('use', { item: esc(itemName(tk.itemId) || ''), n }) + where;
@@ -173,7 +195,7 @@
         why = d.measuring ? D.measuring : fill(D.weapon.why, { proj: projTxt }); meter = meterProj(d.task); ring = taskRing(d.task); break;
       case 'counter': {
         fac = d.faction; const tk = d.task.task;
-        const enemyTarget = () => tk.enemyId ? enemyName(tk.enemyId) : (tk.faction ? (t('facPl')[tk.faction] || t('fac')[tk.faction]) : t('tgtEnemies'));
+        const enemyTarget = () => tk.enemyId ? enemyName(tk.enemyId, tk.faction) : (tk.faction ? (t('facPl')[tk.faction] || t('fac')[tk.faction]) : t('tgtEnemies'));
         const C = {
           3: [D.kill, enemyTarget],
           1: [D.extract, () => t('tgtExtractions')],

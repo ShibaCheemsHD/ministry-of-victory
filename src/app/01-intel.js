@@ -145,7 +145,7 @@
   const boost = (p) => p >= 300 ? '×' + fmt(p / 100, p < 1000 ? 1 : 0) : signed(p - 100);
   function effectLabel(type, v) {
     const pctv = valOf(v, 2), item = valOf(v, 4), foe = valOf(v, 16) ?? valOf(v, 13);
-    const foeName = foe && names.enemies?.[foe] ? esc(names.enemies[foe]) : null;
+    const foeName = foe && enemyKnown(foe) ? esc(enemyName(foe)) : null;
     const L = t('in.fx');
     switch (type) {
       case 1: return pctv > 0 ? fill(L.lib, { x: boost(pctv) }) : L.libOdd;
@@ -292,11 +292,11 @@
     const counts = [cmd.length ? fill(t(cmd.length === 1 ? 'it.n1' : 'it.n'), { n: cmd.length }) : null, active.length ? fill(t(active.length === 1 ? 'it.nActive1' : 'it.nActive'), { n: active.length }) : null, ns.length ? fill(t(ns.length === 1 ? 'it.nNews1' : 'it.nNews'), { n: ns.length }) : null].filter(Boolean);
     const quiet = !cmd.length && !active.length;
     return `<div class="intel-tab">
-      <div class="it-head"><div><h3>${esc(t('it.title'))}</h3>${counts.length ? `<p>${counts.join(' · ')}</p>` : ''}</div>
-        <div class="it-legend"><span class="it-sure data">${ICON.data}${esc(t('in.tag.data'))}</span><span class="it-sure lens">${ICON.lens}${esc(t('in.tag.deduced'))}</span></div></div>
+      <div class="it-head"><div><h3>${esc(t('it.title'))}</h3>${counts.length ? `<p>${counts.join(' · ')}</p>` : ''}</div></div>
       ${events.length ? timeline : ''}
       ${quiet && !ns.length ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('allQuiet'))}</p></div>` : `<div class="it-cols">
         <section class="it-col"><span class="label">${esc(t('it.cmd'))}</span>
+          ${quiet ? '' : `<p class="it-legend"><span><span class="it-sure data">${ICON.data}${esc(t('in.tag.data'))}</span> ${esc(t('it.keyData'))}</span><span><span class="it-sure lens">${ICON.lens}${esc(t('in.tag.deduced'))}</span> ${esc(t('it.keyDeduced'))}</span></p>`}
           ${quiet ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('it.quiet'))}</p></div>` : ''}
           ${cmd.map(x => card(x, events.indexOf(x))).join('')}
           ${active.length ? `<span class="label sub">${esc(t('it.activeNow'))}</span>${active.map((x, k) => card(x, 'a' + k)).join('')}` : ''}</section>

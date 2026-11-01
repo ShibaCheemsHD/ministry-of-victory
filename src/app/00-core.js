@@ -1,8 +1,6 @@
   const API = 'https://api.helldivers2.dev';
   const NAMES = {
-    enemies: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/json/enemies/enemy_ids.json',
     items: 'https://raw.githubusercontent.com/helldivers-2/json/master/items/item_names.json',
-    strats: 'https://raw.githubusercontent.com/Stonemercy/Galactic-Wide-Web/main/data/lists.py',
   };
   // GitHub's raw files, with jsDelivr's copy of the same file as the fallback when raw is down or
   // throttled (audit ARCH-05). jsDelivr can be a few hours behind, which the callers' age checks handle.
@@ -117,33 +115,25 @@
   const names = { enemies: store.get('names.enemies', null), enemy1: store.get('names.enemy1', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };
   async function loadNames(force = false) {
     const age = Date.now() - store.get('names.t', 0);
-    if (names.enemies && names.items && age < (force ? 15 * 60e3 : 24 * 3600e3)) return;
+    if (names.items && age < (force ? 15 * 60e3 : 24 * 3600e3)) return;
+    // enemies come with the page (GAME.foe, src/game/enemies.json): the community enemy and stratagem lists
+    // went offline in Oct 2026, so only the item list is fetched; older copies in this browser still help
     try {
-      const [enemyList, itemList, py] = await Promise.all([
-        ghFetch(NAMES.enemies).then(r => r.ok ? r.json() : null).catch(() => null),
-        ghFetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null),
-        ghFetch(NAMES.strats).then(r => r.ok ? r.text() : null).catch(() => null),
-      ]);
-      if (enemyList) { names.enemies = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.plural || v.name])); store.set('names.enemies', names.enemies);
-        names.enemy1 = Object.fromEntries(Object.entries(enemyList).map(([k, v]) => [k, v.name || v.plural])); store.set('names.enemy1', names.enemy1); }
+      const itemList = await ghFetch(NAMES.items).then(r => r.ok ? r.json() : null).catch(() => null);
       if (itemList) { names.items = Object.fromEntries(Object.entries(itemList).map(([k, v]) => [k, v.name])); store.set('names.items', names.items); }
-      if (py) {
-        const block = py.split('STRATAGEM_ID_DICT')[1] || '';
-        const s = {};
-        for (const m of block.slice(0, block.indexOf('}')).matchAll(/(\d+)\s*:\s*"([^"]+)"/g)) s[m[1]] = m[2];
-        names.strats = s; store.set('names.strats', s);
-      }
       store.set('names.t', Date.now());
     } catch {}
   }
   // a name the lists don't have yet (a brand-new weapon or enemy): plain words, never a raw id
   const itemKnown = (id) => id ? (names.items?.[id] || names.strats?.[id] || null) : null;
   const itemName = (id) => id ? (itemKnown(id) || t('itemAny')) : null;
-  const enemyName = (id) => id ? (names.enemies?.[id] || t('enemyAny')) : null;
-  const enemyOne = (id) => id ? (names.enemy1?.[id] || enemyName(id)) : null;
+  // an enemy unit not in our list yet: said as "Automaton targets of one kind", never as all Automatons
+  const enemyName = (id, fac) => id ? (GAME.foe?.[id]?.many || names.enemies?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyAnyF'), { f: facName(fac) }) : t('enemyAny'))) : null;
+  const enemyOne = (id, fac) => id ? (GAME.foe?.[id]?.one || names.enemy1?.[id] || (fac && fac !== 'Humans' ? fill(t('enemyOneF'), { f: facName(fac) }) : t('enemyAny'))) : null;
+  const enemyKnown = (id) => !!(GAME.foe?.[id] || names.enemies?.[id]);
   const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   const unknownNames = (results) => results.some(({ res }) => res.tasks.some(r =>
-    (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || (r.task.enemyId && !names.enemies?.[r.task.enemyId])));
+    (r.task.itemId && !(names.items?.[r.task.itemId] || names.strats?.[r.task.itemId])) || false));
 
   /* ---------- API ---------- */
   // The API translates briefings and names into the language the browser asks for (an Italian browser

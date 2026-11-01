@@ -145,14 +145,14 @@
     for (const r of res.anyOf ? [res.tasks[res.pick]] : res.tasks) {
       if (r.verdict === 'done') continue;
       if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
-        const noun = facWhat(r.task.faction, r.task.type);
+        const noun = taskNoun(r.task);
         const rec0 = r.rates.recent ? r.rates.recent.rate : null;
         // the last hour is worth showing only when it differs from the main pace
         const rec = rec0 != null && r.primary.rate > 0 && Math.abs(rec0 / r.primary.rate - 1) > 0.1 ? rec0 : null;
         // on track thanks to players switching over from finished objectives: the meter shows that pace, said so
         const fr = r.verdict === 'ontrack' && r.freed && r.freed.rate > 0 ? r.freed.rate : null;
-        if (fr != null) { meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), fr, r.needed, fill(t('why.paceFreed'), { have: big(r.primary.rate), eff: big(fr), need: big(r.needed) }), null, `${res.id}:${r.idx}`); continue; }
-        meter(esc(noun.charAt(0).toUpperCase() + noun.slice(1)), r.primary.rate, r.needed,
+        if (fr != null) { meter(noun, fr, r.needed, fill(t('why.paceFreed'), { have: big(r.primary.rate), eff: big(fr), need: big(r.needed) }), null, `${res.id}:${r.idx}`); continue; }
+        meter(noun, r.primary.rate, r.needed,
           fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
       } else if (r.defense && !r.defense.outlastsMO) {
         meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,

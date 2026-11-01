@@ -59,7 +59,7 @@
     return won.filter(n => Math.abs(n.t - x.t) < 3 * 3.6e6).sort((a, b) => Math.abs(a.t - x.t) - Math.abs(b.t - x.t))[0] || null;
   }
   function joelItem(x, tasks, rel, ctx = {}) {
-    const noun = (i) => { const tk = tasks && tasks[i - 1]; if (!tk) return '#' + i; const p = tk.raw ? tk : ENGINE.parseTask(tk, 0); const w = plain(facWhat(p.faction, p.type)); return w.charAt(0).toUpperCase() + w.slice(1); };
+    const noun = (i) => { const tk = tasks && tasks[i - 1]; if (!tk) return '#' + i; const p = tk.raw ? tk : ENGINE.parseTask(tk, 0); return plain(taskNoun(p)); };
     if (x.kind === 'edited') {
       const g = (x.diff || []).filter(d => d.kind === 'goal');
       const title = g.length && g.every(d => d.to < d.from) ? t('jo.cut') : g.length && g.every(d => d.to > d.from) ? t('jo.raised') : t('jo.edited');

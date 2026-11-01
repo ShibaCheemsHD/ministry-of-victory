@@ -292,7 +292,7 @@
       case 'cntWeapon': p = { item: esc(itemName(m.task.task.itemId) || '') }; break;
       case 'cntStart': p = { task: taskText(m.task), needed: big(m.needed) }; break;
     }
-    const subj = m.task && m.task.task ? facWhat(m.task.task.faction, m.task.task.type) : null;
+    const subj = m.task && m.task.task ? taskNoun(m.task.task) : null;
     let fx = effectText(m.effect, subj);
     if (m.kind === 'cntMove' && m.short) { const g = effectText({ kind: 'gap', more: m.short, weaponUse: m.shortWeaponUse }); if (g) fx = fx ? fx + '. ' + g : g; }
     const nums = MV.nums != null ? MV.nums : (R(m.kind) || [])[2] || '';
@@ -318,7 +318,7 @@
     const { res } = entry, { worst } = storyFacts(entry), lib = res.liberation;
     const tiles = [];
     if (worst) {
-      const { r, f } = worst, noun = facWhat(r.task.faction, r.task.type);
+      const { r, f } = worst, noun = plain(taskNoun(r.task));
       if (f.fromStart && !compact) tiles.push(tile(t('pm.tStart'), big(f.fromStart) + '<small>/h</small>', esc(fill(t('pm.tStartS'), { what: noun }))));
       const day = r.primary && r.primary.kind === 'day';
       tiles.push(tile(t(day ? 'pm.tDay' : 'pm.tAvg'), big(f.avg) + '<small>/h</small>', f.fromStart ? esc(fill(t('pm.tAvgS'), { p: pct(f.avg / f.fromStart) })) : ''));

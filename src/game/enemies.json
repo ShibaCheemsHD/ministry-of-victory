@@ -1,0 +1,7 @@
+{
+  "_about": "Enemy unit ids the game uses in Major Order objectives (task valueType 4), with the names it shows. Kept here because the community list (Galactic-Wide-Web) went offline in Oct 2026. The recorder flags any id missing from this file (health issue), so a new one gets added within hours. Source of each entry in 'from'.",
+  "23741406": { "one": "Radical", "many": "Radicals", "faction": "Automaton", "from": "objective 'Kill 60,000,000 Radicals' (Cyborg Legion), order 3291378705, Oct 2026" },
+  "878778730": { "one": "Automaton Trooper", "many": "Automaton Troopers", "faction": "Automaton", "from": "briefing 'Decommission the targeted quantity of Automaton Troopers', Blazing Electorate" },
+  "1378841226": { "one": "Dragon Roach", "many": "Dragon Roaches", "faction": "Terminids", "from": "briefing 'Kill the required number of Dragon Roaches'" },
+  "4211847317": { "one": "Voteless", "many": "Voteless", "faction": "Illuminate", "from": "briefing 'Kill the designated number of Voteless', Census Thunder" }
+}

@@ -132,6 +132,18 @@ const ok = (k) => { hist.health[k] = { ...(hist.health[k] || {}), ok: now }; };
 const bad = (k, msg) => { hist.health[k] = { ...(hist.health[k] || {}), err: now, msg: String(msg || '').slice(0, 300) }; };
 if (src === 'community') ok('community'); else { bad('community', commErr); ok('official'); }
 
+// An objective naming an enemy unit our list (src/game/enemies.json) doesn't know: the page can only say
+// "Automaton targets of one kind" until it is added, so the health check raises it (1 Nov 2026: the
+// community list went offline and a Radicals order showed as "Automaton kills").
+const unknownFoes = [];
+try {
+  const foes = JSON.parse(fs.readFileSync(new URL('../src/game/enemies.json', import.meta.url), 'utf8'));
+  for (const a of assignments || []) for (const tk of a.tasks || []) {
+    const vt = tk.valueTypes || [], k = vt.indexOf(4), id = k >= 0 ? Number(tk.values?.[k]) : 0;
+    if (id && !foes[String(id)]) unknownFoes.push({ id, order: String(a.id), brief: String(a.briefing || '').replace(/<[^>]*>/g, '').slice(0, 200), goal: Number(tk.values?.[vt.indexOf(3)]) || null, faction: Number(tk.values?.[vt.indexOf(1)]) || null });
+  }
+} catch (e) { console.log('::warning::enemy list unreadable: ' + e.message); }
+
 // Strategic Opportunity dispatches, kept for a week: a goal cut right after one was earned, not hand-made
 if (src === 'community') {
   const ds = await get('/api/v1/dispatches', 2).catch(() => []);
@@ -474,7 +486,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), histJson);
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10),
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10), unknownFoes,
   // how right the forecasts are, for the link next to the page's forecast (audit PO-03)
   trust: hist.backtest?.lib?.v2?.[6]?.within25 != null ? { fall6: hist.backtest.lib.v2[6].within25, n: hist.backtest.lib.v2[6].n, cnt: hist.backtest.cnt?.calledRight ?? null } : null }));
 // progress history for the page's charts: every running order since recording began (one point per

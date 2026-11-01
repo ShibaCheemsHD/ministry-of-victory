@@ -48,6 +48,8 @@ check('helldiversstats', 'helldiversstats.com', 48, 'new past orders get no exac
 hs = h.get('helldiversstats') or {}
 if hs.get('msg') and 'without readable objectives' in hs.get('msg', '') and (hs.get('err') or 0) >= (hs.get('ok') or 0):
     problems.append(f'**helldiversstats.com pages changed?** {hs["msg"]}: recorder/hs.mjs may need a new pattern.')
+for f in intel.get('unknownFoes') or []:
+    problems.append(f'**Unknown enemy in a Major Order**: unit id `{f.get("id")}` (order {f.get("order")}, goal {f.get("goal")}, briefing: "{f.get("brief", "")}"). The page says "targets of one kind" until it is added to `src/game/enemies.json` with the name the game shows.')
 up = intel.get('warlogUpTo')
 if up and now - up / 1000 > 10 * 86400:
     notes.append(f'The community war log stops {ago(up)}: recent orders are judged from the recorder\'s own data only.')

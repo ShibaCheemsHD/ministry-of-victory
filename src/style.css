@@ -874,7 +874,9 @@ h1.logo { margin: 0; }
 .it-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px; }
 .it-head h3 { font: 700 20px/1.1 var(--display); font-stretch: 110%; text-transform: uppercase; letter-spacing: .04em; }
 .it-head p { margin-top: 4px; color: var(--muted); font-size: 14px; }
-.it-legend { display: flex; gap: 8px; flex-wrap: wrap; }
+/* the key sits over the cards it explains, with what each tag means (it used to float in the header, far from them) */
+.it-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; font-size: 13px; color: var(--muted); }
+.it-legend > span { display: inline-flex; align-items: center; gap: 8px; }
 .it-sure { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--ui); letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid var(--line-2); color: var(--muted); }
 .it-sure .ico { width: 12px; height: 12px; }
 .it-sure.data { color: var(--ok); border-color: rgba(95, 211, 141, .45); }
@@ -1761,7 +1763,10 @@ a { text-underline-offset: 3px; }
    They are the way into the plan, the charts and the log: they span the width of the order column,
    with a larger label and a taller hit area (48 px and up) instead of four small chips on the left. */
 .tabbar .tabs { flex: 1 1 auto; gap: 8px; }
-.tab { flex: 1 1 0; min-width: 0; padding: 16px 30px 22px 14px; font-size: 18px; letter-spacing: .08em; color: var(--muted); }
+.tab { flex: 1 1 auto; min-width: max-content; padding: 16px 30px 22px 14px; font-size: 18px; letter-spacing: .08em; color: var(--muted); }
+/* each tab at least as wide as its label and badge (1 Nov 2026: "Command log" + its count was cut off),
+   the spare width shared out; narrower order columns get a smaller label so all four still fit */
+@media (max-width: 1240px) { .tab { font-size: 16px; letter-spacing: .04em; padding-right: 20px; } }
 .tab::before { height: 16px; }
 .tab .idx { font-size: 12px; bottom: 6px; }
 .tab[aria-selected="true"]::after { bottom: 7px; height: 6px; }

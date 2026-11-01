@@ -127,6 +127,14 @@
                   {kind:'effect',on:true,t:now-2*H,eid:1136,type:1,v:[[2,200],[0,0]],planets:[75]}],
           effects:[{id:1136,type:1,v:[[2,200],[0,0]],planets:[75],events:[1]},{id:1152,type:32,v:[[4,1978117092],[1,0]],planets:[261,7,90],events:[2]}]},
         'recent.json':{v:1,updated:now-4*60e3,samples:[]}};
+    } else if (S==='samples') {
+      // like the live order on 1 Nov 2026: Common Samples from Automaton worlds + kills of one Cyborg unit (enemy id 23741406)
+      const prog=[23e6,32e6];
+      const tasks=[{type:2,values:[3,0,35000000,1,3992382197,0,0,0,0],valueTypes:[1,2,3,6,5,8,9,11,12]},
+        {type:3,values:[3,0,60000000,23741406,0,0,0,0,0,0],valueTypes:[1,2,3,4,6,5,8,9,11,12]}];
+      assignments=[{id:3291378705,title:'MAJOR ORDER',briefing:'Acquire Automaton samples and kill Cyborgs to aid the development of enhanced digital interrogation techniques.',description:'',progress:prog,tasks,rewards:[{type:1,amount:35}],expiration:new Date(now+25*H).toISOString()}];
+      raw=[{id32:3291378705,startTime:(now-47*H-warStart)/1000}];
+      campaigns=[bot2]; stations=[];
     } else if (S==='sniper' || S==='sniperlost') {
       // like the live order on 28 Oct: started 104 h ago, 15 h left, Terminid kills far behind, recorded for 4 hours
       const lost=S==='sniperlost';
@@ -212,7 +220,7 @@
   window.__mockScenario = q.get('s') || 'default';
   window.__mockRealRate = q.get('rate') === 'real';
   window.__mockLog = [];
-  window.__mockNames = {'enemy_ids.json':{},'item_names.json':{'1978117092':{name:'M-1000 Maxigun'}},'lists.py':'STRATAGEM_ID_DICT = {\n 123: "EAT-17",\n}'};
+  window.__mockNames = {'enemy_ids.json':{},'item_names.json':{'1978117092':{name:'M-1000 Maxigun'},'3992382197':{name:'Common Sample',mix_id:'3992382197'}},'lists.py':'STRATAGEM_ID_DICT = {\n 123: "EAT-17",\n}'};
   window.fetch = async (url, opts={}) => {
     const u = new URL(url);
     const file = u.pathname.split('/').pop();
