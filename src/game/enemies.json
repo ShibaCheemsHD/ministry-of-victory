@@ -1,7 +1,87 @@
 {
-  "_about": "Enemy unit ids the game uses in Major Order objectives (task valueType 4), with the names it shows. Kept here because the community list (Galactic-Wide-Web) went offline in Oct 2026. The recorder flags any id missing from this file (health issue), so a new one gets added within hours. Source of each entry in 'from'.",
-  "23741406": { "one": "Radical", "many": "Radicals", "faction": "Automaton", "from": "objective 'Kill 60,000,000 Radicals' (Cyborg Legion), order 3291378705, Oct 2026" },
-  "878778730": { "one": "Automaton Trooper", "many": "Automaton Troopers", "faction": "Automaton", "from": "briefing 'Decommission the targeted quantity of Automaton Troopers', Blazing Electorate" },
-  "1378841226": { "one": "Dragon Roach", "many": "Dragon Roaches", "faction": "Terminids", "from": "briefing 'Kill the required number of Dragon Roaches'" },
-  "4211847317": { "one": "Voteless", "many": "Voteless", "faction": "Illuminate", "from": "briefing 'Kill the designated number of Voteless', Census Thunder" }
+ "_about": "Enemy unit ids the game uses in Major Order objectives (task valueType 4), with the names the game shows. Kept here because the community list (Galactic-Wide-Web) went offline in Oct 2026. Each id was matched by order, goal and faction: the raw objectives (helldiversstats.com / the game) against the objective text on the Helldivers Wiki. The recorder flags any id missing from this file (health issue), so a new one gets added within hours.",
+ "23741406": {
+  "one": "Radical",
+  "many": "Radicals",
+  "faction": "Automaton",
+  "from": "Helldivers Wiki, \"Major Orders\" page: 'Kill 60,000,000 Radicals' (Oct 2026, order 3291378705); also 'Kill 25,000,000 Radicals' (May 2026)"
+ },
+ "878778730": {
+  "one": "Trooper",
+  "many": "Troopers",
+  "faction": "Automaton",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Blazing Electorate, 'Kill 200,000,000 Troopers' (Sep 2026)"
+ },
+ "2664856027": {
+  "one": "Shredder Tank",
+  "many": "Shredder Tanks",
+  "faction": "Automaton",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Armored Eagle, 'Kill 5,000,000 Automaton Shredder Tanks' (Sep 2026)"
+ },
+ "1371180916": {
+  "one": "Agitator",
+  "many": "Agitators",
+  "faction": "Automaton",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Counterdissident Hammer - Citizen Arrest, 'Kill 25,000,000 Agitators' (Aug 2026)"
+ },
+ "4066406510": {
+  "one": "Vox Engine",
+  "many": "Vox Engines",
+  "faction": "Automaton",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Counterdissident Hammer - Citizen Arrest, 'Kill 1,000,000 Vox Engines' (Aug 2026)"
+ },
+ "2651633799": {
+  "one": "Charger",
+  "many": "Chargers",
+  "faction": "Terminids",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Armored Eagle, 'Kill 25,000,000 Chargers' (Sep 2026)"
+ },
+ "1378841226": {
+  "one": "Dragon Roach",
+  "many": "Dragon Roaches",
+  "faction": "Terminids",
+  "from": "Helldivers Wiki, \"Major Orders\" page: 'Kill 2,000,000 Dragon Roaches' (Jun 2026)"
+ },
+ "717622970": {
+  "one": "Bile Spewer",
+  "many": "Bile Spewers",
+  "faction": "Terminids",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Epic Purge, 'Kill 30,000,000 Bile Spewers' (Oct 2026)"
+ },
+ "444529084": {
+  "one": "Bile Spitter",
+  "many": "Bile Spitters",
+  "faction": "Terminids",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Epic Purge, 'Kill 40,000,000 Bile Spitters' (Oct 2026)"
+ },
+ "4211847317": {
+  "one": "Voteless",
+  "many": "Voteless",
+  "faction": "Illuminate",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Census Thunder, 'Kill 25,000,000 Voteless' (Jun 2026)"
+ },
+ "3621116014": {
+  "one": "Obtruder",
+  "many": "Obtruders",
+  "faction": "Illuminate",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Counterdissident Hammer - Citizen Arrest, 'Kill 50,000,000 Obtruders' (Aug 2026)"
+ },
+ "1870840792": {
+  "one": "Gatekeeper",
+  "many": "Gatekeepers",
+  "faction": "Illuminate",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Counterdissident Hammer - Citizen Arrest, 'Kill 250,000 Gatekeepers' (Aug 2026)"
+ },
+ "2118086817": {
+  "one": "Wretch",
+  "many": "Wretches",
+  "faction": "Illuminate",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Strategic Opportunity Seasse, 'Kill 20,000,000 Wretches on Hydrobius' (Aug 2026)"
+ },
+ "3922421925": {
+  "one": "Crusher",
+  "many": "Crushers",
+  "faction": "Illuminate",
+  "from": "Helldivers Wiki, \"Major Orders\" page: Strategic Opportunity Seasse, 'Kill 5,000,000 Crushers on Hydrobius' (Aug 2026)"
+ }
 }
