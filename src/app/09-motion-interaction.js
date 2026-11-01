@@ -202,7 +202,11 @@
   }
 
   /* share the order of the day as plain text (Discord, Reddit, chat) */
-  const plain = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent.replace(/\s+/g, ' ').trim(); };
+  // HTML -> its text. Parsed in an inert document: a div made with createElement would load images and run
+  // their onerror even off-page, and these strings can come from outside (war log, helldiversstats, the API)
+  const plainDoc = typeof DOMParser !== 'undefined' ? new DOMParser() : null;
+  const plain = (html) => (plainDoc ? plainDoc.parseFromString(String(html ?? ''), 'text/html').body.textContent || ''
+    : String(html ?? '').replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
   function shareText(entry) {
     const { a, res } = entry;
     const p = directiveParts(res);

@@ -53,6 +53,16 @@ with sync_playwright() as p:
     for s in ('default', 'none', 'sniper'): run(br, s, 390)
     for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
     for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
+    # outside text never runs as code (1 Nov 2026: an order name with markup ran its onerror in the archive)
+    pg = br.new_page()
+    pg.add_init_script("""Object.defineProperty(window, '__mockArchive', { configurable: true, get() { return this.__a; }, set(v) {
+      const bad = '<img src=x onerror="window.__pwn=1">';
+      if (v && v.orders) v.orders.forEach(o => { o.name = 'MAJOR ORDER | ' + bad; o.brief = bad + ' Liberate it.'; (o.facts?.planets || []).forEach(p => { p.n = bad; }); });
+      this.__a = v; } });""")
+    pg.goto(f'{PAGE}?s=default&motion=reduced'); pg.wait_for_timeout(1500)
+    pg.click('#open-archive'); pg.wait_for_timeout(1500)
+    if pg.evaluate('window.__pwn'): problems.append('outside text ran as code in the archive')
+    pg.close()
     br.close()
 for x in problems[:60]: print('PROBLEM', x)
 print(f'{len(SCENARIOS) + 5 + FUZZ} pages, {len(problems)} problems')

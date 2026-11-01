@@ -11,7 +11,7 @@
     let p, objs, joel;
     try {
       p = directiveParts(res);
-      const box = document.createElement('div'); box.innerHTML = objectivesHTML(res);
+      const box = new DOMParser().parseFromString(objectivesHTML(res), 'text/html').body;
       objs = [...box.querySelectorAll('.objective')].map(el => {
         const h = el.querySelector('h4'); const opt = h.querySelector('.opt'); if (opt) opt.remove();
         const fillEl = el.querySelector('.bar .fill'), projEl = el.querySelector('.bar .proj');
