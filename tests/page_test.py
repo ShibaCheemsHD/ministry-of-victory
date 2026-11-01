@@ -34,7 +34,7 @@ def run(br, query, width):
       const a = [logo, r('#hud-stats .stat .v'), r('.hud-actions')].filter(x => x && x.width);
       for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].left < a[j].right - 1 && a[j].left < a[i].right - 1 && a[i].top < a[j].bottom - 1 && a[j].top < a[i].bottom - 1) return true; return false; }""")
     if clash: errs.append('header pieces overlap')
-    tabs = pg.locator('[data-otab]:visible')
+    tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)
         for tb in ('objectives', 'strategy', 'history', 'intel'):
