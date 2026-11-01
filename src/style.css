@@ -1776,7 +1776,7 @@ a { text-underline-offset: 3px; }
 @media (max-width: 640px) {
   /* each tab as wide as its label, "Command log" shortened to "Log" so all four fit */
   .tabbar .tabs { gap: 4px; }
-  .tab { flex: 1 1 auto; padding: 15px 6px 20px; font-size: 14px; letter-spacing: .04em; }
+  .tab { flex: 1 1 auto; min-width: 0; padding: 15px 6px 20px; font-size: 14px; letter-spacing: .04em; }
   .tab .tl-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tab .tl-short { display: inline; }
   .tab-badge { min-width: 16px; height: 16px; font-size: 10px; }
