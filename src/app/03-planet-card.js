@@ -91,12 +91,31 @@
       <button type="button" class="linkish dir-fc-more" data-goto-fc>${esc(t('fcWhy'))} ›</button>
     </div>`;
   }
+  // What the main button does: the plan while there is one; once the order is won, share it and point to
+  // the next order still running; once it is out of reach, the reasons and the order still worth playing
+  // (critique 1 Nov 2026: "See the plan" stayed on a finished order).
+  function nextOrder(res) {
+    const others = (last.results || []).filter(x => x.res !== res && !x.res.ended && x.res.verdict !== 'done' && x.res.verdict !== 'impossible' && x.res.verdict !== 'failed');
+    return others.sort((x, y) => (RANK_V[x.res.verdict] ?? 9) - (RANK_V[y.res.verdict] ?? 9))[0] || null;
+  }
+  const RANK_V = { ontrack: 0, effort: 1, focus: 1, hard: 2, record: 2, nearly_impossible: 3, unknown: 4 };
+  function endAction(res) {
+    const lost = res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done');
+    const next = (res.verdict === 'done' || lost) ? nextOrder(res) : null;
+    const nextBtn = next ? `<button type="button" class="btn ${res.verdict === 'done' ? 'ghostly' : 'primary'} next-order" data-otab="${esc(next.a.id)}">${esc(fill(t(res.verdict === 'done' ? 'endNextDone' : 'endNextLost'), { title: clean(txt(next.a.title) || 'Major Order') }))} ›</button>` : '';
+    if (res.verdict === 'done') return `<button type="button" class="btn primary" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('shareWin'))}</span></button>${nextBtn}`;
+    if (lost) return `${nextBtn}<button type="button" class="btn ${next ? 'ghostly' : 'primary'}" data-goto="strategy">${t('seeWhy')} ›</button>`;
+    return `<button type="button" class="btn primary" data-goto="strategy">${t('seePlan')} ›</button>`;
+  }
   function directiveHTML(res, a) {
     const p = directiveParts(res);
     const long = (p.target || '').length > 14;
     const globe = globeHTML(p, res);
     const tint = p.fac ? 'fac-' + esc(p.fac) : `k-${esc(p.d.kind)}`;
-    return `<div class="area-dir"><section class="panel br directive ${globe ? 'has-globe' : ''} ${tint}" aria-labelledby="dir-${esc(res.id)}">
+    // a won order gets one short celebration, the first time this browser sees it won (not at every refresh)
+    const party = res.verdict === 'done' && !(ui.celebrated ||= {})[res.id];
+    if (party) { ui.celebrated[res.id] = Date.now(); const ids = Object.keys(ui.celebrated); if (ids.length > 30) delete ui.celebrated[ids[0]]; saveUi(); }
+    return `<div class="area-dir"><section class="panel br directive ${globe ? 'has-globe' : ''} ${tint}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(res.id)}">
       <i class="hatch-rail l y" aria-hidden="true"></i>
       <div class="glow-clip" aria-hidden="true"><div class="glow"></div></div>
       <div class="dir-head"><span class="label"><i class="live"></i>${t('dirLabel')}</span>${p.fac ? `<span class="fchip">${facName(p.fac)}</span>` : ''}</div>
@@ -109,8 +128,8 @@
       <p class="why">${p.lead ? `<b class="lead v-${esc(res.verdict)}">${esc(p.lead)}</b>` : ''}${p.why}</p>
       ${p.meter}
       <div class="dir-actions">${phoneForecast(res, a)}
-        <button type="button" class="btn primary" data-goto="strategy">${t(res.verdict === 'impossible' || res.verdict === 'failed' || (res.ended && res.verdict !== 'done') ? 'seeWhy' : 'seePlan')} ›</button>
-        <button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}" aria-label="${esc(t('sh.btn'))}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>
+        ${endAction(res)}
+        ${res.verdict === 'done' ? '' : `<button type="button" class="btn ghostly" data-shareimg="${esc(res.id)}" aria-label="${esc(t('sh.btn'))}">${ICON.image}<span data-short="${esc(t('sh.short'))}">${t('sh.btn')}</span></button>`}
         <button type="button" class="btn ghostly" data-copy="${esc(res.id)}" aria-label="${esc(t('copy'))}">${ICON.copy}<span data-short="${esc(t('copyShort'))}">${t('copy')}</span></button>
       </div>
     </section></div>`;

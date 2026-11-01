@@ -166,6 +166,19 @@
     const filters = kinds.length > 1 ? `<div class="nk-filter" role="group" aria-label="${esc(t('nw.filter'))}"><button type="button" data-nf="" aria-pressed="${!f}">${esc(t('nw.all'))} <small>${all.length}</small></button>${kinds.map(k => `<button type="button" class="nk-${k}" data-nf="${k}" aria-pressed="${f === k}">${ICON[NEWS_ICON[k]]}${esc(t('nk.' + k))} <small>${all.filter(x => x.k === k).length}</small></button>`).join('')}</div>` : '';
     return `<section class="newsbox panel br"><span class="label">${esc(t('nw.title'))}</span>${filters}${feedHTML(shown)}</section>`;
   }
+  // No order running: one concrete place to fight meanwhile (critique 1 Nov 2026). A defense that ends
+  // soonest comes first (losing it costs a planet), else the planet most Helldivers are on.
+  function meanwhileHTML() {
+    const P = Object.values(last.planets || {}).filter(p => p && p.currentOwner);
+    const now = last.now;
+    const defs = P.filter(p => p.event && Date.parse(p.event.endTime) > now).sort((a, b) => Date.parse(a.event.endTime) - Date.parse(b.event.endTime));
+    const busy = [...P].filter(p => p.currentOwner !== 'Humans' || p.event).sort((a, b) => (b.statistics?.playerCount || 0) - (a.statistics?.playerCount || 0));
+    const p = defs[0] || busy[0];
+    if (!p) return '';
+    const why = p.event ? fill(t('mw.def'), { when: clock((Date.parse(p.event.endTime) - now) / 3.6e6) }) : fill(t('mw.busy'), { n: people(p.statistics?.playerCount || 0) });
+    return `<p class="meanwhile">${ICON.target}<span><b>${esc(t('mw.head'))}</b> ${fill(t('mw.go'), { p: planetName(p) })} ${why}</span>
+      <button type="button" class="linkish" data-open-planet="${p.index}">${esc(t('mw.open'))} ›</button></p>`;
+  }
   function frontsHTML() {
     const P = Object.values(last.planets || {}).filter(p => p && p.currentOwner);
     const F = ['Terminids', 'Automaton', 'Illuminate'].map(f => {

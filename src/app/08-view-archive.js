@@ -278,7 +278,7 @@
     if (!entry) {
       view.innerHTML = `<div class="empty-wrap"><div class="empty-main">
           <p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>
-          ${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
+          ${meanwhileHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
       document.title = 'Ministry of Victory';
       return;

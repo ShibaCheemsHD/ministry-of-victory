@@ -1878,3 +1878,20 @@ a { text-underline-offset: 3px; }
   .dir-fc-more { margin-left: auto; font-size: 13px; text-underline-offset: 3px; color: var(--muted); min-height: 32px; display: inline-flex; align-items: center; }
 }
 .verdict-card { scroll-margin-top: 90px; }
+
+/* a won order: one short, sober moment (the check lands, a stripe of light crosses the panel), once */
+.directive.celebrate .big-check { animation: winPop .7s cubic-bezier(.2, 1.5, .4, 1) both; }
+.directive.celebrate::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--ok) 22%, transparent) 50%, transparent 65%);
+  transform: translateX(-100%); animation: winSweep 1.4s .25s var(--ease) both; }
+@keyframes winPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 0 10px color-mix(in srgb, var(--ok) 25%, transparent); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+@keyframes winSweep { to { transform: translateX(100%); } }
+.calm .directive.celebrate .big-check, .calm .directive.celebrate::after { animation: none; }
+.calm .directive.celebrate::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .directive.celebrate .big-check { animation: none; } .directive.celebrate::after { display: none; } }
+.dir-actions .next-order { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* between orders: one place to fight meanwhile */
+.meanwhile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 14px; margin: 0; border: 1px solid var(--line); background: var(--panel); font-size: 15px; }
+.meanwhile .ico { width: 16px; height: 16px; color: var(--yellow); }
+.meanwhile > span { flex: 1 1 260px; }
+.meanwhile b { color: var(--yellow); font-weight: 700; }
