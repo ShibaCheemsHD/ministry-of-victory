@@ -293,11 +293,12 @@
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
       syncHash();
       document.title = 'Ministry of Victory';
+      fxAfterRender(view, null);
       return;
     }
     const firstTime = !prev.seen[entry.a.id];
     view.innerHTML = viewHTML(entry);
-    if (opts.tabEnter) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
+    if (opts.tabEnter && !viaKeys) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
     afterRender(entry, firstTime);
     prev.seen[entry.a.id] = true;
     const title = directiveParts(entry.res).title;

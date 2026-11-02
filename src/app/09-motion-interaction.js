@@ -4,31 +4,31 @@
     layoutCharts();
     if (ui.pcPinned) openCard(true);
     const motion = !reduced();
-    if (motion && firstTime) view.querySelector('.order')?.classList.add('anim');
+    // the page renders two or three times in its first second (saved snapshot, fresh data, names): a
+    // motion started by the first render carries on through the next ones instead of being cut off
+    const ord = view.querySelector('.order'), oid = entry ? String(entry.a.id) : '';
+    if (motion && ord) {
+      if (firstTime) animT0[oid] = performance.now();
+      const el = performance.now() - (animT0[oid] ?? -1e9);
+      if (el < 700) { ord.classList.add('anim'); ord.style.setProperty('--skip', (-el).toFixed(0) + 'ms'); }
+    }
     // bars: from previous width to new width
-    const bars = view.querySelectorAll('[data-w]');
-    bars.forEach(el => {
-      const key = el.dataset.key, w = Number(el.dataset.w);
-      const from = motion ? (prev.bars[key] ?? 0) : w;
-      el.style.transition = 'none';
-      el.style.width = from + '%';
-    });
+    const bars = [...view.querySelectorAll('[data-w]')].map(el => ({ el, g: motion ? glide(el.dataset.key, Number(el.dataset.w), 700) : { from: Number(el.dataset.w) } }));
+    bars.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.width = g.from + '%'; });
     // orbit rings: same idea, on stroke-dashoffset (pathLength = 100)
-    const rings = view.querySelectorAll('[data-ring]');
-    rings.forEach(el => {
-      const key = el.dataset.ring, f = Number(el.dataset.frac);
-      el.style.transition = 'none';
-      el.style.strokeDashoffset = String(100 - (motion ? (prev.bars[key] ?? 0) : f));
-    });
+    const rings = [...view.querySelectorAll('[data-ring]')].map(el => ({ el, g: motion ? glide(el.dataset.ring, Number(el.dataset.frac), 1200) : { from: Number(el.dataset.frac) } }));
+    rings.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.strokeDashoffset = String(100 - g.from); });
     void view.offsetWidth;
     requestAnimationFrame(() => {
-      bars.forEach(el => {
+      bars.forEach(({ el, g }) => {
         el.style.transition = '';
+        if (g.cont) { el.style.transitionDuration = g.dur.toFixed(0) + 'ms'; el.style.transitionDelay = '0s'; }
         el.style.width = el.dataset.w + '%';
         prev.bars[el.dataset.key] = Number(el.dataset.w);
       });
-      rings.forEach(el => {
+      rings.forEach(({ el, g }) => {
         el.style.transition = '';
+        if (g.cont) el.style.transitionDuration = g.dur.toFixed(0) + 'ms';
         el.style.strokeDashoffset = String(100 - Number(el.dataset.frac));
         prev.bars[el.dataset.ring] = Number(el.dataset.frac);
       });
@@ -55,6 +55,7 @@
       if (!reduced() && prev.dir[id] !== text) { const c = head.closest('.call'); if (c) { c.classList.add('scan'); setTimeout(() => c.classList.remove('scan'), 1300); } }
       prev.dir[id] = text;
     }
+    fxAfterRender(view, entry);
   }
 
   // shrink the headline until no single word overflows its column (names vary a lot in length)
@@ -70,11 +71,39 @@
   window.addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTarget()).catch(() => {});
 
-  // numbers are set, not counted up: on a screen read in a glance, a rolling number is noise
+  // numbers: the first time one shows it counts up beside its bar or ring; when a refresh changes it, it
+  // rolls to the new value and flashes once, so a change is seen without hunting for it. Text is final
+  // for screen readers from the start (aria-label), and nothing counts with animations off.
+  const animT0 = {}, runs = {}, countRuns = {};
+  // where a bar or ring starts: its last value, or the point it had reached if a re-render caught it moving
+  function glide(key, to, D) {
+    const now = performance.now(), r = runs[key];
+    if (r && r.to === to && now - r.t0 < r.D) {
+      const k = (now - r.t0) / r.D, e = 1 - Math.pow(1 - k, 3);
+      return { from: r.from + (to - r.from) * e, dur: r.D - (now - r.t0), cont: true };
+    }
+    const from = prev.bars[key] ?? 0;
+    if (from !== to) runs[key] = { from, to, t0: now, D };
+    return { from, dur: D };
+  }
   function countUp(el) {
-    const to = Number(el.dataset.to);
-    el.textContent = el.dataset.pct ? pct(to) : fmt(to);
-    prev.count[el.dataset.count] = to;
+    const key = el.dataset.count, to = Number(el.dataset.to);
+    const show = el.dataset.pct ? (v) => pct(v) : (v) => fmt(v);
+    const from = prev.count[key], first = from == null, now = performance.now();
+    prev.count[key] = to;
+    let r = countRuns[key];
+    if (!(r && r.to === to && now - r.t0 < r.D)) {
+      if (reduced() || !isFinite(to) || from === to) { el.textContent = show(to); return; }
+      r = countRuns[key] = { a: first ? 0 : from, to, t0: now, D: first ? 1000 : 650 };
+      if (!first) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    }
+    el.setAttribute('aria-label', show(to));
+    const step = (t) => {
+      const k = Math.min(1, (t - r.t0) / r.D), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = show(r.a + (to - r.a) * e);
+      if (k < 1 && el.isConnected) requestAnimationFrame(step); else el.removeAttribute('aria-label');
+    };
+    step(now);
   }
 
   /* ---------- live updates (every second) ---------- */
@@ -86,7 +115,20 @@
     // days, hours and minutes: on a second screen a ticking seconds field only pulls the eye
     return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>`;
   }
-  function rollDigits(el, html) { if (el.innerHTML !== html) el.innerHTML = html; }
+  // the countdown as the game's split-flap board: digits that change roll in (once a minute at most)
+  function rollDigits(el, html) {
+    const digits = html.replace(/<span>[^<]*<\/span>/g, '|').replace(/[^0-9|]/g, '');
+    const was = el.dataset.dg || '';
+    if (was === digits && el.firstChild) return;
+    el.dataset.dg = digits;
+    let k = 0;
+    el.innerHTML = html.replace(/<span>[^<]*<\/span>|\d/g, (m) => {
+      if (m.length > 1) { k++; return m; }
+      const roll = !reduced() && was.length === digits.length && was[k] !== m;
+      k++;
+      return `<i class="dg${roll ? ' roll' : ''}">${m}</i>`;
+    });
+  }
   // live counters: between refreshes, objectives count up at the pace just measured
   function tickCounters() {
     const now = Date.now();
