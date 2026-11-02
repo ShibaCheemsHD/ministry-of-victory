@@ -287,7 +287,7 @@
     const copy = (off) => blobs.map(b => `<ellipse cx="${(42 + off + b.x).toFixed(1)}" cy="${b.y.toFixed(1)}" rx="${b.rx.toFixed(1)}" ry="${b.ry.toFixed(1)}" class="${b.d ? 'd' : 'l'}"/>`).join('');
     return copy(-156) + copy(0) + copy(156);
   }
-  function holoPlanet(p, res) {
+  function holoPlanet(p, res, cap) {
     const r = p.ring;
     if (!r) return '';
     const id = 'gl' + String(res.id).replace(/[^\w-]/g, '');
@@ -310,6 +310,6 @@
         <circle class="g-rim" cx="120" cy="120" r="78"/>
         ${dss ? `<g class="g-sat ${last.hod ? 'hod' : ''}"><path d="M120 6.5l6.5 6.5-6.5 6.5-6.5-6.5z"/></g>` : ''}
       </svg>
-      <div class="g-val"><b>${pct(r.frac)}</b><span>${esc(r.label)}</span></div>
+      <div class="g-val"><b>${pct(r.frac)}</b><span>${esc(r.label)}</span></div>${cap ? `<span class="g-cap">${cap.split(' · ').map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}
     </div>`;
   }

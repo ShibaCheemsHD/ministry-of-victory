@@ -54,6 +54,7 @@ def run(br, query, width):
                 # nothing runs off the right edge, on every tab (1 Nov 2026: the Plan tab was cut on phones)
                 over = pg.evaluate(f"""() => [...document.querySelectorAll('#view *')].filter(e => {{ const r = e.getBoundingClientRect(); return r.width > 0 && r.right > {width} + 1 && !e.closest('svg, .pc-wrap, .war-map'); }}).slice(0, 2).map(e => e.tagName + '.' + String(e.className).split(' ')[0])""")
                 if over: errs.append(f'{tb} tab: wider than the screen ({", ".join(over)})')
+        pg.evaluate("document.querySelectorAll('.share-menu').forEach(d => { d.open = true; })")   # the image sits in the Share menu
         sh = pg.locator('[data-shareimg]:visible')
         if sh.count():
             sh.first.click(timeout=3000)

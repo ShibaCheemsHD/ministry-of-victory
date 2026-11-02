@@ -80,7 +80,7 @@
       const big1 = (mv.verb || '').toUpperCase();
       if (big1) { font(44, 900, SH_D); y += 30; T(big1, PAD, y, '#ffe900'); }
       font(mv.target.length > 14 ? 84 : 120, 900, SH_D);
-      for (const l of wrap(mv.target.toUpperCase(), IN, 2)) { y += mv.target.length > 14 ? 82 : 112; T(l, PAD, y, '#eef2f8'); }
+      for (const [i, l] of wrap(mv.target.toUpperCase(), IN, 2).entries()) { y += (mv.target.length > 14 ? 82 : 112) - (i === 0 && big1 ? 18 : 0); T(l, PAD, y, '#eef2f8'); }
       y += 18;
       const why = plain(mv.why);
       font(25, 500); for (const [i, l] of wrap(why, IN, 5).entries()) { y += 35; T(l, PAD, y, i === 0 && p.lead && !mv.moveOn ? vc : '#eef2f8'); }
@@ -176,7 +176,14 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
+  function setGlance(on) { settings.layout = on ? 'glance' : 'full'; store.set('settings', settings); if ($('s-layout')) $('s-layout').value = settings.layout; render(); }
+  // one Share menu: closes on a pick, on a click elsewhere and on Escape
   document.addEventListener('click', (e) => {
+    document.querySelectorAll('.share-menu[open]').forEach(d => { if (!d.contains(e.target) || e.target.closest('.sm-item')) d.open = false; });
+  }, true);
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-callnew-x]')) { ui.callChange = null; e.target.closest('.call-new')?.remove(); return; }
+    if (e.target.closest('[data-glance]')) { setGlance(false); return; }
     const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart
@@ -258,7 +265,12 @@
     else if (/^[1-5]$/.test(k)) { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
     else if (k === 'a') { e.preventDefault(); setView(ui.view === 'archive' ? 'war' : 'archive'); }
     else if (k === 'p' && document.querySelector('[data-globe]')) { e.preventDefault(); if (ui.pcPinned) closeCard(true); else openCard(true); }
+    else if (k === 'Escape' && document.querySelector('.share-menu[open]')) document.querySelectorAll('.share-menu[open]').forEach(d => { d.open = false; d.querySelector('summary').focus(); });
     else if (k === 'Escape' && $('view').querySelector('.pc-wrap.open')) closeCard(true);
+    else if (k === 'c' && $('view').querySelector('[data-copy]')) { e.preventDefault(); $('view').querySelector('[data-copy]').click(); }
+    else if (k === 's' && $('view').querySelector('[data-shareimg]')) { e.preventDefault(); $('view').querySelector('[data-shareimg]').click(); }
+    else if (k === 'g') { e.preventDefault(); setGlance(settings.layout !== 'glance'); }
+    else if (k === '/') { e.preventDefault(); if (ui.view !== 'archive') setView('archive'); setTimeout(() => $('ar-q')?.focus(), 0); }
     else if (k === 'r') { e.preventDefault(); refresh(); }
     else if (k === '?') { e.preventDefault(); $('dlg-info').showModal(); }
   });

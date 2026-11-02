@@ -19,7 +19,7 @@
 
   // Settings: what a player changes (animations) first; the forecast model's constants folded away under
   // "Advanced", each with what it does and a reset (critique 1 Nov 2026: raw constants with no guidance)
-  const SET_MAP = { 's-capmode': 'capMode', 's-cap': 'capacity', 's-dss': 'dssBonus', 's-hod': 'hodMult', 's-rec': 'recordShare', 's-contact': 'contact', 's-motion': 'motion' };
+  const SET_MAP = { 's-capmode': 'capMode', 's-cap': 'capacity', 's-dss': 'dssBonus', 's-hod': 'hodMult', 's-rec': 'recordShare', 's-contact': 'contact', 's-motion': 'motion', 's-layout': 'layout', 's-notify': 'notify' };
   const SET_DEF = { capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus, hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare };
   function syncSettings() {
     for (const [id, key] of Object.entries(SET_MAP)) $(id).value = settings[key];
@@ -32,9 +32,16 @@
         let v = el.type === 'number' ? Number(el.value) : el.value;
         // out of range or empty: back to the last good value rather than a forecast built on nonsense
         if (el.type === 'number' && (!isFinite(v) || el.value === '' || (el.min !== '' && v < Number(el.min)) || (el.max !== '' && v > Number(el.max)))) { el.value = settings[key]; toast(t('sBad')); return; }
+        if (key === 'notify' && v === 'on') {
+          // asked only when the player turns it on, never at load
+          if (!('Notification' in window)) { el.value = 'off'; toast(t('notifyNone')); return; }
+          Notification.requestPermission().then(p => { if (p !== 'granted') { settings.notify = 'off'; store.set('settings', settings); syncSettings(); toast(t('notifyNo'), 5000); } }).catch(() => {});
+        }
         settings[key] = v;
         store.set('settings', settings);
         syncSettings();
+        if (key === 'notify') return;
+        if (key === 'layout') { render(); return; }
         if (key === 'motion') { document.documentElement.classList.toggle('calm', reduced()); render(); }
         else refresh();
       });
@@ -79,7 +86,7 @@
     $('share-title').textContent = t('sh.title');
     $('dlg-share').addEventListener('close', () => { $('share-title').textContent = t('sh.title'); });
     $('order-tabs').setAttribute('aria-label', t('ordersAria'));
-    const lbl = { 'l-cap': 'sCap', 'l-capval': 'sCapVal', 'l-dss': 'sDss', 'l-hod': 'sHod', 'l-rec': 'sRec', 'l-contact': 'sContact', 'l-motion': 'sMotion',
+    const lbl = { 'l-cap': 'sCap', 'l-capval': 'sCapVal', 'l-dss': 'sDss', 'l-hod': 'sHod', 'l-rec': 'sRec', 'l-contact': 'sContact', 'l-motion': 'sMotion', 'l-layout': 'sLayout', 'h-layout': 'hLayout', 'l-notify': 'sNotify', 'h-notify': 'hNotify',
       'h-motion': 'hMotion', 'h-cap': 'hCap', 'h-capval': 'hCapVal', 'h-dss': 'hDss', 'h-hod': 'hHod', 'h-rec': 'hRec', 'h-contact': 'hContact', 'h-model': 'hModel',
       'l-g-display': 'gDisplay', 'l-g-model': 'gModel', 'l-g-api': 'gApi', 's-reset': 'sReset' };
     for (const [id, k] of Object.entries(lbl)) $(id).textContent = t(k);
@@ -87,10 +94,12 @@
     $('s-capmode').options[1].textContent = t('sManual');
     $('s-motion').options[0].textContent = t('mFull');
     $('s-motion').options[1].textContent = t('mReduced');
+    $('s-layout').options[0].textContent = t('lFull'); $('s-layout').options[1].textContent = t('lGlance');
+    $('s-notify').options[0].textContent = t('nOff'); $('s-notify').options[1].textContent = t('nOn');
     $('explain').innerHTML = EXPLAIN;
     $('explain').addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('.ex-toc a'); if (!a) return; e.preventDefault(); const el = $(a.getAttribute('href').slice(1)); if (el) el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); });
     // a way back to us from the page (audit PO-02): the repo's issue form, no account data sent
-    $('footer').innerHTML = `<p class="foot-keys">${t('keysHint')}</p><p>${esc(t('footer'))}</p><p class="foot-links"><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a><a href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml" target="_blank" rel="noopener">${esc(t('rss'))}</a><a href="https://github.com/ShibaCheemsHD/ministry-of-victory" target="_blank" rel="noopener">${esc(t('source'))}</a></p>`;
+    $('footer').innerHTML = `<p class="foot-keys">${t('keysHint')}</p><p>${esc(t('timesNote'))} ${esc(t('footer'))}</p><p class="foot-links"><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a><a href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml" target="_blank" rel="noopener">${esc(t('rss'))}</a><a href="https://github.com/ShibaCheemsHD/ministry-of-victory" target="_blank" rel="noopener">${esc(t('source'))}</a></p>`;
     for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) el.textContent = t(k); }
     const note = $('sk-note'); if (note) note.textContent = t('firstLoad');
   }

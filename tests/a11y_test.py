@@ -53,6 +53,7 @@ with sync_playwright() as p:
         back = pg.evaluate(f"() => '#' + document.activeElement.id === '{opener}' && !document.getElementById('{dlg}').open")
         if not inside: keys.append(f'{dlg}: focus does not move into the dialog')
         if not back: keys.append(f'{dlg}: Escape does not close it and return focus to {opener}')
+    pg.evaluate("document.querySelectorAll('.share-menu').forEach(d => { d.open = true; })"); check(pg, 'share menu')
     pg.locator('[data-shareimg]:visible').first.click(); pg.wait_for_selector('#share-body img'); check(pg, 'share')
     pg.close()
     # every control reachable by Tab has a visible focus style

@@ -146,7 +146,7 @@
     const moveOn = state !== 'done' && !!(next || mw);
     const verb0 = ['steady', 'lost'].includes(p.d.kind) ? '' : p.d.kind === 'ended' ? p.kicker + ':' : p.kicker;
     let verb = verb0, target = p.target, why = `${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}`, planet = p.planet;
-    const lead = res.ended ? t('bw.overWhy') : `${t('bw.outLead')} ${t('m.' + v)}`;
+    const lead = res.ended ? t('bw.overWhy') : t('bw.outLead');
     if (moveOn && next) { verb = t('bw.play'); target = titleCase(clean(txt(next.a.title) || 'Major Order')); why = `${esc(lead)} ${esc(t(lvl(next.res.verdict) === 'record' || lvl(next.res.verdict) === 'out' ? 'bw.nextHard' : 'bw.nextWhy'))}`; planet = null; }
     else if (moveOn && mw) { verb = t(mw.defend ? 'bw.defend' : 'bw.drop'); target = plain(planetName(mw.p)); why = `${esc(lead)} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; planet = mw.p; }
     const tag = state === 'out' && !moveOn ? t('callTag.outLong') : t('callTag.' + state);
@@ -170,12 +170,12 @@
       : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
       : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd></div>`;
     // the reward: on a won order the medals stand where the planet does; on a lost one they are not earned
-    const reward = medals && m.state !== 'done' ? `<div><dt>${esc(t('reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t(lost ? 'medalsLost' : 'medals'), { n: fmt(medals) })}</span></dd></div>` : '';
+    const reward = medals && m.state !== 'done' ? `<div><dt>${esc(t(lost ? 'rewardLost' : 'reward'))}</dt><dd class="reward">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : '';
     const meanwhile = m.state === 'done' && !m.next ? meanwhileHTML() : '';
     // the call's planet as the war table's hologram (also the planet a lost order suggests)
     const ringOf = (pl) => pl && pl.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (pl.event ? pl.event.health / pl.event.maxHealth : pl.health / pl.maxHealth))), label: t(pl.event ? 'gDef' : 'gLib'), tone: 'lib' } : null;
     const art = m.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>`
-      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res) : '') : holoPlanet(p, res);
+      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res, t(m.mw.defend ? 'capDef' : 'capBusy')) : '') : holoPlanet(p, res);
     // actions: the move first, then one quieter line to pass the call on
     const primary = m.moveOn && m.next ? `<button type="button" class="btn primary" data-otab="${esc(m.next.a.id)}" data-pick>${esc(fill(t('endNextLost'), { title: m.target }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
@@ -193,8 +193,10 @@
         ${meanwhile}
         <div class="call-actions">${primary}</div>
         <div class="call-tools">
-          ${res.verdict === 'done' ? '' : `<button type="button" class="btn quiet" data-shareimg="${esc(res.id)}">${ICON.image}<span>${t('sh.btn')}</span></button>`}
-          <button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span></button>
+          ${res.verdict === 'done' ? `<button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span><span class="kcap sm" aria-hidden="true">C</span></button>`
+            : `<details class="share-menu"><summary class="btn quiet">${ICON.image}<span>${esc(t('shareMenu'))}</span>${ICON.chev}</summary><div class="sm-list">
+              <button type="button" class="sm-item" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('sh.btn'))}</span><span class="kcap sm" aria-hidden="true">S</span></button>
+              <button type="button" class="sm-item" data-copy="${esc(res.id)}">${ICON.copy}<span>${esc(t('copy'))}</span><span class="kcap sm" aria-hidden="true">C</span></button></div></details>`}
           ${m.moveOn ? '' : planetBtn(res)}
         </div>
       </div>
