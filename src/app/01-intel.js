@@ -474,7 +474,11 @@
       newOnes.forEach(x => known.add(String(x.a.id)));
       store.set('known', [...known].slice(-50));
       if (seed && freshDone) return;
-      last = { N, planets, dssIdx, hod, C, K, imp, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
+      // what one won mission is worth: HP per won mission per unit of impact multiplier, measured by the
+      // recorder over its history; and the multiplier's mean over the last day (to say if now is a good hour)
+      const dayImp = samples.filter(s => s.imp && now - s.t < 24 * 3600e3).map(s => s.imp);
+      const impDay = dayImp.length >= 12 ? dayImp.reduce((a, b) => a + b, 0) / dayImp.length : null;
+      last = { N, planets, dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
       if (!seed) freshDone = true;
       lastOk = now;
       if (dragging) pendingRender = true; else render();

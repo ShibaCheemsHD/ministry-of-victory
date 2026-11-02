@@ -176,6 +176,36 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
   }
 
+  /* ---------- Managed Democracy for Dummies: the questions every Helldiver asks before dropping ---------- */
+  const FAQ_SRC = [['Helldivers Wiki: Second Galactic War mechanics', 'https://helldivers.wiki.gg/wiki/Liberation'],
+    ['Switchblade Gaming: Galactic War guide (April 2026)', 'https://www.switchbladegaming.com/helldivers-2/galactic-war-guide/'],
+    ['FRVR: Major Order rewards change (April 2026)', 'https://frvr.com/blog/helldivers-2-makes-huge-major-order-change/']];
+  function faqLive() {
+    if (!last) return t('faq.noLive');
+    const e = last.results.find(x => String(x.a.id) === String(ui.order)) || last.results[0];
+    const pl = (e && directiveParts(e.res).planet) || (meanwhilePick() || {}).p;
+    const w = pl && missionWorth(pl);
+    if (!w) return t('faq.noLive');
+    const day = w.vsDay && Math.abs(w.vsDay - 1) >= 0.1 ? esc(fill(t(w.vsDay > 1 ? 'worth.more' : 'worth.less'), { p: Math.round(Math.abs(w.vsDay - 1) * 100) + '%' })) : '';
+    return fill(t('faq.live'), { planet: planetName(pl), m: tinyPct(w.frac), n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')), day });
+  }
+  function openFaq(id) {
+    const F = t('faq'), dlg = $('dlg-faq');
+    $('faq-title').textContent = F.title;
+    $('faq-body').innerHTML = `<p class="faq-intro">${esc(F.intro)}</p><div class="faq-list">${F.items.map(it => `<details class="faq" id="faq-${it.id}"${it.id === id ? ' open' : ''}><summary>${esc(it.q)}</summary><div class="faq-a">${fill(it.a, { live: faqLive(), unsure: esc(F.unsure), dss: Math.round(settings.dssBonus * 100) + '%', hod: String(settings.hodMult) })}</div></details>`).join('')}</div>
+      <div class="faq-foot"><p>${esc(F.checked)}</p><ul>${FAQ_SRC.map(([n, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a></li>`).join('')}</ul><p><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(F.sources)}</a></p></div>`;
+    document.querySelectorAll('dialog[open]').forEach(d => { if (d !== dlg) d.close(); });
+    if (!dlg.open) dlg.showModal();
+    const el = id && $('faq-' + id);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'start' }));
+  }
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest && e.target.closest('[data-faq]');
+    if (f) { e.preventDefault(); openFaq(f.dataset.faq); return; }
+    const h = e.target.closest && e.target.closest('[data-help]');
+    if (h) { $('dlg-faq').close(); $('dlg-info').showModal(); const s = $(h.dataset.help); if (s) requestAnimationFrame(() => s.scrollIntoView({ block: 'start' })); }
+  });
+
   function setGlance(on) { settings.layout = on ? 'glance' : 'full'; store.set('settings', settings); if ($('s-layout')) $('s-layout').value = settings.layout; render(); }
   // one Share menu: closes on a pick, on a click elsewhere and on Escape
   document.addEventListener('click', (e) => {
@@ -274,6 +304,7 @@
     else if (k === '/') { e.preventDefault(); if (ui.view !== 'archive') setView('archive'); setTimeout(() => $('ar-q')?.focus(), 0); }
     else if (k === 'r') { e.preventDefault(); refresh(); }
     else if (k === '?') { e.preventDefault(); $('dlg-info').showModal(); }
+    else if (k === 'f') { e.preventDefault(); openFaq('count'); }
   });
   // arrow keys inside tab lists
   document.addEventListener('keydown', (e) => {

@@ -191,7 +191,7 @@ const TEXT = {
     tipP: '{n} Helldivers', tipL: '{p}% liberated', tipD: 'defense {p}%' },
   pc: {
     open: 'Planet briefing: conditions, enemies and what to bring', close: 'Close', held: '{f} controlled', attacked: 'Super Earth · under {f} attack', ours: 'Super Earth controlled',
-    lib: 'Liberated', defended: 'Defended', players: 'Helldivers', regen: 'Enemy regen', falls: 'Falls', late: 'not in time',
+    lib: 'Liberated', defended: 'Defended', players: 'Helldivers', regen: 'Enemy regen', mission: 'One mission won', falls: 'Falls', late: 'not in time',
     where: 'Conditions', enemy: 'Enemies', order: 'For this order', noHz: 'No special conditions reported on this planet.',
     reqS: 'Required: only kills with it count.', freeS: 'Free right now on this planet: Super Earth Command added it to every loadout.',
     src: { wiki: 'Helldivers Wiki', game: 'game description' },
@@ -298,7 +298,7 @@ const TEXT = {
   m: { done: 'Every objective is done.', ontrack: 'At today\'s pace we make it.', effort: 'Winnable, with more Helldivers than today.', focus: 'Winnable if we focus on the call.', hard: 'It needs record turnout: far more Helldivers than today.', record: 'It needs record turnout.', nearly_impossible: 'It would take almost every Helldiver online.', impossible: 'Not winnable even with every Helldiver online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace: give it a few minutes.' },
   timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', rewardLost: 'Reward lost', lgFront: 'front', glanceBtn: 'Glance view', fxBoot: ['Uplink to Super Earth: established', 'Major Orders: received', 'Galactic war statistics: decrypting', 'Decision desk: computing the call'], capDef: 'Under attack · not in this order', capBusy: 'Most Helldivers here · not in this order', shareMenu: 'Share', callNew: 'New call · {t}', callWas: 'was: {x}', callNewX: 'Dismiss', glanceOn: 'Glance mode: only the call.', glanceShow: 'Show races, plan and map', notifyOn: 'Ministry of Victory: new call', notifyNo: 'This browser blocked notifications: allow them in its site settings.', notifyNone: 'This browser can\'t show notifications.', timesNote: 'Times are in your local time; shared images use UTC.', medals: '{n} medals', seeProg: 'See the progress', logNote1: '1 new in the Command log', logNoteN: '{n} new in the Command log', copyBox: 'Copy this text by hand:', followBest: 'Follow the best bet', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
-  keysHint: 'Keys: <kbd>Q</kbd> <kbd>E</kbd> or <kbd>1</kbd>–<kbd>5</kbd> tabs · <kbd>G</kbd> glance · <kbd>P</kbd> planet · <kbd>S</kbd> image · <kbd>C</kbd> copy · <kbd>A</kbd> archive · <kbd>/</kbd> search · <kbd>R</kbd> refresh · <kbd>?</kbd> help', help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
+  keysHint: 'Keys: <kbd>Q</kbd> <kbd>E</kbd> or <kbd>1</kbd>–<kbd>5</kbd> tabs · <kbd>G</kbd> glance · <kbd>P</kbd> planet · <kbd>S</kbd> image · <kbd>C</kbd> copy · <kbd>A</kbd> archive · <kbd>/</kbd> search · <kbd>R</kbd> refresh · <kbd>?</kbd> help · <kbd>F</kbd> FAQ', help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
   tObj: 'Objectives', tRaces: 'Races', tMap: 'Map', tabsAria: 'Order details', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log', tIntelS: 'Log',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', fallsAt: 'falls ~{when}', range: '({a} – {b})', likely: 'most likely between {a} and {b}', fallsTip: 'Falls around {when} at this rate; most likely between {a} and {b}.', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
@@ -387,11 +387,34 @@ const TEXT = {
   helpBlocker: 'If you use an ad blocker or an antivirus web filter, allow api.helldivers2.dev.',
   helpTest: 'Try opening this address: if you see text with numbers, the API is working.',
   techDetails: 'Technical details (send these to whoever helps you)',
+  worth: {
+    line: 'One mission won on {planet}: {m} · a three-mission operation: {op} · {n} missions make 1% · about {left} more to {goal} it',
+    aria: 'What one mission is worth on {planet}', one: 'One mission won', op: 'One operation (3 missions)', per1: 'Missions for 1%', leftFree: 'Missions to liberate it', leftHold: 'Missions to hold it',
+    free: 'liberate', hold: 'hold', how: 'How missions count', more: 'Now each mission counts {p} more than the day\'s average: fewer Helldivers online.', less: 'Now each mission counts {p} less than the day\'s average: the galaxy is crowded.',
+  },
+  faq: {
+    title: 'Managed Democracy for Dummies', btn: 'FAQ', open: 'Managed Democracy for Dummies: how your missions count',
+    intro: 'What every Helldiver asks before dropping. Arrowhead changes these rules with patches: below, what is known today, and what isn\'t.',
+    unsure: 'Not confirmed',
+    items: [
+      { id: 'count', q: 'Which missions count for the Major Order?', a: '<p>It depends on the objective, and the order\'s own text is the rule.</p><ul><li><b>Liberate or defend a planet:</b> a mission on that planet counts once its <b>main objective</b> is done. Side objectives (nests, fabricators, outposts) give XP and resources, not liberation. The planet needs an active campaign: it shows on the war map.</li><li><b>Kill objectives</b> (“Kill 50M Automatons”): kills of that enemy count wherever you fight them, unless the objective names a planet, a weapon or a difficulty: then only those.</li><li><b>Collect or complete objectives:</b> exactly as written. The Races tab shows each count live.</li></ul>' },
+      { id: 'worth', q: 'How much is one mission worth?', a: '{live}<p>The game shares the war\'s damage among everyone playing: the more missions are being won across the galaxy, the less each one is worth. That is why one mission counts more at quiet hours and less on a crowded evening, while the total keeps growing with every Helldiver who drops.</p><p class="faq-src">Measured, not guessed: the Ministry\'s recorder compares the health each planet lost with the missions won on it, every 10 minutes.</p>' },
+      { id: 'difficulty', q: 'Does difficulty matter?', a: '<p><b>Yes, for liberation.</b> Harder missions carry more weight, and finishing the whole operation adds a bonus on its last mission. Community measurements put the top difficulties at several times the easiest ones.</p><p>But a failed mission adds nothing. Play the highest difficulty your squad <b>reliably clears</b>, and finish the operation.</p>' },
+      { id: 'fail', q: 'Do failed or abandoned missions count?', a: '<ul><li><b>Main objective done:</b> it counts. Dying, or failing extraction afterwards, doesn\'t take it back.</li><li><b>Left before the main objective:</b> it adds nothing, but it takes nothing away either.</li><li><b>Kills in a mission that ends early:</b> <span class="faq-unsure">{unsure}</span> reports differ. Don\'t count on them.</li></ul>' },
+      { id: 'regen', q: 'Why does the bar go backwards?', a: '<p>On a liberation, enemy resistance wins back part of the planet every hour: the Helldivers have to beat it before anything moves. A defense doesn\'t heal, but it has a deadline: if the deadline passes, the planet is lost and its liberation starts again from 0.</p>' },
+      { id: 'dss', q: 'What do the DSS and Heavy Ordnance change?', a: '<p>The Democracy Space Station adds damage on the planet it is over, and Heavy Ordnance multiplies it. This page counts the DSS as <b>+{dss}</b> and Heavy Ordnance as <b>×{hod}</b> (Settings, Advanced).</p>' },
+      { id: 'medals', q: 'Do I get the medals if I didn\'t play?', a: '<p>Since April 2026, an order\'s rewards go to the Helldivers who <b>logged in while it was running</b>. Offline for the whole order means no medals, even if it is won.</p>' },
+      { id: 'calls', q: 'What do “On track”, “Needs a push” and the others mean?', a: '<p>The page\'s five forecasts, from Done to Out of reach. <button type="button" class="linkish" data-help="ex-scale">See them in Help</button></p>' },
+    ],
+    live: '<p class="faq-live">Right now one mission won on <b>{planet}</b> is worth about <b>+{m}</b>: <b>{n}</b> missions make 1%, and about <b>{left}</b> more would {goal} it. {day}</p>',
+    noLive: '<p class="faq-live">The live value shows here once the page has read the war (it needs the Ministry\'s recorder).</p>',
+    checked: 'Checked on 2 Nov 2026 against:', sources: 'Something out of date after a patch? Tell us.',
+  },
   feedback: 'Something wrong, or an idea? Tell us', rss: 'New orders by RSS', source: 'Source code',
   footer: 'Unofficial community tool. Data: community API api.helldivers2.dev. Enemy and weapon names from Galactic Wide Web and helldivers-2/json on GitHub. Estimates are based on observed galactic war behavior, not official numbers.',
 };
 
-const EXPLAIN = `<nav class="ex-toc" aria-label="On this page"><a href="#ex-read">How to read this page</a><a href="#ex-scale">The five forecasts</a><a href="#ex-words">Words used here</a><a href="#ex-parts">The parts of the page</a></nav>
+const EXPLAIN = `<nav class="ex-toc" aria-label="On this page"><a href="#ex-read">How to read this page</a><a href="#ex-scale">The five forecasts</a><a href="#ex-words">Words used here</a><a href="#ex-parts">The parts of the page</a><button type="button" class="linkish" data-faq="count">Managed Democracy for Dummies</button></nav>
 <section class="ex-start" id="ex-read"><h3>How to read this page</h3>
 <ol><li><b>The call</b> at the top is the one move that changes the Major Order most right now, with the order's forecast beside it.</li>
 <li><b>The tabs</b> right under it hold the detail. <b>Races</b> (the first) shows every objective: each bar ends at its goal, and the lighter band is today's pace by the deadline, and the coloured edge on the left is the front. Then the full plan, progress charts, the command log and the war map.</li></ol></section>

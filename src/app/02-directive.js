@@ -10,6 +10,36 @@
     $('errors').innerHTML = `<div class="err" role="alert"><p class="err-h">${esc(t('errApiH'))}</p><p>${esc(t('errApi'))} <button type="button" class="linkish" data-retry>${esc(t('retry'))}</button></p>${help}<details class="tech"><summary>${esc(t('techDetails'))}</summary><pre>${esc([...new Set(errs)].join('\n') + (lastStack ? '\n' + lastStack : ''))}</pre></details></div>`;
   }
 
+  /* ---------- what one mission is worth ----------
+     The game splits the war's damage among everyone playing (the impact multiplier falls as more missions are
+     won), so one mission's worth is measured, not assumed: HP a planet lost per mission won on it, per unit
+     of multiplier (the recorder's "inf"), times the multiplier right now, times the planet's boosts. */
+  function missionWorth(p) {
+    if (!last || !p || !last.imp || (!p.event && p.currentOwner === 'Humans')) return null;
+    const inf = last.inf || 100, here = last.dssIdx != null && String(last.dssIdx) === String(p.index);
+    const boost = (here ? 1 + settings.dssBonus : 1) * (last.hod ? (here ? settings.hodMult : ENGINE.DEFAULTS.hodOther) : 1);
+    const hp = inf * last.imp * boost;
+    const max = p.event ? p.event.maxHealth : p.maxHealth, h = p.event ? p.event.health : p.health;
+    if (!(hp > 0) || !(max > 0)) return null;
+    return { hp, frac: hp / max, per1: Math.max(1, Math.round(0.01 * max / hp)), left: Math.max(0, Math.ceil(h / hp)),
+      vsDay: last.impDay ? last.imp / last.impDay : null, defend: !!p.event, measured: !!last.inf };
+  }
+  // a tiny percentage, to two significant figures (0.00035%), never rounded to 0
+  // an estimate shown to two significant figures: 129,134 → 130k, 3,228 → 3,200
+  const nice = (n) => { if (!isFinite(n)) return '—'; if (n < 1000) return fmt(Math.round(n)); const r = Number(n.toPrecision(2)); return r >= 1e6 ? fmt(r / 1e6, 1) + 'M' : r >= 1e4 ? fmt(r / 1e3) + 'k' : fmt(r); };
+  const tinyPct = (f) => { const v = f * 100; return (v >= 0.01 ? v.toFixed(2) : v.toPrecision(2)) + '%'; };
+  function missionLine(p) {
+    const w = missionWorth(p);
+    if (!w) return '';
+    const day = w.vsDay && Math.abs(w.vsDay - 1) >= 0.1 ? `<span class="mw-day ${w.vsDay > 1 ? 'up' : 'down'}">${esc(fill(t(w.vsDay > 1 ? 'worth.more' : 'worth.less'), { p: Math.round(Math.abs(w.vsDay - 1) * 100) + '%' }))}</span>` : '';
+    // a readout like the game's mission summary: what one mission and one operation add, what 1% costs,
+    // and how many missions the planet still needs (rounded: these are estimates, not counts)
+    const cell = (k, v) => `<div><dt>${esc(t('worth.' + k))}</dt><dd>${v}</dd></div>`;
+    return `<div class="mworth" role="group" aria-label="${esc(fill(t('worth.aria'), { planet: plain(planetName(p)) }))}">
+      <dl>${cell('one', '+' + tinyPct(w.frac))}${cell('op', '+' + tinyPct(w.frac * 3))}${cell('per1', '≈ ' + nice(w.per1))}${cell(w.defend ? 'leftHold' : 'leftFree', '≈ ' + nice(w.left))}</dl>
+      <p>${day}<button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p></div>`;
+  }
+
   /* ---------- small components ---------- */
   const ICON = {
     image: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.2" y="2" width="9.6" height="8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 9l2.6-3 2 2 1.4-1.4L10 9" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="4.4" r=".9" fill="currentColor"/></svg>',

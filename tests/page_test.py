@@ -6,7 +6,7 @@ import os, re, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
-BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{4,}%|(?<![\d.,])1 (times|planets|missions|attacks|objectives|operations|extractions)\b|(?<![\d.,])1 (?!news\b|less\b|plus\b|bonus\b|status\b|gas\b)[a-z]{2,}s\b|stratagem: a stratagem|about 0 needed|\b0 Helldivers needed|#\d{6,}')
+BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|(?<![\d.])\d{4,}%|(?<![\d.,])1 (times|planets|missions|attacks|objectives|operations|extractions)\b|(?<![\d.,])1 (?!news\b|less\b|plus\b|bonus\b|status\b|gas\b)[a-z]{2,}s\b|stratagem: a stratagem|about 0 needed|\b0 Helldivers needed|#\d{6,}')
 SCENARIOS = ['default', 'done', 'steady', 'impossible', 'none', 'fail', 'apidown', 'libn', 'measure', 'win', 'last', 'ended', 'edited',
              'regions', 'sector', 'intel', 'sniper', 'sniperlost', 'anyof', 'newmo'] + [f'type&t={t}' for t in (1, 2, 4, 5, 6, 7, 9, 10, 15, 16)]
 FUZZ = int(sys.argv[1]) if len(sys.argv) > 1 else 25

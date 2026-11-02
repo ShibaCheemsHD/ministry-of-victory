@@ -50,6 +50,7 @@
         <div><span class="label">${esc(t('pc.players'))}</span><b>${people(p.statistics?.playerCount || 0)}</b></div>
         ${!p.event && regen ? `<div><span class="label">${esc(t('pc.regen'))}</span><b>${pct(regen, 1)}/h</b></div>` : ''}
         ${task && task.pw && isFinite(task.eta) ? `<div><span class="label">${esc(t('pc.falls'))}</span><b>${esc(task.eta <= res.hoursLeft ? clock(task.eta) : t('pc.late'))}</b></div>` : ''}
+        ${(() => { const w = missionWorth(p); return w ? `<div><span class="label">${esc(t('pc.mission'))}</span><b>+${tinyPct(w.frac)}</b></div>` : ''; })()}
       </div>
       <span class="label pc-sec">${esc(t('pc.where'))}</span>
       <ul class="pc-list">
@@ -190,6 +191,7 @@
         ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
         <p class="why">${m.why}</p>
         ${m.moveOn ? '' : p.meter}
+        ${!m.moveOn && m.planet && (m.state === 'go' || m.state === 'wait') ? missionLine(m.planet) : ''}
         ${meanwhile}
         <div class="call-actions">${primary}</div>
         <div class="call-tools">

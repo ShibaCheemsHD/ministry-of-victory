@@ -45,7 +45,7 @@ with sync_playwright() as p:
     pg.click('#open-archive'); pg.wait_for_timeout(900); check(pg, 'archive')
     pg.close()
     pg = open_page(br, 'default')
-    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-info', 'dlg-info')]:
+    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-info', 'dlg-info'), ('#open-faq', 'dlg-faq')]:
         pg.focus(opener); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
         check(pg, dlg)
         inside = pg.evaluate(f"() => !!document.activeElement.closest('#{dlg}')")
