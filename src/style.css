@@ -139,7 +139,7 @@ code { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); }
   .order-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
   .otab { min-width: 0; padding: 10px; }
   .ot-n { font-size: 18px; overflow-wrap: anywhere; }
-  .otab .pill { font-size: 11px; padding: 3px 6px; letter-spacing: .03em; white-space: normal; }
+  .otab .pill { font-size: 12px; padding: 3px 6px; letter-spacing: .03em; white-space: normal; }
 }
 
 /* ---------- banners ---------- */
@@ -971,7 +971,9 @@ footer > p { max-width: 60ch; }
 /* phones: everything a thumb presses is at least 44px tall */
 @media (max-width: 760px), (pointer: coarse) {
   .intel summary, .brief summary, .more-tips summary, .sim-box > summary, .it-more summary, .ar-how summary { min-height: 44px; }
-  .nk-filter button, .seg button, .lg, .ghost, .pc-tabs button, .fr-p, .foot-links a, .q { min-height: 44px; }
+  .nk-filter button, .seg button, .lg, .ghost, .pc-tabs button, .fr-p, .foot-links a, .q, .meanwhile .linkish { min-height: 44px; }
+  .fr-p { min-width: 44px; padding: 0 6px; }
+  .meanwhile .linkish { display: inline-flex; align-items: center; }
   .q { min-width: 44px; }
 }
 
