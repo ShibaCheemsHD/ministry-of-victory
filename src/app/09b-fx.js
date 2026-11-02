@@ -11,7 +11,8 @@
 
   // 1. The call's headline decodes like a Super Earth transmission: the first time an order shows in this
   //    visit, and when its call changes. The real words are in the heading's label the whole time.
-  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$';
+  // block glyphs, never letters: a half-decoded name must not read as another word (critique 8)
+  const GLYPHS = '▮▯▚▞▙▟▛▜▖▗▘▝';
   const decoded = {};
   function decode(view, entry) {
     const head = view.querySelector('.call-head'), tgt = head && head.querySelector('.tgt');
@@ -22,7 +23,8 @@
     // a re-render in the middle of the effect picks it up where it was
     if (d && d.text === text && (!d.t0 || now - d.t0 > total * 32)) return;
     if (!d || d.text !== text) {
-      decoded[id] = { text, t0: fxOn() && !viaKeys ? now : 0 };
+      // only the first time an order shows: when its call changes, the sweep and the "New call" flag say it
+      decoded[id] = { text, t0: !d && fxOn() && !viaKeys ? now : 0 };
       if (!decoded[id].t0) return;
     }
     const t0 = decoded[id].t0, chars = [...text];
@@ -56,7 +58,8 @@
   }
 
   // 3. A light follows the pointer across the panels, like the war table's glass. Eased, never snapped.
-  const GLARE = '.call-side, .otab, .race, .move, .hist-card, .map-card, .ar-acc, .sb-key button, .planet-btn';
+  // only on panels that are buttons: the light says "this can be pressed"
+  const GLARE = '.otab, .planet-btn, .sb-key button, .glance-btn';
   let glEl = null, glRaf = 0;
   const gl = { x: .5, y: .5, tx: .5, ty: .5 };
   function glFrame() {

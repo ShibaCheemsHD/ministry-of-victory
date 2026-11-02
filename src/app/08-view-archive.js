@@ -22,7 +22,7 @@
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
       ${settings.layout === 'glance' ? `<p class="glance-note"><span>${esc(t('glanceOn'))}</span><button type="button" class="btn ghostly" data-glance>${esc(t('glanceShow'))}<span class="kcap sm" aria-hidden="true">G</span></button></p>` : `<section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
-        <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span></div>
+        <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span><button type="button" class="glance-btn" data-glance-on title="${esc(t('hLayout'))}">${esc(t('glanceBtn'))}<span class="kcap sm" aria-hidden="true">G</span></button></div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
       </section>`}
     </div>`;
@@ -272,6 +272,7 @@
   }
   function render(opts = {}) {
     if (!last) return;
+    document.documentElement.classList.toggle('glance', settings.layout === 'glance');
     const keepFocus = focusSelector();
     renderHud();
     renderStale();

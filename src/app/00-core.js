@@ -104,7 +104,8 @@
 
   /* ---------- settings ---------- */
   const settings = Object.assign({ capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus,
-    hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare, contact: 'ministry-of-victory-user', motion: 'full', layout: 'full', notify: 'off' }, store.get('settings', {}));
+    hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare, contact: '', motion: 'full', layout: 'full', notify: 'off' }, store.get('settings', {}));
+  if (settings.contact === 'ministry-of-victory-user') settings.contact = '';
   // 1.3 was the old default for Heavy Ordnance, measured on one order; the war log since 2025 says x1.8
   if (settings.hodMult === 1.3) settings.hodMult = ENGINE.DEFAULTS.hodMult;
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };

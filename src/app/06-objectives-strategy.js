@@ -38,7 +38,7 @@
     const desc = txt(a.description) && txt(a.description) !== txt(a.briefing) ? clean(txt(a.description)) : '';
     const open = !!ui.briefOpen[id];
     return `<section class="races" aria-labelledby="races-${esc(id)}">
-      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2>${res.ended ? `<p class="sec-note">${esc(t('races.noteEnded'))}</p>` : `<p class="race-key" aria-label="${esc(t('races.note'))}"><span><i class="k-done"></i>${esc(t('lgDone'))}</span><span><i class="k-pace"></i>${esc(t('lgPace'))}</span><span><i class="k-goal"></i>${esc(t('lgGoal'))}</span></p>`}</div>
+      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2>${res.ended ? `<p class="sec-note">${esc(t('races.noteEnded'))}</p>` : `<p class="race-key" aria-label="${esc(t('races.note'))}"><span><i class="k-done"></i>${esc(t('lgDone'))}</span><span><i class="k-pace"></i>${esc(t('lgPace'))}</span><span><i class="k-goal"></i>${esc(t('lgGoal'))}</span><span><i class="k-front"></i>${esc(t('lgFront'))}</span></p>`}</div>
       <div class="race-list">${objectivesHTML(res)}</div>
       ${brief || desc ? `<details class="brief" data-brief="${esc(id)}" ${open ? 'open' : ''}><summary>${ICON.chev}<span>${esc(t('brief'))}</span></summary><div class="brief-text"><p>${brief}</p>${desc ? `<p>${desc}</p>` : ''}</div></details>` : ''}
     </section>`;

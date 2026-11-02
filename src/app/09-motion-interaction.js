@@ -93,7 +93,10 @@
     prev.count[key] = to;
     let r = countRuns[key];
     if (!(r && r.to === to && now - r.t0 < r.D)) {
-      if (reduced() || !isFinite(to) || from === to) { el.textContent = show(to); return; }
+      // a count (Helldivers online) is never shown passing through numbers it never had: it is set, and
+      // flashes when a refresh changed it; only a percentage beside its bar or ring counts up
+      if (!el.dataset.pct && !reduced() && !first && from !== to) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      if (reduced() || !isFinite(to) || from === to || !el.dataset.pct) { el.textContent = show(to); return; }
       r = countRuns[key] = { a: first ? 0 : from, to, t0: now, D: first ? 1000 : 650 };
       if (!first) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
     }
@@ -132,9 +135,13 @@
   // live counters: between refreshes, objectives count up at the pace just measured
   function tickCounters() {
     const now = Date.now();
+    const still = reduced();
     document.querySelectorAll('.tick[data-tick]').forEach(el => {
-      const v = Math.min(Number(el.dataset.goal), Number(el.dataset.tick) + Number(el.dataset.rate) * (now - Number(el.dataset.t0)) / 1000);
-      el.textContent = fmt(Math.floor(v));
+      // an estimate between refreshes: shown to the precision it has (critique 8: single kills ticking
+      // four times a second claimed more than the data knows), and still with animations off
+      const v = Math.min(Number(el.dataset.goal), Number(el.dataset.tick) + (still ? 0 : Number(el.dataset.rate) * (now - Number(el.dataset.t0)) / 1000));
+      const s = v >= 1e6 ? (v / 1e6).toFixed(v >= 1e8 ? 1 : 2) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'k' : fmt(Math.floor(v));
+      if (el.textContent !== s) el.textContent = s;
     });
   }
   setInterval(tickCounters, 250);

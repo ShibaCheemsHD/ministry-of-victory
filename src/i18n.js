@@ -48,7 +48,7 @@ const TEXT = {
   bw: { outLead: 'This order is out of reach.', nextHard: 'The other running order needs a record turnout, but it is still the better bet: play that one.', still: 'Every mission still counts for the war and for your Personal Order. A good place for it is', drop: 'Drop on', defend: 'Defend', play: 'Play', outWhy: 'This order is out of reach: not even every Helldiver online could finish it in time.', overWhy: 'This order is over.', nextWhy: 'The other running order can still be won: play that one.' },
   result: 'Result',
   frontOf: '{f} front',
-  races: { title: 'The races', titleEnded: 'Final results', noteEnded: 'How each objective finished when the order ended.', note: 'One row per objective. Each bar ends at its goal; the pale band is where today\'s pace lands by the deadline.' },
+  races: { title: 'The races', titleEnded: 'Final results', noteEnded: 'How each objective finished when the order ended.', note: 'One row per objective. Each bar ends at its goal; the lighter band is today\'s pace by the deadline, and the coloured edge on the left is the front.' },
   
   cl: { medals: 'medals earned', won: 'Won with', spare: '{d} to spare', inTime: 'in time', ended: 'Ended' },
   early: 'Early estimate', earlyWhy: 'Early estimate: the pace settles after the first few hours.',
@@ -82,9 +82,9 @@ const TEXT = {
     lost: { k: '', target: 'Out of reach', why: 'Not even every Helldiver online can take a single planet in time.' },
     play: { k: 'Play for the', target: 'Major Order', why: 'This kind of objective can\'t be forecast: every mission that counts for it helps.' },
     ended: { k: 'Major Order', target: 'Time\'s up', why: 'The deadline has passed. Waiting for new orders from Super Earth High Command.' },
-    done: { k: 'Major Order', target: 'Complete', why: 'Objective reached. Great work, Helldivers.' },
+    done: { k: 'Major Order', target: 'Complete', why: 'Every objective done before the deadline. Super Earth thanks you, Helldivers: Liberty has been served.' },
   },
-  meterNow: '{n} Helldivers {where}', meterNeed: 'about {n} needed', meterNeedAll: 'about {n} needed here to win the order', meterFocus: 'goal: all {n} on this order here', meterEnough: 'That\'s enough: hold there.',
+  meterNow: '{n} Helldivers {where}', meterNeed: 'about {n} needed in all', meterNeedAll: 'about {n} needed here to win the order', meterFocus: 'goal: all {n} on this order here', meterEnough: 'That\'s enough: hold there.',
   meterAll: 'about {n} needed: {x} times everyone online', meterWeapon: ' (if the required weapon is used as much as today)', meterWeaponTip: 'Assuming Helldivers use the required weapon as much as they do today.', onPlanet: 'on {p}', onFront: 'on the {f} front',
   meterProj: 'At this pace: {p} by the deadline',
   crowd: ['roughly the Helldivers already there', 'about one and a half times the Helldivers there now', 'about twice the Helldivers there now', 'about three times the Helldivers there now', 'far more Helldivers than are online right now'],
@@ -293,10 +293,10 @@ const TEXT = {
   forecast: 'Forecast',
   vPlanetOk: 'Falls in time', fcWhy: 'Why', shareWin: 'Share the win', endNextDone: 'Next: {title}', endNextLost: 'Play {title} instead',
   mw: { head: 'Meanwhile:', go: 'drop on {p}:', def: 'its defense ends {when}.', busy: 'the most Helldivers are fighting there ({n}).', open: 'Planet' },
-  trust: 'Track record: {p} of our planet-fall times were close',
+  trust: 'Track record: {p} of our planet-fall times landed within 25%',
   v: { done: 'Done', ontrack: 'On track', effort: 'Needs a push', focus: 'Needs a push', hard: 'Needs a record', record: 'Needs a record', nearly_impossible: 'Out of reach', impossible: 'Out of reach', failed: 'Failed', unknown: 'Too early to call' },
   m: { done: 'Every objective is done.', ontrack: 'At today\'s pace we make it.', effort: 'Winnable, with more Helldivers than today.', focus: 'Winnable if we focus on the call.', hard: 'It needs record turnout: far more Helldivers than today.', record: 'It needs record turnout.', nearly_impossible: 'It would take almost every Helldiver online.', impossible: 'Not winnable even with every Helldiver online.', failed: 'Time ran out before every objective was met.', unknown: 'Still measuring the pace: give it a few minutes.' },
-  timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', rewardLost: 'Reward lost', fxBoot: ['Uplink to Super Earth: established', 'Major Orders: received', 'Galactic war statistics: decrypting', 'Decision desk: computing the call'], capDef: 'Under attack · not in this order', capBusy: 'Most Helldivers here · not in this order', shareMenu: 'Share', callNew: 'New call · {t}', callWas: 'was: {x}', callNewX: 'Dismiss', glanceOn: 'Glance mode: only the call.', glanceShow: 'Show races, plan and map', notifyOn: 'Ministry of Victory: new call', notifyNo: 'This browser blocked notifications: allow them in its site settings.', notifyNone: 'This browser can\'t show notifications.', timesNote: 'Times are in your local time; shared images use UTC.', medals: '{n} medals', seeProg: 'See the progress', logNote1: '1 new in the Command log', logNoteN: '{n} new in the Command log', copyBox: 'Copy this text by hand:', followBest: 'Follow the best bet', brief: 'Briefing', more: 'Read more', less: 'Show less',
+  timeLeft: 'Time left', endsAt: 'Ends {when}', reward: 'Reward', rewardLost: 'Reward lost', lgFront: 'front', glanceBtn: 'Glance view', fxBoot: ['Uplink to Super Earth: established', 'Major Orders: received', 'Galactic war statistics: decrypting', 'Decision desk: computing the call'], capDef: 'Under attack · not in this order', capBusy: 'Most Helldivers here · not in this order', shareMenu: 'Share', callNew: 'New call · {t}', callWas: 'was: {x}', callNewX: 'Dismiss', glanceOn: 'Glance mode: only the call.', glanceShow: 'Show races, plan and map', notifyOn: 'Ministry of Victory: new call', notifyNo: 'This browser blocked notifications: allow them in its site settings.', notifyNone: 'This browser can\'t show notifications.', timesNote: 'Times are in your local time; shared images use UTC.', medals: '{n} medals', seeProg: 'See the progress', logNote1: '1 new in the Command log', logNoteN: '{n} new in the Command log', copyBox: 'Copy this text by hand:', followBest: 'Follow the best bet', brief: 'Briefing', more: 'Read more', less: 'Show less',
   dhms: ['D', 'H', 'M', 'S'],
   keysHint: 'Keys: <kbd>Q</kbd> <kbd>E</kbd> or <kbd>1</kbd>–<kbd>5</kbd> tabs · <kbd>G</kbd> glance · <kbd>P</kbd> planet · <kbd>S</kbd> image · <kbd>C</kbd> copy · <kbd>A</kbd> archive · <kbd>/</kbd> search · <kbd>R</kbd> refresh · <kbd>?</kbd> help', help: 'Help', prevTab: 'Previous tab', nextTab: 'Next tab', kh: { tabs: 'Switch tab', jump: 'Jump to tab', refresh: 'Refresh', guide: 'Field guide' },
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
@@ -380,7 +380,7 @@ const TEXT = {
   hRec: 'The largest share of all Helldivers ever seen on one Major Order (0.77 = 77%): the line between "needs a record" and "out of reach".',
   hContact: 'Sent to the community API with each request so its maintainers can reach this site. Nothing else is sent.',
   sReset: 'Reset the model to its defaults', sResetDone: 'Forecast model reset to its defaults.', sBad: 'That value is out of range: the previous one is kept.',
-  errApi: 'Can\'t read the API ({e}). Retrying at the next refresh.',
+  errApiH: 'No connection to Super Earth', errApi: 'The Helldivers 2 community API isn\'t answering, so there\'s nothing to show yet. The page tries again on its own every few minutes.', helpOnline: 'Check that you are online. The API sometimes goes down for a few minutes during big game updates.',
   helpTitle: 'Your browser blocked the connection to the API. What to do:',
   helpPreview: 'You\'re viewing the page inside another app (for example Claude\'s preview), which blocks outside connections. Download the file and double-click it.',
   helpBrowser: 'Open it in Chrome, Firefox, Edge or Safari, straight from the saved file.',
@@ -394,7 +394,7 @@ const TEXT = {
 const EXPLAIN = `<nav class="ex-toc" aria-label="On this page"><a href="#ex-read">How to read this page</a><a href="#ex-scale">The five forecasts</a><a href="#ex-words">Words used here</a><a href="#ex-parts">The parts of the page</a></nav>
 <section class="ex-start" id="ex-read"><h3>How to read this page</h3>
 <ol><li><b>The call</b> at the top is the one move that changes the Major Order most right now, with the order's forecast beside it.</li>
-<li><b>The tabs</b> right under it hold the detail. <b>Races</b> (the first) shows every objective: each bar ends at its goal, and the pale band is where today's pace lands by the deadline. Then the full plan, progress charts, the command log and the war map.</li></ol></section>
+<li><b>The tabs</b> right under it hold the detail. <b>Races</b> (the first) shows every objective: each bar ends at its goal, and the lighter band is today's pace by the deadline, and the coloured edge on the left is the front. Then the full plan, progress charts, the command log and the war map.</li></ol></section>
 <section id="ex-scale"><h3>The five forecasts</h3>
 <dl class="ex-scale">
 <div class="vl-done"><dt><span class="pill vl-done"><span>Done</span></span></dt><dd>The objective, or the whole order, is complete.</dd></div>

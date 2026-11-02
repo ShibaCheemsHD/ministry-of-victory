@@ -184,6 +184,7 @@
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-callnew-x]')) { ui.callChange = null; e.target.closest('.call-new')?.remove(); return; }
     if (e.target.closest('[data-glance]')) { setGlance(false); return; }
+    if (e.target.closest('[data-glance-on]')) { setGlance(true); window.scrollTo({ top: 0 }); return; }
     const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart

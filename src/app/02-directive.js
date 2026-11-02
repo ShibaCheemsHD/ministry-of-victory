@@ -5,10 +5,9 @@
     const blocked = errs.some(e => /failed to fetch|networkerror|load failed|blocked/i.test(e));
     const help = blocked ? `<div class="help"><p><b>${esc(t('helpTitle'))}</b></p><ol>
         ${embedded ? `<li>${esc(t('helpPreview'))}</li>` : ''}
-        <li>${esc(t('helpBrowser'))}</li><li>${esc(t('helpBlocker'))}</li>
+        ${location.protocol === 'file:' ? `<li>${esc(t('helpBrowser'))}</li>` : `<li>${esc(t('helpOnline'))}</li>`}<li>${esc(t('helpBlocker'))}</li>
         <li>${esc(t('helpTest'))} <a href="${esc(apiUrl('/api/v1/war'))}" target="_blank" rel="noopener">${esc(API)}/api/v1/war</a></li></ol></div>` : '';
-    const tech = lastStack ? `<details class="tech"><summary>${esc(t('techDetails'))}</summary><pre>${esc(lastStack)}</pre></details>` : '';
-    $('errors').innerHTML = `<div class="err">${esc(fill(t('errApi'), { e: [...new Set(errs)].join(', ') }))}${help}${tech}</div>`;
+    $('errors').innerHTML = `<div class="err" role="alert"><p class="err-h">${esc(t('errApiH'))}</p><p>${esc(t('errApi'))} <button type="button" class="linkish" data-retry>${esc(t('retry'))}</button></p>${help}<details class="tech"><summary>${esc(t('techDetails'))}</summary><pre>${esc([...new Set(errs)].join('\n') + (lastStack ? '\n' + lastStack : ''))}</pre></details></div>`;
   }
 
   /* ---------- small components ---------- */
