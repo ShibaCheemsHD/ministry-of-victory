@@ -1205,4 +1205,8 @@ dialog { background: linear-gradient(180deg, #17181c, #0f1013); }
 /* the cross-order block in the plan */
 .situation.across { border-left-color: var(--se); }
 .situation.across.x-all { border-left-color: var(--v-done); }
-.situation.across p { color: var(--muted); font-size: 14px; max-width: 75ch; }
+.situation.across p { color: var(--muted); font-size: 14px; }
+
+/* the won medal hides with the hologram below 1181px (it sat over the headline on phones and tablets) */
+@media (max-width: 1180px) { .call .holo.won { display: none; } }
+.situation.across p, .situation .detail, .sec-note { max-width: 62ch; }
