@@ -102,21 +102,21 @@
   // a share of everyone online, said as Helldivers (critique 1 Nov 2026: "1.2x too few", "twice the players
   // there now" and "79% of everyone online" for one idea): "about 74,500"
   const divers = (share) => share == null || !isFinite(share) ? '—' : people(share * (last ? last.N : 0));
-  function renderCross() {
-    const box = $('cross'), cx = crossNow();
-    if (!cx) { box.innerHTML = ''; return; }
+  // The comparison across orders: the order tabs mark the best bet and the call says it when you look at
+  // another order, so the numbers behind it live in the plan (critique 1 Nov 2026: said three times)
+  function renderCross() { $('cross').innerHTML = ''; }
+  function crossHTML() {
+    const cx = crossNow();
+    if (!cx) return '';
     const pick = cx.orders.find(o => o.id === cx.pick);
     const n = fmt(last.N);
     const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: divers(cx.total), n })
       : cx.verdict === 'pick' ? fill(t('xPick'), { total: divers(cx.total), n, title: esc(pick.title), need: divers(pick.need) })
       : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: divers(cx.total), n });
-    // the total is less than the sum when the orders share an enemy: said, or it reads as a sum gone wrong
     const sum = cx.orders.reduce((a, o) => a + (o.unknown ? 0 : o.need || 0), 0);
     const overlap = sum > cx.total + 0.02 ? ' ' + t('xOverlap') : '';
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
-    // one line (the verdict across the orders); the numbers behind it one click away
-    const short = cx.verdict === 'all' ? fill(t('xShortAll'), { n: cx.orders.length }) : cx.verdict === 'pick' ? fill(t('xShortPick'), { title: esc(pick.title) }) : t('xShortNone');
-    box.innerHTML = `<details class="xline x-${cx.verdict}" data-cross ${ui.crossOpen ? 'open' : ''}><summary>${ICON[cx.verdict === 'all' ? 'check' : cx.verdict === 'pick' ? 'target' : 'warn']}<span>${short}</span>${ICON.chev}</summary><p>${msg}${overlap}${note}</p></details>${cx.verdict === 'pick' && ui.orderManual && String(ui.order) !== String(cx.pick) ? `<button type="button" class="btn ghostly follow" data-follow>${esc(t('followBest'))}${ICON.track}</button>` : ''}`;
+    return `<div class="situation across x-${cx.verdict}"><h4 class="sit-h">${esc(fill(t('xLabelN'), { n: cx.orders.length }))}</h4><p>${msg}${overlap}${note}</p></div>`;
   }
 
   // What the main button does: the plan while there is one; once the order is won, share it and point to
@@ -146,8 +146,9 @@
     const moveOn = state !== 'done' && !!(next || mw);
     const verb0 = ['steady', 'lost'].includes(p.d.kind) ? '' : p.d.kind === 'ended' ? p.kicker + ':' : p.kicker;
     let verb = verb0, target = p.target, why = `${p.lead ? `<b class="lead">${esc(p.lead)}</b>` : ''}${p.why}`, planet = p.planet;
-    if (moveOn && next) { verb = t('bw.play'); target = titleCase(clean(txt(next.a.title) || 'Major Order')); why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.nextWhy'))}`; planet = null; }
-    else if (moveOn && mw) { verb = t(mw.defend ? 'bw.defend' : 'bw.drop'); target = plain(planetName(mw.p)); why = `${esc(t(res.ended ? 'bw.overWhy' : 'bw.outWhy'))} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; planet = mw.p; }
+    const lead = res.ended ? t('bw.overWhy') : `${t('bw.outLead')} ${t('m.' + v)}`;
+    if (moveOn && next) { verb = t('bw.play'); target = titleCase(clean(txt(next.a.title) || 'Major Order')); why = `${esc(lead)} ${esc(t(lvl(next.res.verdict) === 'record' || lvl(next.res.verdict) === 'out' ? 'bw.nextHard' : 'bw.nextWhy'))}`; planet = null; }
+    else if (moveOn && mw) { verb = t(mw.defend ? 'bw.defend' : 'bw.drop'); target = plain(planetName(mw.p)); why = `${esc(lead)} ${esc(t('bw.still'))} ${planetName(mw.p)}: ${mw.why}`; planet = mw.p; }
     const tag = state === 'out' && !moveOn ? t('callTag.outLong') : t('callTag.' + state);
     return { state, next, mw, moveOn, verb, target, why, tag, planet, suggest: moveOn && !next };
   }
@@ -176,7 +177,7 @@
     const art = m.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>`
       : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res) : '') : holoPlanet(p, res);
     // actions: the move first, then one quieter line to pass the call on
-    const primary = m.moveOn && m.next ? endAction(res, null)
+    const primary = m.moveOn && m.next ? `<button type="button" class="btn primary" data-otab="${esc(m.next.a.id)}" data-pick>${esc(fill(t('endNextLost'), { title: m.target }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : p.d.kind === 'steady' ? `<button type="button" class="btn primary" data-goto="history">${esc(t('seeProg'))}${ICON.track}</button>`
       : endAction(res, alt);
@@ -203,6 +204,7 @@
         <p class="meaning">${esc(t('m.' + v))}</p>
         ${res.ended || m.moveOn ? '' : whyHTML(res, p.d)}
         <dl class="clock">${clockRow}${reward}</dl>
+        ${customModel() ? `<p class="model-note">${ICON.edit}<span>${esc(t('modelNote'))}</span><button type="button" class="linkish" data-model-reset>${esc(t('modelReset'))}</button></p>` : ''}
         ${logNote(res, a)}
         ${record && record.trust ? `<button type="button" class="linkish trust-link" data-view="archive" data-acc>${esc(fill(t('trust'), { p: pct(record.trust.fall6) }))}</button>` : ''}
       </div>

@@ -127,7 +127,7 @@
   function renderHud() {
     const Ls = last;
     $('hud-stats').innerHTML = `
-      <div class="stat"><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}" aria-hidden="true"></i><b data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</b></span><span class="stat-l">${t('players')} · ${esc(fill(t('updatedShort'), { t: new Date(Ls.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }))}</span></div>`;
+      <div class="stat"><span class="v"><i class="live ${Ls.stale ? 'warn' : ''}" aria-hidden="true"></i><b data-count="players" data-to="${Ls.N}">${fmt(Ls.N)}</b></span><span class="stat-l">${t('players')} · ${esc(fill(t(Ls.stale ? 'dataFrom' : 'updatedShort'), { t: new Date(Ls.stale ? Ls.stale.t : Ls.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }))}</span></div>`;
   }
 
   /* ---------- order switcher ---------- */

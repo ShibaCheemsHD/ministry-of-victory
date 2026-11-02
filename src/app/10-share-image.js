@@ -123,7 +123,7 @@
       font(23, 700); T('shibacheemshd.github.io/ministry-of-victory', PAD, y, '#eef2f8');
       font(17, 500); T(t('sh.foot'), W - PAD, y, '#b4bdce', 'right');
       // a screenshot travels without the page: one line on what the verdict is and isn't (audit PO-06)
-      y += 34; font(16, 500); for (const l of wrap(t('sh.method'), IN, 2)) { T(l, PAD, y, '#8d98ae'); y += 24; }
+      y += 34; font(16, 500); for (const l of wrap(t('sh.method') + (customModel() ? ' ' + t('modelNote') + '.' : ''), IN, 3)) { T(l, PAD, y, '#8d98ae'); y += 24; }
       return y + 40;
     }
     cv.width = W; cv.height = 10; const H = Math.max(1350, Math.ceil(draw(false)));
@@ -177,7 +177,7 @@
   }
 
   document.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
+    const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart
       const id = el.dataset.legend, k = el.dataset.s, off = (ui.chartOff[id] ||= {});
@@ -188,6 +188,7 @@
     }
     if (el.dataset.hmode) { ui.histMode[el.dataset.hmode] = el.dataset.v; saveUi(); render(); return; }
     if (el.dataset.ifocus) { const c = $(el.dataset.ifocus); if (c) { c.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); } return; }
+    if (el.hasAttribute('data-retry')) { refresh(); return; }
     if (el.hasAttribute('data-follow')) { ui.orderManual = false; saveUi(); render(); return; }
     if (el.dataset.otab) { ui.order = el.dataset.otab; ui.orderManual = true; saveUi(); render(); if (el.hasAttribute('data-pick')) window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); return; }
     if (el.dataset.tab) { selectTab(el.dataset.tab); return; }

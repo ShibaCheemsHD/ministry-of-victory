@@ -39,6 +39,7 @@
         else refresh();
       });
     }
+    document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-model-reset]')) { Object.assign(settings, SET_DEF); store.set('settings', settings); syncSettings(); toast(t('sResetDone')); refresh(); } });
     $('s-reset').addEventListener('click', () => {
       Object.assign(settings, SET_DEF); store.set('settings', settings); syncSettings(); toast(t('sResetDone')); refresh();
     });
@@ -87,6 +88,7 @@
     $('s-motion').options[0].textContent = t('mFull');
     $('s-motion').options[1].textContent = t('mReduced');
     $('explain').innerHTML = EXPLAIN;
+    $('explain').addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('.ex-toc a'); if (!a) return; e.preventDefault(); const el = $(a.getAttribute('href').slice(1)); if (el) el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); });
     // a way back to us from the page (audit PO-02): the repo's issue form, no account data sent
     $('footer').innerHTML = `<p class="foot-keys">${t('keysHint')}</p><p>${esc(t('footer'))}</p><p class="foot-links"><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(t('feedback'))}</a><a href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml" target="_blank" rel="noopener">${esc(t('rss'))}</a><a href="https://github.com/ShibaCheemsHD/ministry-of-victory" target="_blank" rel="noopener">${esc(t('source'))}</a></p>`;
     for (const [id, k] of [['l-refresh', 'kh.refresh'], ['l-archive', 'ar.btn'], ['l-info', 'help'], ['l-settings', 'settings']]) { const el = $(id); if (el) el.textContent = t(k); }

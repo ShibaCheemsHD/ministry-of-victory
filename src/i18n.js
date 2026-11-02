@@ -5,7 +5,7 @@ const TEXT = {
   bootOk: 'OK', bootReady: '> READY. FOR SUPER EARTH.', bootFail: '> UNSTABLE UPLINK', bootWait: '> THE API IS SLOW: STILL LOADING IN THE BACKGROUND', skip: 'Skip',
   players: 'Helldivers online', dss: 'DSS', hod: 'Heavy Ordnance', none: 'none', active: 'active until', inactive: 'not active',
   updatedShort: 'updated {t}', refresh: 'Refresh now', updatedAt: 'Updated at {t}', nextIn: 'next refresh in {s}s', loading: 'Refreshing…',
-  info: 'How it works', settings: 'Settings', offline: 'No signal', facWhat: '{f} {what}', ordersAria: 'Major Orders', and: 'and',
+  info: 'Help: how it works', settings: 'Settings', offline: 'No signal', facWhat: '{f} {what}', ordersAria: 'Major Orders', and: 'and',
   u: { k: 'k', M: 'M', B: 'B', d: 'd', h: 'h', min: 'min' },
   tips: {
     hz: {
@@ -45,7 +45,7 @@ const TEXT = {
   staleMin: '{n} min ago', staleH: '{n} h ago', staleOff: 'the game\'s official servers', staleCom: 'the community API',
   dirLabel: 'Decision desk call',
   callTag: { outLong: 'Out of reach · the only chance left', go: 'Decision desk call', done: 'Order won', out: 'Out of reach · the move still worth making', ended: 'Order over · the move still worth making', wait: 'Too early to call', between: 'Between orders · decision desk call' },
-  bw: { still: 'Every mission still counts for the war and for your Personal Order. A good place for it is', drop: 'Drop on', defend: 'Defend', play: 'Play', outWhy: 'This order is out of reach: not even every Helldiver online could finish it in time.', overWhy: 'This order is over.', nextWhy: 'The other running order can still be won: play that one.' },
+  bw: { outLead: 'This order is out of reach:', nextHard: 'The other running order needs a record turnout, but it is still the better bet: play that one.', still: 'Every mission still counts for the war and for your Personal Order. A good place for it is', drop: 'Drop on', defend: 'Defend', play: 'Play', outWhy: 'This order is out of reach: not even every Helldiver online could finish it in time.', overWhy: 'This order is over.', nextWhy: 'The other running order can still be won: play that one.' },
   result: 'Result',
   frontOf: '{f} front',
   races: { title: 'The races', titleEnded: 'Final results', noteEnded: 'How each objective finished when the order ended.', note: 'One row per objective. Each bar ends at its goal; the pale band is where today\'s pace lands by the deadline.' },
@@ -118,7 +118,7 @@ const TEXT = {
     k1: { edited: 'objectives edited once', effect: '1 effect switched on', jump: '1 hand-made jump', setback: '1 setback', regen: '1 resistance change', attack: '1 new attack' },
     kN: { edited: 'objectives edited {n} times', effect: '{n} effects switched on', jump: '{n} hand-made jumps', setback: '{n} setbacks', regen: '{n} resistance changes', attack: '{n} new attacks' },
     fronts: 'The war right now', divers: 'Helldivers', planets1: '1 planet contested', planetsN: '{n} planets contested', defs1: '1 defense running', defsN: '{n} defenses running' },
-  sh: { pickThis: 'Desk\'s best bet of the {n} running orders.', pickOther: 'Not the desk\'s best bet: there aren\'t enough Helldivers for every running order, so play {title} first.', btn: 'Share image', short: 'Image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', medalsLost: '{n} medals · not earned', seeProg: 'See the progress', logNote1: '1 new in the Command log', logNoteN: '{n} new in the Command log', copyBox: 'Copy this text by hand:', followBest: 'Follow the best bet', obj: 'Objectives',
+  sh: { pickThis: 'Best bet of the {n} running orders.', pickOther: 'Not the desk\'s best bet: there aren\'t enough Helldivers for every running order, so play {title} first.', btn: 'Share image', short: 'Image', title: 'Share image', head: 'Major Order briefing', order: 'Order {n} of {m}', left: '{d} left', medals: '{n} medals', medalsLost: '{n} medals · not earned', seeProg: 'See the progress', logNote1: '1 new in the Command log', logNoteN: '{n} new in the Command log', copyBox: 'Copy this text by hand:', followBest: 'Follow the best bet', obj: 'Objectives',
     more: '+{n} more objectives on the site', foot: 'Live forecast · updated every 10 min', method: 'An estimate from the game\'s public numbers and today\'s players, not an official statement. Method and track record on the site.', making: 'Drawing the briefing…', fail: 'Couldn\'t draw the image in this browser.',
     alt: 'Major Order briefing image', note: 'Everything that matters in one picture, made for Reddit and Discord. Times are in UTC.',
     dl: 'Download PNG', copy: 'Copy image', share: 'Share…', copied: 'Image copied: paste it into your post.' },
@@ -286,7 +286,7 @@ const TEXT = {
     projUp: 'Lifts {what} from {now} to about {next} of the goal', projOnly: 'Lifts {what} from {now} to about {next} of the goal, still short', it: 'it', proj: 'At this pace: {now} of the goal',
     region: 'Knocks about {p} off the planet when it falls',
   },
-  sitTitle: 'Situation', movesTitle: 'The moves', fineTitle: 'Already fine', noMoves: 'No moves needed right now: keep it up.', noMovesDone: 'This order is won: nothing left to do here.', callStale: 'Not live', noMovesLost: 'No move changes the outcome: this order is out of reach.',
+  sitTitle: 'Situation', movesTitle: 'The moves', fineTitle: 'Already fine', noMoves: 'No moves needed right now: keep it up.', noMovesDone: 'This order is won: nothing left to do here.', callStale: 'Not live', modelNote: 'Forecast on your own model settings', modelReset: 'Reset', notYet: 'not measured yet', retry: 'Retry now', dataFrom: 'data from {t}', helpToc: 'On this page', lgDone: 'done', lgPace: 'today\'s pace by the deadline', lgGoal: 'goal', noMovesLost: 'No move changes the outcome: this order is out of reach.',
   noMovesUnknown: 'There\'s no detailed plan for this kind of objective: the order of the day above is the best general advice.',
   noMovesEnded: 'This order is over: the plan comes back with the next Major Order.',
   libNTable: 'Planets that count, quickest to take first.', keyPrev: 'Previous tab (Q)', keyNext: 'Next tab (E)',
@@ -302,8 +302,8 @@ const TEXT = {
   anyOf: 'Any one of these objectives wins the order. The forecast and the plan follow the most winnable one: option {k}.', option: 'Option {n}',
   tObj: 'Objectives', tRaces: 'Races', tMap: 'Map', tabsAria: 'Order details', tStrat: 'Plan', tData: 'Numbers', tHist: 'Progress', tIntel: 'Command log', tIntelS: 'Log',
   s: { liberated: 'Liberated', safe: 'Safe', falls: 'falls by {when} at this rate', fallsAt: 'falls ~{when}', range: '({a} – {b})', likely: 'most likely between {a} and {b}', fallsTip: 'Falls around {when} at this rate; most likely between {a} and {b}.', stuck: 'stuck: it heals faster than we damage it', slow: 'moving, but too slowly for the deadline', pct: '{p} liberated',
-    defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
-    cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cOkFreed: 'Needs a push: about {proj} by the deadline only if players switch over from finished objectives', cOkBy: 'On track: done by {when}', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',
+    ahead: '{d} before the deadline', defOk: 'Defense on track', defOut: 'Counts as ours at the deadline', defHelp: 'Reinforcements needed before {when}',
+    cDone: 'Done', cOk: 'On track: about {proj} by the deadline', cOkFreed: 'Needs a push: about {plain} by the deadline at today\'s pace, about {proj} if players switch over from finished objectives', cOkBy: 'On track: done by {when}', cBehind: 'Behind: about {proj} by the deadline', cWait: 'Measuring the pace', cCount: '{p} of {g}', progress: '{p} done',
     missed: 'not completed before the deadline', nNext: 'quickest to take: {planet}', nAttack1: 'one attack running', nAttacks: '{n} attacks running', nNoAttack: 'no attack running' },
   chipDss: 'DSS here', chipHod: 'Heavy Ordnance', chipRetake: 'Must be retaken',
   planTitle: 'Full plan', showNums: 'Show the numbers', hideNums: 'Hide the numbers',
@@ -350,8 +350,8 @@ const TEXT = {
     cntStart: ['{task}', 'Keep the page open for a few minutes to see whether we\'re on time.', '{needed}/h needed.'],
     cntWeapon: ['Use the {item}', 'Only kills with that weapon count.', ''],
     cntOk: ['{task}: on track', 'It finishes on its own, no need to focus here.', ''],
-    cntFreed: ['{task}: needs players to switch over', 'It gets there only if the players of the {from} objectives switch to the {to} front once theirs are done. Switching earlier makes it safe.', 'At today\'s pace alone: about {plain} by the deadline.'],
-    cntFreedAny: ['{task}: needs players to switch over', 'It gets there only if the players of the other objectives switch to it once theirs are done. Switching earlier makes it safe.', 'At today\'s pace alone: about {plain} by the deadline.'],
+    cntFreed: ['{task}: players must switch over', 'It gets there only if the players of the {from} objectives switch to the {to} front once theirs are done. Switching earlier makes it safe.', 'At today\'s pace alone: about {plain} by the deadline.'],
+    cntFreedAny: ['{task}: players must switch over', 'It gets there only if the players of the other objectives switch to it once theirs are done. Switching earlier makes it safe.', 'At today\'s pace alone: about {plain} by the deadline.'],
   },
   deepBasis: 'Based on {c} HP per hour with every player on one planet ({src}).',
   capMeasured: 'measured now', capDefault: 'October 2026 reference', capManual: 'set manually',
@@ -391,10 +391,11 @@ const TEXT = {
   footer: 'Unofficial community tool. Data: community API api.helldivers2.dev. Enemy and weapon names from Galactic Wide Web and helldivers-2/json on GitHub. Estimates are based on observed galactic war behavior, not official numbers.',
 };
 
-const EXPLAIN = `<section class="ex-start"><h3>How to read this page</h3>
+const EXPLAIN = `<nav class="ex-toc" aria-label="On this page"><a href="#ex-read">How to read this page</a><a href="#ex-scale">The five forecasts</a><a href="#ex-words">Words used here</a><a href="#ex-parts">The parts of the page</a></nav>
+<section class="ex-start" id="ex-read"><h3>How to read this page</h3>
 <ol><li><b>The call</b> at the top is the one move that changes the Major Order most right now, with the order's forecast beside it.</li>
 <li><b>The tabs</b> right under it hold the detail. <b>Races</b> (the first) shows every objective: each bar ends at its goal, and the pale band is where today's pace lands by the deadline. Then the full plan, progress charts, the command log and the war map.</li></ol></section>
-<section><h3>The five forecasts</h3>
+<section id="ex-scale"><h3>The five forecasts</h3>
 <dl class="ex-scale">
 <div class="vl-done"><dt><span class="pill vl-done"><span>Done</span></span></dt><dd>The objective, or the whole order, is complete.</dd></div>
 <div class="vl-ok"><dt><span class="pill vl-ok"><span>On track</span></span></dt><dd>At today's pace we make it in time.</dd></div>
@@ -403,7 +404,7 @@ const EXPLAIN = `<section class="ex-start"><h3>How to read this page</h3>
 <div class="vl-out"><dt><span class="pill vl-out"><span>Out of reach</span></span></dt><dd>It would take more than any order has ever drawn, or more than every Helldiver online. The page says so, and points to the move still worth making.</dd></div>
 </dl>
 <p>Before a few hours of pace are measured, an objective is <b>Too early to call</b>, and it is never called out of reach in its first 3 hours. When an order ends, every objective is <b>Done</b> or <b>Failed</b>.</p></section>
-<section><h3>Words used here</h3>
+<section id="ex-words"><h3>Words used here</h3>
 <dl>
 <dt>Regen</dt><dd>Every enemy planet heals part of its health every hour. If the damage it takes is lower than its regen, progress is zero, even with thousands of Helldivers on it.</dd>
 <dt>DSS</dt><dd>The Democracy Space Station, voted from planet to planet. Measured on the war log since 2025, it adds nothing visible to liberation on its own.</dd>
@@ -412,7 +413,7 @@ const EXPLAIN = `<section class="ex-start"><h3>How to read this page</h3>
 <dt>Front</dt><dd>All the planets of one enemy faction. Kill counts usually count anywhere on that front.</dd>
 <dt>Impact multiplier</dt><dd>How much each mission is worth: the game lowers it when more people play. The page reads it live, so the numbers follow today's playerbase.</dd>
 </dl></section>
-<section><h3>The parts of the page</h3>
+<section id="ex-parts"><h3>The parts of the page</h3>
 <dl>
 <dt>Best bet</dt><dd>When several orders run at once, the desk compares them, counting Helldivers who help two orders at once (killing bots on a bot planet counts for both). If there aren't enough Helldivers for all of them, the best bet is marked on its tab and the page opens on it.</dd>
 <dt>Forecast</dt><dd>Beside the call: the order's call on the five-step scale, and the bars that explain it, Helldivers there against Helldivers needed, or today's pace against the pace needed.</dd>

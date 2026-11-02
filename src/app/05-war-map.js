@@ -54,28 +54,32 @@
       for (const w of n.p.waypoints || []) { const q = at.get(Number(w)); if (q && n.i < q.i) lines.push(`<line class="mw" x1="${f1(n.x)}" y1="${f1(n.y)}" x2="${f1(q.x)}" y2="${f1(q.y)}"/>`); }
       for (const tIdx of n.p.attacking || []) { const q = at.get(Number(tIdx)); if (q) lines.push(`<line class="ma" style="--c:${FAC_VAR[factionOfPlanet(n.p)] || 'var(--fg)'}" x1="${f1(n.x)}" y1="${f1(n.y)}" x2="${f1(q.x)}" y2="${f1(q.y)}"/>`); }
     }
-    // one label, for the planet of "what to do now", on the first side where it hits nothing
+    // names: the call's planet first, then the order's other planets, each on the first side where it hits
+    // nothing (critique 1 Nov 2026: only one planet was named)
     let label = '';
-    const L = cp && at.get(Number(cp.planet.index));
-    if (L) {
-      const txtL = plain(planetName(L.p)).toUpperCase(), w = txtL.length * 4.9 + 4, h = 9;
-      // candidate boxes on rings around the planet, nearest first; a leader line when it had to move away
+    const placed = [];
+    const toLabel = [...(cp ? [Number(cp.planet.index)] : []), ...N.filter(n => n.isR).map(n => n.i)].filter((v, i, arr) => arr.indexOf(v) === i).map(i => at.get(i)).filter(Boolean).slice(0, 6);
+    for (const L of toLabel) {
+      const main = cp && L.i === Number(cp.planet.index);
+      const txtL = plain(planetName(L.p)).toUpperCase(), w = txtL.length * (main ? 4.9 : 4.2) + 4, h = main ? 9 : 8;
       const hits = (b) => b.x < -110 || b.x + w > 110 || b.y < -110 || b.y + h > 110
         || N.some(n => n !== L && Math.hypot(Math.max(b.x - n.x, 0, n.x - b.x - w), Math.max(b.y - n.y, 0, n.y - b.y - h)) < n.R + 2)
-        || Math.hypot(Math.max(b.x - L.x, 0, L.x - b.x - w), Math.max(b.y - L.y, 0, L.y - b.y - h)) < L.R + 1;
+        || Math.hypot(Math.max(b.x - L.x, 0, L.x - b.x - w), Math.max(b.y - L.y, 0, L.y - b.y - h)) < L.R + 1
+        || placed.some(q => b.x < q.x + q.w + 2 && q.x < b.x + w + 2 && b.y < q.y + q.h + 1 && q.y < b.y + h + 1);
       let pick = null;
       for (let gap = 2; gap <= 40 && !pick; gap += 3) {
         for (const ang of [-90, 90, 0, 180, -45, -135, 45, 135, -65, -115, 65, 115, -20, -160, 20, 160]) {
           const a = ang * Math.PI / 180, dist = L.R + gap;
           const cx = L.x + Math.cos(a) * (dist + w / 2 * Math.abs(Math.cos(a))), cy = L.y + Math.sin(a) * (dist + h / 2 * Math.abs(Math.sin(a)));
-          const b = { x: cx - w / 2, y: cy - h / 2 };
-          if (!hits(b)) { pick = { ...b, gap, cx, cy }; break; }
+          const bx = { x: cx - w / 2, y: cy - h / 2 };
+          if (!hits(bx)) { pick = { ...bx, gap, cx, cy }; break; }
         }
       }
-      if (!pick) pick = { x: L.x - w / 2, y: L.y - L.R - h - 2, gap: 2, cx: L.x, cy: L.y - L.R - h / 2 - 2 };
+      if (!pick) { if (!main) continue; pick = { x: L.x - w / 2, y: L.y - L.R - h - 2, gap: 2, cx: L.x, cy: L.y - L.R - h / 2 - 2 }; }
+      placed.push({ x: pick.x, y: pick.y, w, h });
       const ex = pick.cx - L.x, ey = pick.cy - L.y, el = Math.hypot(ex, ey) || 1;
       const lead = pick.gap > 5 ? `<line class="lead" x1="${f1(L.x + ex / el * (L.R + 0.5))}" y1="${f1(L.y + ey / el * (L.R + 0.5))}" x2="${f1(Math.max(pick.x, Math.min(pick.x + w, L.x)))}" y2="${f1(Math.max(pick.y, Math.min(pick.y + h, L.y)))}"/>` : '';
-      label = `${lead}<text class="lbl" x="${f1(pick.cx)}" y="${f1(pick.cy + 3)}" text-anchor="middle">${esc(txtL)}</text>`;
+      label += `${lead}<text class="lbl${main ? '' : ' sm'}" x="${f1(pick.cx)}" y="${f1(pick.cy + (main ? 3 : 2.6))}" text-anchor="middle">${esc(txtL)}</text>`;
     }
     const order = [...N].sort((a, b) => (a.isF - b.isF) || (a.isR - b.isR));
     const dots = order.map(n => {
@@ -102,6 +106,6 @@
         </svg>
         <div class="map-tip" hidden></div>
       </div>
-      <p class="map-key"><span><i class="k-ring"></i>${esc(t('map.kOrder'))}</span>${focus.size ? `<span><i class="k-br"></i>${esc(t('map.kNow'))}</span>` : ''}<span><i class="k-ev"></i>${esc(t('map.kAttack'))}</span>${dssI != null && at.has(dssI) ? `<span><i class="k-dss"></i>DSS</span>` : ''}</p>
+      <p class="map-key">${res ? `<span><i class="k-ring"></i>${esc(t('map.kOrder'))}</span>` : ''}${focus.size ? `<span><i class="k-br"></i>${esc(t('map.kNow'))}</span>` : ''}<span><i class="k-ev"></i>${esc(t('map.kAttack'))}</span>${dssI != null && at.has(dssI) ? `<span><i class="k-dss"></i>DSS</span>` : ''}</p>
     </section>`;
   }

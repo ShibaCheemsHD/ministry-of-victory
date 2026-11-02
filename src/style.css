@@ -19,7 +19,7 @@
   /* the call scale */
   --v-done: #3fc483;
   --v-ok: #2fc6b8;
-  --v-push: #e2c46c;
+  --v-push: #d6a03c;
   --v-record: #f0609e;
   --v-out: #a0a9bb;
   --v-wait: #a0a9bb;
@@ -422,7 +422,7 @@ summary > .ico { transition: transform .2s var(--ease-out); }
 .tabpanel:focus { outline: none; }
 .tabpanel:focus-visible { outline: 2px solid var(--se); outline-offset: 6px; }
 @media (max-width: 640px) {
-  .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; }
+  .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
   .tab { padding: 6px 4px; font-size: 14px; justify-content: center; text-align: center; white-space: normal; line-height: 1.05; flex-wrap: wrap; gap: 4px; }
   .tab .tab-n { display: none; }
 }
@@ -1054,7 +1054,7 @@ dialog, .pcard, .btn, .mbtn, .ghost, .planet-btn, .pill, .ar-search, .field inpu
 .holo .g-ticks { fill: none; stroke: var(--rule-2); stroke-width: 5; stroke-dasharray: 1.1 6.4; }
 .holo .g-track { fill: none; stroke: rgba(255, 255, 255, .08); stroke-width: 6; }
 .holo .g-arc { fill: none; stroke: var(--fc); stroke-width: 6; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.2s var(--ease-out); }
-.holo.cnt .g-arc { stroke: var(--se); }
+
 .holo .g-rim { fill: none; stroke: color-mix(in srgb, var(--fc) 70%, #fff); stroke-width: .8; opacity: .7; }
 .holo .g-surf .d { fill: rgba(0, 0, 0, .3); }
 .holo .g-surf .l { fill: rgba(255, 255, 255, .1); }
@@ -1149,11 +1149,11 @@ dialog { background: linear-gradient(180deg, #17181c, #0f1013); }
 /* the call's second line: passing it on */
 .call-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: -8px; }
 .call-tools .btn.quiet { padding: 0 10px; min-height: 40px; }
-.call-tools .planet-btn { margin-left: auto; }
+.call-tools .planet-btn { margin-left: 0; }
 @media (max-width: 640px) { .call-tools { margin-top: 0; } .call-tools .btn.quiet { flex: 1 1 0; border-color: var(--rule-2); } .call-tools .planet-btn { flex: 1 1 100%; margin-left: 0; } }
 /* the turnout meter in the call's own colour */
 .to-bar .fill { background: var(--lv, var(--se)); min-width: 3px; }
-.call.vl-push .to-bar .fill, .call.vl-wait .to-bar .fill { background: var(--se); }
+.call.vl-wait .to-bar .fill { background: var(--v-ok); }
 /* something new in the command log, beside the call */
 .log-note { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; background: rgba(255, 233, 0, .07); border: 1px solid color-mix(in srgb, var(--se) 45%, transparent); color: var(--fg); font: 600 14px var(--ui); text-align: left; }
 .log-note .ico { color: var(--se); }
@@ -1170,7 +1170,39 @@ dialog { background: linear-gradient(180deg, #17181c, #0f1013); }
 /* the copy-by-hand box */
 .copy-box { width: 100%; min-height: 160px; padding: 10px 12px; background: var(--ink); border: 1px solid var(--rule-2); color: var(--fg); font: 14px/1.45 var(--ui); resize: vertical; }
 .foot-keys { color: var(--muted); }
-@media (hover: none) { .foot-keys { display: none; } }
+@media (hover: none), (max-width: 760px) { .foot-keys { display: none; } }
 
 /* a whole sentence reads in sentence case, even in the display face */
 .sb-head { text-transform: none; font-stretch: 112%; }
+
+/* planet card numbers labelled like every other label */
+.pc-stats .label { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+/* phones: sharing buttons as tall as any other target */
+@media (max-width: 640px) { .call-tools .btn.quiet { min-height: 44px; } }
+/* the plan's minor rows stay below the moves in weight */
+.moves > li:not(.move) .head { font-size: 16px; }
+/* the races' key: what the bar's parts mean */
+.race-key { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: 13px; color: var(--muted); }
+.race-key span { display: inline-flex; align-items: center; gap: 6px; }
+.race-key i { display: inline-block; width: 18px; height: 10px; }
+.race-key .k-done { background: var(--muted); }
+.race-key .k-pace { background: color-mix(in srgb, var(--muted) 30%, transparent); border-right: 2px solid var(--muted); }
+.race-key .k-goal { width: 2px; height: 16px; background: var(--fg); }
+/* the forecast runs on hand-set numbers */
+.model-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; background: rgba(255, 233, 0, .08); border: 1px solid color-mix(in srgb, var(--se) 50%, transparent); font-size: 14px; }
+.model-note .ico { color: var(--se); }
+.model-note .linkish { margin-left: auto; }
+/* the API-down banner can be retried by hand */
+.stale-bar { align-items: center; }
+.stale-bar p { flex: 1; }
+.stale-bar .btn { min-height: 40px; flex: none; }
+@media (max-width: 640px) { .stale-bar { flex-wrap: wrap; } .stale-bar .btn { width: 100%; min-height: 44px; } }
+/* help: a contents line on top */
+.ex-toc { display: flex; flex-wrap: wrap; gap: 4px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.ex-toc a { min-height: 32px; display: inline-flex; align-items: center; color: var(--fg); font-weight: 600; font-size: 14px; }
+/* map: the order's other planets named smaller */
+.war-map .lbl.sm { font-size: 6.4px; fill: var(--muted); }
+/* the cross-order block in the plan */
+.situation.across { border-left-color: var(--se); }
+.situation.across.x-all { border-left-color: var(--v-done); }
+.situation.across p { color: var(--muted); font-size: 14px; max-width: 75ch; }

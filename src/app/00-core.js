@@ -109,6 +109,9 @@
   if (settings.hodMult === 1.3) settings.hodMult = ENGINE.DEFAULTS.hodMult;
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   const reduced = () => settings.motion === 'reduced' || mq.matches;
+  // the forecast runs on numbers set by hand: said beside it, on the image and in the copied text, so a test
+  // never travels as the live forecast (critique 1 Nov 2026)
+  const customModel = () => settings.capMode === 'manual' || ['dssBonus', 'hodMult', 'recordShare'].some(k => Number(settings[k]) !== ENGINE.DEFAULTS[k]);
 
   /* ---------- enemy / item names (best effort) ---------- */
   const names = { enemies: store.get('names.enemies', null), enemy1: store.get('names.enemy1', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };

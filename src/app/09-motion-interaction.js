@@ -170,10 +170,11 @@
     const lines = [
       `MINISTRY OF VICTORY · ${plain(clean(txt(a.title) || 'Major Order')).toUpperCase()}`,
       pickLine(entry),
-      `${m.tag}: ${(m.verb ? `${m.verb} ${m.target}` : m.target).toUpperCase()}`,
+      `**${m.tag}: ${(m.verb ? `${m.verb} ${m.target}` : m.target).toUpperCase()}**`,
       plain(m.why),
       p.cap && !m.moveOn ? plain(p.cap) : '',
       `${t('forecast')}: ${t('v.' + res.verdict)} · ${t('timeLeft')}: ${isFinite(left) ? durDown(left / 3.6e6) : '—'}`,
+      customModel() ? t('modelNote') + '.' : '',
       `https://shibacheemshd.github.io/ministry-of-victory/#order=${encodeURIComponent(String(a.id))}`,
     ];
     return lines.filter(Boolean).join('\n');
