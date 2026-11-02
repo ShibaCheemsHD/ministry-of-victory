@@ -82,7 +82,7 @@ with sync_playwright() as p:
     pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
     via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")
     if 'cdn.jsdelivr.net' not in via: problems.append('raw down: the recorder data did not come from the fallback')
-    if not pg.locator('.trust-link').count(): problems.append('raw down: the page lost the recorder data')
+    if not pg.locator('.mworth[data-measured]').count(): problems.append('raw down: the page lost the recorder data')
     pg.close()
     # outside text never runs as code (1 Nov 2026: an order name with markup ran its onerror in the archive)
     pg = br.new_page()

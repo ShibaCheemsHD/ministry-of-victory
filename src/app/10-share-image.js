@@ -206,6 +206,8 @@
     if (h) { $('dlg-faq').close(); $('dlg-info').showModal(); const s = $(h.dataset.help); if (s) requestAnimationFrame(() => s.scrollIntoView({ block: 'start' })); }
   });
 
+  // the planet's trigger that is on screen: the globe on wide screens, the planet button on narrow ones
+  const globeEl = () => [...document.querySelectorAll('[data-globe]')].find(e => e.getClientRects().length) || null;
   function setGlance(on) { settings.layout = on ? 'glance' : 'full'; store.set('settings', settings); if ($('s-layout')) $('s-layout').value = settings.layout; render(); }
   // one Share menu: closes on a pick, on a click elsewhere and on Escape
   document.addEventListener('click', (e) => {
@@ -334,16 +336,16 @@
     const cp = forced ? { planet: forced, list: null } : cardPlanets(entry); if (!cp) return;
     wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list);
     wrap.hidden = false; wrap.classList.add('open');
-    if (!store.get('pcSeen', false)) { store.set('pcSeen', true); document.querySelector('[data-globe]')?.classList.remove('g-new'); }
+    if (!store.get('pcSeen', false)) { store.set('pcSeen', true); document.querySelectorAll('[data-globe]').forEach(g => g.classList.remove('g-new')); }
     placeCard();
     if (pin) ui.pcPinned = true;
     wrap.classList.toggle('pinned', !!ui.pcPinned);
-    const g = document.querySelector('[data-globe]'); if (g) g.setAttribute('aria-expanded', 'true');
+    document.querySelectorAll('[data-globe]').forEach(g => g.setAttribute('aria-expanded', 'true'));
   }
   // desktop: beside the globe, over the side column when it fits there, never over the headline;
   // phones get a bottom sheet from the stylesheet
   function placeCard() {
-    const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : document.querySelector('[data-globe]');
+    const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : globeEl();
     if (!wrap || !g) return;
     if (window.innerWidth <= 760) { wrap.style.left = wrap.style.top = ''; wrap.removeAttribute('data-side'); return; }
     const r = g.getBoundingClientRect(), gap = 14, vw = window.innerWidth, vh = window.innerHeight;
@@ -365,7 +367,7 @@
     if (ui.pcPinned && !force) return;
     ui.pcPinned = false; ui.pcForce = null; ui.pcAnchor = null;
     document.querySelectorAll('.pc-wrap').forEach(wrap => { wrap.hidden = true; wrap.classList.remove('open'); });
-    const g = document.querySelector('[data-globe]'); if (g) g.setAttribute('aria-expanded', 'false');
+    document.querySelectorAll('[data-globe]').forEach(g => g.setAttribute('aria-expanded', 'false'));
   }
   // war map: tooltip on hover/focus, click opens the planet card for that planet
   function mapTip(g) {

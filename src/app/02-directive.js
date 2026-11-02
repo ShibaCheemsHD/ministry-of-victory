@@ -31,13 +31,8 @@
   function missionLine(p) {
     const w = missionWorth(p);
     if (!w) return '';
-    const day = w.vsDay && Math.abs(w.vsDay - 1) >= 0.1 ? `<span class="mw-day ${w.vsDay > 1 ? 'up' : 'down'}">${esc(fill(t(w.vsDay > 1 ? 'worth.more' : 'worth.less'), { p: Math.round(Math.abs(w.vsDay - 1) * 100) + '%' }))}</span>` : '';
-    // a readout like the game's mission summary: what one mission and one operation add, what 1% costs,
-    // and how many missions the planet still needs (rounded: these are estimates, not counts)
-    const cell = (k, v) => `<div><dt>${esc(t('worth.' + k))}</dt><dd>${v}</dd></div>`;
-    return `<div class="mworth" role="group" aria-label="${esc(fill(t('worth.aria'), { planet: plain(planetName(p)) }))}">
-      <dl>${cell('one', '+' + tinyPct(w.frac))}${cell('op', '+' + tinyPct(w.frac * 3))}${cell('per1', '≈ ' + nice(w.per1))}${cell(w.defend ? 'leftHold' : 'leftFree', '≈ ' + nice(w.left))}</dl>
-      <p>${day}<button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p></div>`;
+    // one quiet line under the turnout: a detail for the curious, not a headline (owner, 2 Nov 2026)
+    return `<p class="mworth"${w.measured ? ' data-measured' : ''}>${fill(t('worth.line'), { m: `<b>+${tinyPct(w.frac)}</b>`, op: `+${tinyPct(w.frac * 3)}`, n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')) })} <button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p>`;
   }
 
   /* ---------- small components ---------- */
@@ -302,7 +297,7 @@
     if (!cp) return '';
     const pl = cp.planet, dss = !!(last && last.dssIdx === pl.index);
     return `<button type="button" class="planet-btn" data-globe aria-haspopup="dialog" aria-expanded="false">
-      <i class="sw" style="--fc:${planetTone(res, pl)}" aria-hidden="true"></i><span class="pb-n">${planetName(pl)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span>
+      ${miniGlobe(FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)')}<span class="pb-n">${planetName(pl)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span>
       <span class="pb-t">${esc(t('gCta'))}</span>${dss ? `<span class="pb-dss" title="${esc(t(last.hod ? 'gDssHodT' : 'gDssT'))}">${esc(t(last.hod ? 'gDssHod' : 'gDss'))}</span>` : ''}${ICON.chev}</button>`;
   }
 
@@ -316,14 +311,21 @@
     const copy = (off) => blobs.map(b => `<ellipse cx="${(42 + off + b.x).toFixed(1)}" cy="${b.y.toFixed(1)}" rx="${b.rx.toFixed(1)}" ry="${b.ry.toFixed(1)}" class="${b.d ? 'd' : 'l'}"/>`).join('');
     return copy(-156) + copy(0) + copy(156);
   }
-  function holoPlanet(p, res, cap) {
+  // a small planet in the faction's colour, for the planet button on narrow screens
+  const miniGlobe = (fc) => `<i class="pb-globe" style="--fc:${fc}" aria-hidden="true"></i>`;
+  function holoPlanet(p, res, cap, trigger) {
     const r = p.ring;
     if (!r) return '';
+    // the call's planet opens its briefing (conditions and loadout), labelled under the globe
+    const cp = trigger ? cardPlanets({ res }) : null;
     const id = 'gl' + String(res.id).replace(/[^\w-]/g, '');
     const seed = p.planet ? Number(p.planet.index) * 37 + 11 : String(p.fac || 'x').length * 131;
     const dss = !!(p.planet && last && last.dssIdx === p.planet.index);
-    const fc = p.planet ? planetTone(res, p.planet) : FAC_VAR[p.fac] || 'var(--fg)';
-    return `<div class="holo ${r.tone}" style="--fc:${fc}" aria-hidden="true">
+    // the faction's own colour (owner, 2 Nov 2026), not a shade of it
+    const fac = p.planet ? factionOfPlanet(p.planet) : p.fac, fc = FAC_VAR[fac] || 'var(--fg)';
+    const tag = cp ? 'button' : 'div';
+    const attrs = cp ? `type="button" data-globe aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(plain(planetName(cp.planet)) + ': ' + t('gCta'))}"` : 'aria-hidden="true"';
+    return `<${tag} class="holo ${r.tone}${cp ? ' holo-btn' : ''}" style="--fc:${fc}" ${attrs}>
       <svg viewBox="0 0 240 240" focusable="false">
         <defs>
           <radialGradient id="${id}b" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient>
@@ -339,6 +341,7 @@
         <circle class="g-rim" cx="120" cy="120" r="78"/>
         ${dss ? `<g class="g-sat ${last.hod ? 'hod' : ''}"><path d="M120 6.5l6.5 6.5-6.5 6.5-6.5-6.5z"/></g>` : ''}
       </svg>
-      <div class="g-val"><b data-count="holo:${esc(res.id)}" data-to="${r.frac}" data-pct="1">${pct(r.frac)}</b><span>${esc(r.label)}</span></div>${cap ? `<span class="g-cap">${cap.split(' · ').map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}
-    </div>`;
+      <span class="g-val" aria-hidden="true"><b data-count="holo:${esc(res.id)}" data-to="${r.frac}" data-pct="1">${pct(r.frac)}</b><span>${esc(r.label)}</span></span>${cap ? `<span class="g-cap">${cap.split(' · ').map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}
+      ${cp ? `<span class="g-cta" aria-hidden="true"><span class="g-cta-n">${planetName(cp.planet)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span><span class="g-cta-t">${esc(t('gCta'))} ›</span></span>` : ''}
+    </${tag}>`;
   }

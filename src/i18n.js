@@ -388,7 +388,7 @@ const TEXT = {
   helpTest: 'Try opening this address: if you see text with numbers, the API is working.',
   techDetails: 'Technical details (send these to whoever helps you)',
   worth: {
-    line: 'One mission won on {planet}: {m} · a three-mission operation: {op} · {n} missions make 1% · about {left} more to {goal} it',
+    line: 'One mission won here: {m} · an operation: {op} · 1% ≈ {n} missions · about {left} to {goal} it.',
     aria: 'What one mission is worth on {planet}', one: 'One mission won', op: 'One operation (3 missions)', per1: 'Missions for 1%', leftFree: 'Missions to liberate it', leftHold: 'Missions to hold it',
     free: 'liberate', hold: 'hold', how: 'How missions count', more: 'Now each mission counts {p} more than the day\'s average: fewer Helldivers online.', less: 'Now each mission counts {p} less than the day\'s average: the galaxy is crowded.',
   },
