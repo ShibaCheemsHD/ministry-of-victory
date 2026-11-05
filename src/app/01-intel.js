@@ -129,12 +129,15 @@
       const merged = { ...keep, t: Math.min(...eds.map(x => x.t)), merged: eds.some(x => !x.ref) };
       items = [...items.filter(x => x.kind !== 'edited'), merged].sort((a, b) => b.t - a.t);
     }
+    items = mergeResistanceEvents(items);
     const weapons = new Set(entry.res.tasks.filter(r => r.verdict !== 'done').map(r => r.task.itemId).filter(Boolean).map(String));
     // effects switched on right now on the planets this order depends on (straight from the game)
-    const active = (record?.effects || []).filter(e => (e.planets.some(i => i === -1 || rel.has(i)) || (e.type === 32 && weapons.has(String(valOf(e.v, 4))))) && !items.some(x => x.kind === 'effect' && x.on && x.eid === e.id))
-      .map(e => ({ kind: 'active', t: record.t, eid: e.id, type: e.type, v: e.v, planets: e.planets, mine: e.type === 32 && weapons.has(String(valOf(e.v, 4))) }))
-      .sort((a, b) => (b.mine - a.mine) || (WAR_FX.has(b.type) - WAR_FX.has(a.type)));
-    const ns = news.items.filter(d => now - d.t < 48 * 3.6e6).slice(0, 3)
+    const active = (record?.effects || []).flatMap(e => {
+      const planets = unrepresentedEffectPlanets(e, items), mine = e.type === 32 && weapons.has(String(valOf(e.v, 4)));
+      if (!planets.length || !(planets.some(i => i === -1 || rel.has(i)) || mine)) return [];
+      return [{ kind: 'active', t: record.t, eid: e.id, type: e.type, v: e.v, planets, mine }];
+    }).sort((a, b) => (b.mine - a.mine) || (WAR_FX.has(b.type) - WAR_FX.has(a.type)));
+    const ns = uniqueDispatches(news.items).filter(d => now - d.t < 48 * 3.6e6).slice(0, 3)
       .map(d => { const np = newsParts(d.msg); return { kind: 'news', t: d.t, id: 'news:' + d.id, ...np, nk: newsKind(np.title, np.body), hit: names.some(n => n && d.msg.toLowerCase().includes(n)) }; });
     return { items: [...items, ...active], news: ns, rel };
   }
@@ -220,6 +223,7 @@
     let out = fill(t((short ? 'in.s.' : 'in.') + k), params);
     if ((x.kind === 'jump' || x.kind === 'setback') && !short && x.won != null)
       out += ' ' + fill(t('in.proof'), { won: fmt(x.won), worth: x.worth == null ? '—' : x.worth < 0.0001 ? t('in.lt') : fill(t('in.about'), { x: pct(x.worth, 2) }) });
+    if (!short && x.resistanceEffects?.length) out += ' ' + esc(t('it.mergedResistance')) + ' ' + x.resistanceEffects.map(e => alertText(e, false, rel)).join(' ');
     return out;
   }
   // the Strategic Opportunity news that most likely explains an edit: close in time, or (for a change
@@ -227,7 +231,7 @@
   // Strategic Opportunity dispatches: the recorder keeps them for a week, this browser keeps the latest news
   function soList() {
     const seen = new Set(), out = [];
-    for (const n of [...((record && record.so) || []), ...(news.items || [])]) if (n && soOutcome(n.msg) && !seen.has(n.id)) { seen.add(n.id); out.push(n); }
+    for (const n of uniqueDispatches([...((record && record.so) || []), ...(news.items || [])])) if (n && soOutcome(n.msg) && !seen.has(n.id)) { seen.add(n.id); out.push(n); }
     return out.sort((a, b) => b.t - a.t);
   }
   function soNews(x, entry) {

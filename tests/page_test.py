@@ -121,6 +121,21 @@ with sync_playwright() as p:
             if gap > 32: problems.append(f'corrections: empty gap before dispatches: {gap}')
         pg.locator('.intel-tab').screenshot(path=os.path.join(ROOT, 'build', f'evidence-log-{w}.png'))
         pg.close()
+    # A resistance intervention and its measured outcome share one card, count and timeline item.
+    for w in (390, 1366):
+        pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
+        pg.goto(f'{PAGE}?s=intel&dedup=1&motion=reduced'); pg.wait_for_timeout(1800)
+        pg.locator('.tab[data-tab="intel"]').first.click(); pg.wait_for_timeout(250)
+        change = pg.locator('.it-card.cat-resistance').filter(has=pg.locator('h5').filter(has_text='Enemy resistance decreased'))
+        if change.count() != 1: problems.append(f'dedup @{w}: expected one resistance change')
+        else:
+            change.locator('summary').click()
+            if 'Related resistance settings' not in change.inner_text(): problems.append(f'dedup @{w}: missing merged evidence')
+            if 'enemy resistance set by command' not in change.inner_text().lower(): problems.append(f'dedup @{w}: lost setting details')
+        if pg.locator('.it-card h5').filter(has_text='Enemy resistance set by Command').count(): problems.append(f'dedup @{w}: duplicate setting card')
+        if pg.locator('.it-card.is-seaf').count() != 1: problems.append(f'dedup @{w}: active SEAF repeated its activation')
+        pg.locator('.intel-tab').screenshot(path=os.path.join(ROOT, 'build', f'evidence-dedup-{w}.png'))
+        pg.close()
     # Dense log: clusters are separate hit targets, and selection stays visible after scrolling.
     for w in (320, 390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')

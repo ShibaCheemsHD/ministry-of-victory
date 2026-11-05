@@ -204,6 +204,14 @@
         'recent.json':{v:2,updated:now,samples:[],prog:[]},
         'progress.json':{v:1,updated:now,since:now-30*H,orders:{[aid]:{start:now-30*H,exp:now+40*H,title:'X',pts:Array.from({length:30},(_,k)=>[now-(30-k)*H,...assignments[0].progress.map(v=>Math.round((v||0)*k/30))])}},planets:{}}};
     }
+    if (q.get('dedup') === '1' && record) {
+      const intel = record['intel.json'], time = now - 6 * H;
+      intel.alerts.push({kind:'regen',idx:261,t:time,from:.017,to:-.005},
+        {kind:'effect',eid:1219,type:77,on:true,v:[[1,-10000]],planets:[261],t:time},
+        {kind:'effect',eid:1401,type:40,on:true,v:[[16,3126357841]],planets:[261],t:time});
+      intel.effects.push({id:1219,type:77,v:[[1,-10000]],planets:[261],events:[]},
+        {id:1401,type:40,v:[[16,3126357841]],planets:[261],events:[]});
+    }
     if (q.get('corrections') === '1' && record) {
       const effects = [
         {id:1401,type:40,v:[[16,3126357841],[0,0]],planets:[-1],events:[]},

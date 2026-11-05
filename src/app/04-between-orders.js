@@ -127,7 +127,7 @@
   function dispatchRows(list, events) {
     const rows = [];
     const seen = new Set();
-    for (const n of list) {
+    for (const n of uniqueDispatches(list)) {
       if (!n || seen.has(n.id)) continue; seen.add(n.id);
       const np = newsParts(n.msg), k = newsKind(np.title, np.body);
       // the order's own start or end is already in the log, from the game data

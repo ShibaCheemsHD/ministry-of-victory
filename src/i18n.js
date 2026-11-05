@@ -221,7 +221,7 @@ const TEXT = {
     src: { wiki: 'Helldivers Wiki', game: 'game description' },
     foot: 'Conditions and enemies as the game describes them. The advice is ours; numbers from the Helldivers Wiki. Click the planet to keep this open.',
   },
-  it: { allies: 'Allied support',
+  it: { mergedResistance: 'Related resistance settings were recorded in the same update:', allies: 'Allied support',
     cat: { all: 'All events', resistance: 'Resistance', battle: 'Battlefield', mission: 'Mission effects', orders: 'Order changes', news: 'Dispatches' },
     type: 'Event type', overview: 'Browse changes by type. Labels distinguish their impact from their source.', filterLabel: 'Filter command log by event type',
     groupHelp: 'Each count groups events of the same type and time window. Select it to highlight the matching entries below.',
