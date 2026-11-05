@@ -192,7 +192,7 @@
   function openFaq(id) {
     const F = t('faq'), dlg = $('dlg-faq');
     $('faq-title').textContent = F.title;
-    $('faq-body').innerHTML = `<p class="faq-intro">${esc(F.intro)}</p><div class="faq-list">${F.items.map(it => `<details class="faq" id="faq-${it.id}"${it.id === id ? ' open' : ''}><summary>${esc(it.q)}</summary><div class="faq-a">${fill(it.a, { live: faqLive(), unsure: esc(F.unsure), dss: Math.round(settings.dssBonus * 100) + '%', hod: String(settings.hodMult) })}</div></details>`).join('')}</div>
+    $('faq-body').innerHTML = `<p class="faq-intro">${esc(F.intro)}</p><div class="faq-list">${F.items.map(it => `<details class="faq" id="faq-${it.id}"${it.id === id ? ' open' : ''}><summary>${esc(it.q)}</summary><div class="faq-a">${fill(it.a, { live: faqLive(), unsure: esc(F.unsure), dss: Math.round(settings.dssBonus * 100) + '%', hod: String(settings.hodMult), other: String(settings.hodOther ?? ENGINE.DEFAULTS.hodOther) })}</div></details>`).join('')}</div>
       <div class="faq-foot"><p>${esc(F.checked)}</p><ul>${FAQ_SRC.map(([n, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a></li>`).join('')}</ul><p><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(F.sources)}</a></p></div>`;
     document.querySelectorAll('dialog[open]').forEach(d => { if (d !== dlg) d.close(); });
     if (!dlg.open) dlg.showModal();
