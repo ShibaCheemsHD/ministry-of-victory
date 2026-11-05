@@ -237,6 +237,10 @@
       window.__mockLog.push({ rec: file, via: u.hostname });
       if (file === 'archive.json' && window.__mockArchive) return new Response(JSON.stringify(window.__mockArchive), { status: 200, headers: { 'content-type': 'application/json' } });
       const r = sc.record && sc.record[file];
+      if (r && file === 'intel.json' && q.get('dense') === '1') {
+        const base = Date.now() - 8 * H;
+        r.alerts = [...(r.alerts || []), ...Array.from({length: 24}, (_, k) => ({kind:'regen',idx:75,t:base + k * 1000,from:.017,to:k%2?.025:-.005}))];
+      }
       return r ? new Response(JSON.stringify(r), { status: 200, headers: { 'content-type': 'application/json' } }) : new Response('not found', { status: 404 });
     } else {
       window.__mockLog.push({ names: file });

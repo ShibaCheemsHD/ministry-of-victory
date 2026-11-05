@@ -34,14 +34,16 @@ def run(br, query, width):
       const a = [logo, r('#hud-stats .stat .v'), r('.hud-actions')].filter(x => x && x.width);
       for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].left < a[j].right - 1 && a[j].left < a[i].right - 1 && a[i].top < a[j].bottom - 1 && a[j].top < a[i].bottom - 1) return true; return false; }""")
     if clash: errs.append('header pieces overlap')
-    # the planet card opens fully on screen, its close button reachable (1 Nov 2026: a panel's cut-corner
+    # the planet briefing expands in the page, with no internal scrollbars and a reachable close button (1 Nov 2026: a panel's cut-corner
     # clip-path hid its title and close button)
     pb = pg.locator('[data-globe]:visible')
     if pb.count():
         pb.first.click(timeout=3000); pg.wait_for_timeout(250)
+        pg.locator('.pc-wrap.open .pc-x').scroll_into_view_if_needed()
         bad = pg.evaluate("""() => { const c = document.querySelector('.pc-wrap.open .pcard'), x = document.querySelector('.pc-wrap.open .pc-x'); if (!c || !x) return 'did not open';
           const r = c.getBoundingClientRect(), b = x.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
-          return r.top < -1 || r.bottom > innerHeight + 1 ? 'off screen' : !(hit && (hit === x || x.contains(hit))) ? 'close button covered' : null; }""")
+          const style = getComputedStyle(c);
+          return r.left < -1 || r.right > innerWidth + 1 ? 'wider than page' : c.scrollWidth > c.clientWidth + 1 ? 'content clipped horizontally' : style.overflowY === 'auto' || style.overflowY === 'scroll' || c.scrollHeight > c.clientHeight + 1 ? 'internal scrollbar or height cap' : !(hit && (hit === x || x.contains(hit))) ? 'close button covered' : null; }""")
         if bad: errs.append('planet card: ' + bad)
         pg.keyboard.press('Escape'); pg.wait_for_timeout(100)
     tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
@@ -78,6 +80,31 @@ with sync_playwright() as p:
     for s in ('default', 'none', 'sniper'): run(br, s, 390)
     for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
     for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
+    # Dense log: clusters are separate hit targets, and selection stays visible after scrolling.
+    for w in (320, 390, 1366):
+        pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
+        pg.goto(f'{PAGE}?s=intel&dense=1&motion=reduced'); pg.wait_for_timeout(1800)
+        pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(300)
+        dense_key = pg.locator('[data-igroup]').evaluate_all("els => els.find(e => e.dataset.igroup.split(',').length >= 24)?.dataset.igroup || null")
+        cluster = pg.locator(f'[data-igroup="{dense_key}"]') if dense_key else None
+        if cluster is None: problems.append(f'dense log @{w}: missing grouped events')
+        else:
+            cluster.first.click(); pg.wait_for_timeout(100)
+            selected = pg.locator('.it-card.is-selected')
+            if selected.count() != len(dense_key.split(',')): problems.append(f'dense log @{w}: selection lost entries')
+            if not pg.locator('.it-card.is-selected .it-selected-label').first.is_visible(): problems.append(f'dense log @{w}: no persistent selection label')
+            if pg.evaluate('document.activeElement.dataset.ikey') is None: problems.append(f'dense log @{w}: focus did not reach the selected entry')
+            pg.locator('.tab[data-tab="races"]').click()
+            pg.locator('.tab[data-tab="intel"]').click()
+            if pg.locator('.it-card.is-selected').count() != len(dense_key.split(',')): problems.append(f'dense log @{w}: selection lost after rerender')
+            pg.locator('[data-iclear]').click()
+            if pg.locator('.it-card.is-selected').count(): problems.append(f'dense log @{w}: selection did not clear')
+        pg.locator('[data-intelfilter="resistance"]').click()
+        if pg.locator('.it-card:not(.cat-resistance)').count(): problems.append(f'dense log @{w}: type filter mixes categories')
+        bounds = pg.locator('[data-igroup]').evaluate_all("els => els.map(e => { const r=e.getBoundingClientRect(); return {l:r.left,r:r.right,t:r.top,b:r.bottom}; })")
+        for i,a in enumerate(bounds):
+            if any(a['l'] < b['r']-1 and b['l'] < a['r']-1 and a['t'] < b['b']-1 and b['t'] < a['b']-1 for b in bounds[i+1:]): problems.append(f'dense log @{w}: cluster targets overlap')
+        pg.close()
     # GitHub raw down: the recorder's files come from jsDelivr instead (audit ARCH-05)
     pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
     via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")

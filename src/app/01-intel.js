@@ -267,49 +267,115 @@
     const X = (tt) => ((tt - t0) / Math.max(1, t1 - t0)) * 120, Y = (v) => 34 - ((v - lo) / Math.max(1e-6, hi - lo)) * 30;
     return `<svg class="spark ${x.kind}" viewBox="0 0 120 36" aria-hidden="true"><path d="${pts.map((q, i) => `${i ? 'L' : 'M'}${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join('')}" vector-effect="non-scaling-stroke"/><line x1="${X(x.t).toFixed(1)}" x2="${X(x.t).toFixed(1)}" y1="0" y2="36"/></svg>`;
   }
+  const INTEL_CATS = ['resistance', 'battle', 'mission', 'orders', 'news'];
+  const INTEL_ICONS = { resistance: 'regen', battle: 'shield', mission: 'fx', orders: 'edit', news: 'news' };
+  const intelUi = {};
+  const intelState = id => intelUi[id] ||= { filter: 'all', selected: [] };
+  function intelCategory(x) {
+    if (x.kind === 'news') return 'news';
+    if (x.kind === 'edited') return 'orders';
+    if (x.kind === 'regen' || ['effect', 'active'].includes(x.kind) && [74, 77, 88, 90].includes(x.type)) return 'resistance';
+    return ['attack', 'jump', 'setback'].includes(x.kind) ? 'battle' : 'mission';
+  }
+  // Colour answers "what kind?"; a separate word answers "does this help?".
+  // Unknown mission modifiers remain neutral rather than guessing their impact.
+  function intelImpact(x) {
+    if (x.kind === 'regen') return x.to < x.from ? 'help' : x.to > x.from ? 'hurt' : 'neutral';
+    if (x.kind === 'jump') return 'help';
+    if (x.kind === 'setback' || x.kind === 'attack') return 'hurt';
+    if (x.kind === 'edited') {
+      const goals = (x.diff || []).filter(d => d.kind === 'goal');
+      if (goals.length && goals.every(d => d.to < d.from)) return 'help';
+      if (goals.length && goals.every(d => d.to > d.from)) return 'hurt';
+    }
+    return 'neutral';
+  }
+  function intelKey(x) {
+    const raw = JSON.stringify([x.kind, x.id ?? x.eid ?? x.idx ?? x.order, x.t, x.on, x.type, x.from, x.to]);
+    let h = 2166136261;
+    for (let i = 0; i < raw.length; i++) h = Math.imul(h ^ raw.charCodeAt(i), 16777619);
+    return 'it-' + (h >>> 0).toString(36);
+  }
+  function intelBuckets(events, from, span, slots) {
+    const groups = new Map();
+    for (const x of events) {
+      const slot = Math.max(0, Math.min(slots - 1, Math.floor((x.t - from) / span * slots)));
+      const category = intelCategory(x), key = category + ':' + slot;
+      if (!groups.has(key)) groups.set(key, { category, slot, events: [] });
+      groups.get(key).events.push(x);
+    }
+    return [...groups.values()];
+  }
   function intelTabHTML(entry) {
-    const { items, news: ns, rel } = intelFor(entry);
+    const { items, news: ns, rel } = intelFor(entry), id = String(entry.a.id), state = intelState(id);
     const now = last.now, span = 48 * 3.6e6, from = now - span;
-    const events = [...items.filter(x => x.kind !== 'active'), ...ns].filter(x => x.t >= from).sort((a, b) => b.t - a.t);
-    const active = items.filter(x => x.kind === 'active');
-    const posX = (tt) => Math.max(0, Math.min(100, ((tt - from) / span) * 100));
-    const ticks = []; const d = new Date(from); d.setMinutes(0, 0, 0); d.setHours(Math.ceil(d.getHours() / 12) * 12);
-    for (; d.getTime() < now; d.setHours(d.getHours() + 12)) ticks.push(d.getTime());
-    const timeline = `<div class="it-line" role="group" aria-label="${esc(t('it.lineAria'))}">
-      <div class="it-track">${ticks.map(tt => `<span class="it-tick" style="left:${posX(tt)}%"><i></i>${esc(new Date(tt).toLocaleString(locale(), { weekday: 'short' }) + ' ' + String(new Date(tt).getHours()).padStart(2, '0') + ':00')}</span>`).join('')}
-        ${events.map((x, i) => `<button type="button" class="it-dot lv-${levelOf(x)} ${x.kind === 'news' ? 'nk-' + x.nk : ''}" style="left:${posX(x.t)}%" data-ifocus="it-${i}" title="${esc(plain(x.kind === 'news' ? x.title : alertText(x, true, rel)))}">${ICON[x.kind === 'news' ? NEWS_ICON[x.nk] : KIND_ICON[x.kind]] || ''}</button>`).join('')}
-        <span class="it-now" style="left:100%">${esc(t('h.now'))}</span></div></div>`;
-    const card = (x, i) => {
-      const lv = levelOf(x), sure = x.kind === 'jump' || x.kind === 'setback' ? 'lens' : 'data';
-      if (x.kind === 'news') return `<article class="it-card lv-info news nk-${x.nk} ${x.hit ? 'hit' : ''}" id="it-${i}">
-        <span class="it-ico">${ICON[NEWS_ICON[x.nk]]}</span><div class="it-body"><div class="it-top"><h5 aria-level="4">${esc(titleCase(x.title))}</h5><span class="it-when">${esc(ago(x.t))}</span></div>
-        ${x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : ''}</div></article>`;
-      const key = keyLine(x, rel);
-      return `<article class="it-card lv-${lv}" id="it-${i}">
-        <span class="it-ico">${ICON[KIND_ICON[x.kind]] || ''}</span>
-        <div class="it-body"><div class="it-top"><h5 aria-level="4">${alertText(x, true, rel)}</h5><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
-          ${key ? `<p class="it-key">${key}</p>` : ''}${sparkHTML(x)}
-          <div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span>
-            <details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)}</p></details></div></div></article>`;
+    const events = [...items.filter(x => x.kind !== 'active'), ...ns].filter(x => x.t >= from && x.t <= now).sort((a, b) => b.t - a.t);
+    const active = items.filter(x => x.kind === 'active'), all = [...events, ...active];
+    const counts = Object.fromEntries(INTEL_CATS.map(c => [c, all.filter(x => intelCategory(x) === c).length]));
+    const selected = new Set(state.selected), slots = innerWidth <= 760 ? 4 : 12;
+    const cats = INTEL_CATS.filter(c => counts[c] && (state.filter === 'all' || state.filter === c));
+    const time = tt => new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    const groups = intelBuckets(events, from, span, slots);
+    const timeline = events.length ? `<div class="it-line it-matrix" style="--slots:${slots}" role="group" aria-label="${esc(t('it.lineAria'))}">
+      <p class="it-line-help">${esc(t('it.groupHelp'))}</p>
+      <div class="it-axis"><span>${esc(t('it.type'))}</span>${Array.from({ length: slots }, (_, k) => `<span>${esc(time(from + k * span / slots))}</span>`).join('')}</div>
+      ${cats.map(c => `<div class="it-lane cat-${c}"><span class="it-lane-name">${ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span></span>${Array.from({ length: slots }, (_, k) => {
+        const group = groups.find(g => g.category === c && g.slot === k);
+        if (!group) return '<span class="it-slot-empty" aria-hidden="true"></span>';
+        const keys = group.events.map(intelKey), on = keys.some(key => selected.has(key));
+        const label = fill(t('it.groupLabel'), { n: keys.length, type: t('it.cat.' + c), start: time(from + k * span / slots), end: time(from + (k + 1) * span / slots) });
+        return `<button type="button" class="it-cluster${on ? ' is-selected' : ''}" data-igroup="${keys.join(',')}" data-iorder="${esc(id)}" aria-pressed="${on}" aria-label="${esc(label)}" title="${esc(label)}"><b>${keys.length}</b><span aria-hidden="true">${ICON[INTEL_ICONS[c]]}</span></button>`;
+      }).join('')}</div>`).join('')}</div>` : '';
+    const card = x => {
+      const key = intelKey(x), cat = intelCategory(x), impact = intelImpact(x), sure = ['jump', 'setback'].includes(x.kind) ? 'lens' : 'data';
+      const effect = x.kind === 'effect' || x.kind === 'active';
+      const title = x.kind === 'news' ? esc(titleCase(x.title)) : effect ? capFirst(effectLabel(x.type, x.v))
+        : x.kind === 'regen' ? esc(t(x.to < x.from ? 'it.resistanceDown' : 'it.resistanceUp')) : alertText(x, true, rel);
+      const status = effect ? t(x.kind === 'active' ? 'it.enabledNow' : x.on ? 'it.enabled' : 'it.disabled') : '';
+      const detail = x.kind === 'regen' ? `${last.planets[x.idx] ? planetName(last.planets[x.idx]) : esc(x.name || '')} · ${keyLine(x, rel)}` : keyLine(x, rel);
+      const on = selected.has(key);
+      return `<article class="it-card cat-${cat}${on ? ' is-selected' : ''}" id="${key}" data-ikey="${key}" tabindex="-1">
+        <span class="it-ico" aria-hidden="true">${ICON[x.kind === 'news' ? NEWS_ICON[x.nk] || 'news' : INTEL_ICONS[cat]]}</span><div class="it-body">
+          <div class="it-card-tags"><span class="it-category">${esc(t('it.cat.' + cat))}</span>${status ? `<span class="it-status">${esc(status)}</span>` : ''}${impact !== 'neutral' ? `<span class="it-impact ${impact}">${esc(t('it.impact.' + impact))}</span>` : ''}<span class="it-selected-label"${on ? '' : ' hidden'}>${esc(t('it.selected'))}</span><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
+          <h5 aria-level="4">${title}</h5>${detail ? `<p class="it-key">${detail}</p>` : ''}${sparkHTML(x)}
+          ${x.kind === 'news' ? x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : '' : `<div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span><details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)}</p></details></div>`}</div></article>`;
     };
-    const cmd = events.filter(x => x.kind !== 'news');
-    const counts = [cmd.length ? fill(t(cmd.length === 1 ? 'it.n1' : 'it.n'), { n: cmd.length }) : null, active.length ? fill(t(active.length === 1 ? 'it.nActive1' : 'it.nActive'), { n: active.length }) : null, ns.length ? fill(t(ns.length === 1 ? 'it.nNews1' : 'it.nNews'), { n: ns.length }) : null].filter(Boolean);
-    const quiet = !cmd.length && !active.length;
-    return `<div class="intel-tab">
-      <div class="it-head"><div><h3>${esc(t('it.title'))}</h3>${counts.length ? `<p>${counts.join(' · ')}</p>` : ''}</div></div>
-      ${events.length ? timeline : ''}
-      ${quiet && !ns.length ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('allQuiet'))}</p></div>` : `<div class="it-cols">
-        <section class="it-col"><h4 class="mod-h">${esc(t('it.cmd'))}</h4>
-          ${quiet ? '' : `<p class="it-legend"><span><span class="it-sure data">${ICON.data}${esc(t('in.tag.data'))}</span> ${esc(t('it.keyData'))}</span><span><span class="it-sure lens">${ICON.lens}${esc(t('in.tag.deduced'))}</span> ${esc(t('it.keyDeduced'))}</span></p>`}
-          ${quiet ? `<div class="it-quiet"><span class="radar"></span><p>${esc(t('it.quiet'))}</p></div>` : ''}
-          ${cmd.map(x => card(x, events.indexOf(x))).join('')}
-          ${active.length ? `<h4 class="mod-h sub">${esc(t('it.activeNow'))}</h4>${active.map((x, k) => card(x, 'a' + k)).join('')}` : ''}</section>
-        <section class="it-col"><h4 class="mod-h">${esc(t('in.news'))}</h4>${ns.length ? ns.map(x => card(x, events.indexOf(x))).join('') : `<p class="it-empty">${esc(t('it.noNews'))}</p>`}</section>
-      </div>`}
+    return `<div class="intel-tab" data-intel-order="${esc(id)}">
+      <div class="it-head"><div><h3>${esc(t('it.title'))}</h3><p>${esc(t('it.overview'))}</p></div></div>
+      <div class="it-filters" role="group" aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
+      ${timeline}
+      <div class="it-selection" role="status"${state.selected.length ? '' : ' hidden'}><span data-intel-selection-label>${esc(fill(t('it.selectionCount'), { n: state.selected.length }))}</span><button type="button" class="linkish" data-iclear data-iorder="${esc(id)}">${esc(t('it.clearSelection'))}</button></div>
+      <div class="it-groups">${cats.map(c => {
+        const changes = events.filter(x => intelCategory(x) === c), live = active.filter(x => intelCategory(x) === c);
+        return `<section class="it-event-group cat-${c}"><h4 class="mod-h">${ICON[INTEL_ICONS[c]]}${esc(t('it.cat.' + c))} <span>${counts[c]}</span></h4>${changes.map(card).join('')}${live.length ? `<p class="it-active-label">${esc(t('it.activeNow'))}</p>${live.map(card).join('')}` : ''}</section>`;
+      }).join('')}${!cats.length ? `<p class="it-empty">${esc(t('it.none'))}</p>` : ''}</div>
       <p class="foot">${esc(record && record.since ? fill(t('it.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('it.footLocal'))}</p>
     </div>`;
   }
+  function selectIntelEvents(keys, order, trigger) {
+    const state = intelState(order); state.selected = keys;
+    const root = trigger.closest('.intel-tab'); if (!root) return;
+    root.querySelectorAll('[data-ikey]').forEach(card => {
+      const selected = keys.includes(card.dataset.ikey); card.classList.toggle('is-selected', selected);
+      card.querySelector('.it-selected-label').hidden = !selected;
+    });
+    root.querySelectorAll('[data-igroup]').forEach(button => {
+      const selected = button.dataset.igroup.split(',').some(key => keys.includes(key));
+      button.classList.toggle('is-selected', selected); button.setAttribute('aria-pressed', String(selected));
+    });
+    const banner = root.querySelector('.it-selection'); banner.hidden = !keys.length;
+    banner.querySelector('[data-intel-selection-label]').textContent = fill(t('it.selectionCount'), { n: keys.length });
+    if (keys.length) {
+      const card = $(keys[0]);
+      if (card) { card.focus({ preventScroll: true }); card.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); }
+    }
+  }
 
+  let intelNarrow = innerWidth <= 760;
+  window.addEventListener('resize', () => {
+    const narrow = innerWidth <= 760;
+    if (narrow !== intelNarrow) { intelNarrow = narrow; if (document.querySelector('.intel-tab')) render(); }
+  });
   // Fast first paint: the page draws at once from this browser's last copy of the war (or the
   // recorder's copy, which a CDN serves in a fraction of a second) while the live API answers.
   // A seed render never records samples or alerts and never overwrites fresher data.

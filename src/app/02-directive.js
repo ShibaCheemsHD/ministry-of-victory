@@ -300,7 +300,7 @@
     const cp = cardPlanets({ res });
     if (!cp) return '';
     const pl = cp.planet, dss = !!(last && last.dssIdx === pl.index);
-    return `<button type="button" class="planet-btn" data-globe aria-haspopup="dialog" aria-expanded="false">
+    return `<button type="button" class="planet-btn" data-globe aria-expanded="false">
       ${miniGlobe(FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)')}<span class="pb-n">${planetName(pl)}${cp.list && cp.list.length > 1 ? ` <small>+${cp.list.length - 1}</small>` : ''}</span>
       <span class="pb-t">${esc(t('gCta'))}</span>${dss ? `<span class="pb-dss" title="${esc(t(last.hod ? 'gDssHodT' : 'gDssT'))}">${esc(t(last.hod ? 'gDssHod' : 'gDss'))}</span>` : ''}${ICON.chev}</button>`;
   }
@@ -328,7 +328,7 @@
     // the faction's own colour (owner, 2 Nov 2026), not a shade of it
     const fac = p.planet ? factionOfPlanet(p.planet) : p.fac, fc = FAC_VAR[fac] || 'var(--fg)';
     const tag = cp ? 'button' : 'div';
-    const attrs = cp ? `type="button" data-globe aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(plain(planetName(cp.planet)) + ': ' + t('gCta'))}"` : 'aria-hidden="true"';
+    const attrs = cp ? `type="button" data-globe aria-expanded="false" aria-label="${esc(plain(planetName(cp.planet)) + ': ' + t('gCta'))}"` : 'aria-hidden="true"';
     return `<${tag} class="holo ${r.tone}${cp ? ' holo-btn' : ''}" style="--fc:${fc}" ${attrs}>
       <svg viewBox="0 0 240 240" focusable="false">
         <defs>
