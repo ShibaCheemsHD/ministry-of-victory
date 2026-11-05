@@ -15,3 +15,5 @@ These additive durations are shown with sign and seconds; removal is described s
 The log now uses independent vertical category stacks, so a long Mission effects list does not push Dispatches down in the other column. Races keep original objective ids and option numbers; the recommended objective leads, urgent defenses and larger shortfalls follow, completed objectives form a separate final group. Full Plan is unchanged.
 
 Forecast basis is an independent, conservative data-coverage diagnostic, not a calibrated accuracy percentage. It never modifies engine predictions. Its rule thresholds and limitations are disclosed in the expandable panel. Closed/open state and keyboard focus survive ordinary re-renders. Tests cover stale/missing/duplicated/future readings, recent changes, campaign boundaries, custom assumptions, option orders and resolved results.
+
+The former cap of three active non-war effects has been removed from intelFor: filtering and category stacks now handle the full relevant set. The evidence badge ages to Limited after15minutes without a successful update, without rebuilding the page or losing keyboard focus.

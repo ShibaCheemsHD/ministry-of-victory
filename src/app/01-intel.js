@@ -133,8 +133,7 @@
     // effects switched on right now on the planets this order depends on (straight from the game)
     const active = (record?.effects || []).filter(e => (e.planets.some(i => i === -1 || rel.has(i)) || (e.type === 32 && weapons.has(String(valOf(e.v, 4))))) && !items.some(x => x.kind === 'effect' && x.on && x.eid === e.id))
       .map(e => ({ kind: 'active', t: record.t, eid: e.id, type: e.type, v: e.v, planets: e.planets, mine: e.type === 32 && weapons.has(String(valOf(e.v, 4))) }))
-      .sort((a, b) => (b.mine - a.mine) || (WAR_FX.has(b.type) - WAR_FX.has(a.type)))
-      .filter((x, i, arr) => WAR_FX.has(x.type) || arr.filter(y => !WAR_FX.has(y.type)).indexOf(x) < 3);
+      .sort((a, b) => (b.mine - a.mine) || (WAR_FX.has(b.type) - WAR_FX.has(a.type)));
     const ns = news.items.filter(d => now - d.t < 48 * 3.6e6).slice(0, 3)
       .map(d => { const np = newsParts(d.msg); return { kind: 'news', t: d.t, id: 'news:' + d.id, ...np, nk: newsKind(np.title, np.body), hit: names.some(n => n && d.msg.toLowerCase().includes(n)) }; });
     return { items: [...items, ...active], news: ns, rel };

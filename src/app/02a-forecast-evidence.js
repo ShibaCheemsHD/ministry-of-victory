@@ -77,3 +77,15 @@
       <div class="fe-body"><ul>${e.reasons.map(r => `<li>${esc(t('evidence.why.' + r))}</li>`).join('')}</ul><p>${esc(t('evidence.note'))}</p></div>
     </details>`;
   }
+
+  // Failed refreshes must not leave a previously well-observed badge looking fresh indefinitely.
+  function ageForecastEvidence() {
+    if (!last || Date.now() - last.now <= 15 * 60e3) return;
+    document.querySelectorAll('.forecast-evidence:not([data-evidence-aged])').forEach(el => {
+      el.dataset.evidenceAged = 'true';
+      el.querySelector('.fe-level').textContent = t('evidence.levels')[0];
+      const list = el.querySelector('.fe-body ul');
+      list.replaceChildren();
+      const reason = document.createElement('li'); reason.textContent = t('evidence.why.stale'); list.append(reason);
+    });
+  }

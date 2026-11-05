@@ -96,6 +96,10 @@ with sync_playwright() as p:
             pg.locator('.call').first.screenshot(path=os.path.join(ROOT, 'build', f'evidence-{w}.png'))
             pg.locator(f'#{key}').focus(); pg.locator(f'#{key}').press('Space'); pg.wait_for_timeout(100)
             if pg.locator(f'#{key}').locator('..').get_attribute('open') is not None: problems.append(f'evidence @{w}: keyboard did not close details')
+            pg.evaluate("Object.defineProperty(document, 'hidden', {get: () => true})")
+            pg.evaluate('Date.now = (() => { const now = Date.now(); return () => now + 16 * 60e3; })()')
+            pg.wait_for_timeout(1200)
+            if not pg.locator('.forecast-evidence[data-evidence-aged]').count(): problems.append(f'evidence @{w}: freshness did not age after failed refreshes')
         pg.close()
     if problems:
         print('FORECAST EVIDENCE REGRESSION FAILED\n' + '\n'.join(problems)); br.close(); sys.exit(1)
