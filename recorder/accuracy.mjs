@@ -15,7 +15,7 @@ const share = (a, f) => a.length ? a.filter(f).length / a.length : null;
 
 // v2: the forecast the site uses since November 2026 (engine forecastFall: the planet's own strength over the last
 // 6 h, players arriving, blended with everyone's strength), replayed the same way.
-export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-01T00:00:00Z'), horizons = [6, 12, 24], E = null, withRows = false, until = Infinity } = {}) {
+export function replayContext(hist, resort) {
   const ev = hist.events || [], times = ev.map(e => tOf(e.time));
   const allAt = []; let la = null;
   for (let i = 0; i < ev.length; i++) { if (ev[i].all_players) la = ev[i].all_players; allAt[i] = la; }
@@ -51,6 +51,11 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
     }
     const c = vals.length >= 12 ? med(vals) : null; capCache.set(key, c); return c;
   };
+  return { P, playersAt, capacityAt, end: times.at(-1) };
+}
+
+export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-01T00:00:00Z'), horizons = [6, 12, 24], E = null, withRows = false, until = Infinity } = {}) {
+  const { P, playersAt, capacityAt } = replayContext(hist, resort);
   const rows = [];
   for (const [k, l] of Object.entries(P)) {
     for (let j = 1; j < l.length; j++) {

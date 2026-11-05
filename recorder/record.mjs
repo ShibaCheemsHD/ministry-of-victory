@@ -17,6 +17,7 @@ import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
 import { buildFeed, notifyDiscord } from './feed.mjs';
 import { WIKI_URLS, parseWiki, checkOrders, wikiOutcomes, reconcileArchive } from './wikicheck.mjs';
+import { recordDeadlines, deadlineScores } from './deadlines.mjs';
 import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
 import { measure, logStation, measureMissionImpact } from './measure.mjs';
 // failures show up as annotations on the run page
@@ -268,6 +269,7 @@ const impN24 = (() => {
     }
     c.last = snap;
     c.prog = a.progress;
+    if (N0 > 0) recordDeadlines(c, res.tasks, pageSamples, now);
     // the forecasts as they were made, once an hour, to be checked against what happened (accuracy)
     const T = c.track ||= { lib: {}, cnt: {}, fell: {}, t: 0 };
     for (const r of res.tasks) if (r.planet && r.planet.currentOwner === 'Humans' && r.task.type === 11 && T.lib[r.planet.index] && !T.fell[r.planet.index]) T.fell[r.planet.index] = now;
@@ -428,7 +430,7 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 8
 }
 // how right the forecasts were: replayed on the war log, and checked live since the recorder started
 try { defenseReplay(hist, E, K, now); } catch (e) { console.log('::warning::defense replay failed: ' + String(e).slice(0, 200)); }
-const accuracy = { backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null,
+const accuracy = { deadlines: deadlineScores(hist.calls, E), backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null,
   defense: (() => { try { return defenseAccuracy(hist.defRecord); } catch { return null; } })() };
 const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null, accuracy,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };
