@@ -12,17 +12,21 @@
 
   /* ---------- what one mission is worth ----------
      The game splits the war's damage among everyone playing (the impact multiplier falls as more missions are
-     won), so one mission's worth is measured, not assumed: HP a planet lost per mission won on it, per unit
+     won), so estimate a mission's average worth from observed HP lost per mission, per unit
      of multiplier (the recorder's "inf"), times the multiplier right now, times the planet's boosts. */
   function missionWorth(p) {
     if (!last || !p || !last.imp || (!p.event && p.currentOwner === 'Humans')) return null;
-    const inf = last.inf || 100, here = last.dssIdx != null && String(last.dssIdx) === String(p.index);
+    const inf = Number.isFinite(last.inf) && last.inf > 0 ? last.inf : 100, here = last.dssIdx != null && String(last.dssIdx) === String(p.index);
     const boost = (here ? 1 + settings.dssBonus : 1) * (last.hod ? (here ? settings.hodMult : ENGINE.DEFAULTS.hodOther) : 1);
     const hp = inf * last.imp * boost;
     const max = p.event ? p.event.maxHealth : p.maxHealth, h = p.event ? p.event.health : p.health;
-    if (!(hp > 0) || !(max > 0)) return null;
-    return { hp, frac: hp / max, per1: Math.max(1, Math.round(0.01 * max / hp)), left: Math.max(0, Math.ceil(h / hp)),
-      vsDay: last.impDay ? last.imp / last.impDay : null, defend: !!p.event, measured: !!last.inf };
+    if (!(hp > 0) || !Number.isFinite(hp) || !(max > 0) || !Number.isFinite(max) || !Number.isFinite(h)) return null;
+    const evidence = last.infMeasurement;
+    const measured = evidence?.source === 'measured' && evidence.value === inf && evidence.samples >= 10;
+    // Open regions have their own health and capture bonus: a planet-only total is misleading.
+    const hasRegions = !p.event && (p.regions || []).some(r => r && r.isAvailable && r.health > 0);
+    return { hp, frac: hp / max, per1: Math.max(1, Math.round(0.01 * max / hp)), left: hasRegions ? null : Math.max(0, Math.ceil(h / hp)),
+      vsDay: last.impDay ? last.imp / last.impDay : null, defend: !!p.event, measured };
   }
   // a tiny percentage, to two significant figures (0.00035%), never rounded to 0
   // an estimate shown to two significant figures: 129,134 → 130k, 3,228 → 3,200
@@ -32,7 +36,7 @@
     const w = missionWorth(p);
     if (!w) return '';
     // one quiet line under the turnout: a detail for the curious, not a headline (owner, 2 Nov 2026)
-    return `<p class="mworth"${w.measured ? ' data-measured' : ''}>${fill(t('worth.line'), { m: `<b>+${tinyPct(w.frac)}</b>`, op: `+${tinyPct(w.frac * 3)}`, n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')) })} <button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p>`;
+    return `<p class="mworth"${w.measured ? ' data-measured' : ''}>${esc(t(w.measured ? 'worth.measured' : 'worth.default'))} ${fill(t('worth.line'), { m: `<b>+${tinyPct(w.frac)}</b>`, op: `+${tinyPct(w.frac * 3)}`, n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')) })}${w.left != null ? ' ' + fill(t(w.defend ? 'worth.remainingDefense' : 'worth.remaining'), { n: nice(w.left) }) : ''} <button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p>`;
   }
 
   /* ---------- small components ---------- */

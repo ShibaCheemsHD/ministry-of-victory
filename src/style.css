@@ -1262,13 +1262,17 @@ dialog { background: linear-gradient(180deg, #17181c, #0f1013); }
 }
 /* the light that follows the pointer over a panel */
 .glare-on { position: relative; }
-.fx-glare { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 233, 0, .13), transparent 62%); opacity: 1; transition: opacity .25s; }
+.fx-glare { position: absolute; top: 0; left: 0; width: 220px; height: 220px; z-index: 1; pointer-events: none; background: radial-gradient(circle, rgba(255, 233, 0, .13), transparent 62%); opacity: 1; transition: opacity .25s; }
+.glare-on { overflow: clip; }
 .fx-glare.out { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) { .fx-glare:not(.out) { animation: fadeIn .2s var(--ease-snap); } }
 @keyframes fadeIn { from { opacity: 0; } }
-/* the headline decodes */
-.call-head.decoding { overflow: hidden; }
-.call-head .scr { color: var(--se); opacity: .75; }
+/* A transmission sweep under the destination; the destination itself never changes. */
+.call-head { position: relative; }
+@media (prefers-reduced-motion: no-preference) {
+  .call-head.signal-in::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 2px; background: var(--se); transform-origin: left; animation: signalIn .6s var(--ease-out) both; pointer-events: none; }
+}
+@keyframes signalIn { from { transform: scaleX(0); opacity: .8; } to { transform: scaleX(1); opacity: 0; } }
 /* numbers that a refresh changed flash once */
 .bump { animation: bump .9s var(--ease-snap); }
 @keyframes bump { 0%, 30% { color: var(--se); } }

@@ -18,7 +18,7 @@ import { loadHs } from './hs.mjs';
 import { buildFeed, notifyDiscord } from './feed.mjs';
 import { WIKI_URLS, parseWiki, checkOrders, wikiOutcomes, reconcileArchive } from './wikicheck.mjs';
 import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
-import { measure, logStation } from './measure.mjs';
+import { measure, logStation, measureMissionImpact } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
 process.on('unhandledRejection', fail); process.on('uncaughtException', fail);
@@ -312,22 +312,8 @@ const impN24 = (() => {
 
 // HP of liberation one won mission is worth, per unit of impact multiplier: measured on stretches of
 // this history where nothing else was going on (no event, no open region, not at full health)
-const inf = (() => {
-  const vals = [];
-  for (let k = 1; k < hist.samples.length; k++) {
-    const a = hist.samples[k - 1], b = hist.samples[k], dt = (b.t - a.t) / H;
-    if (dt <= 0 || dt > 35 / 60 || !a.imp) continue;
-    for (const [i, v] of Object.entries(a.pl)) {
-      const w = b.pl[i];
-      if (!w || v[8] == null || w[8] == null || v[4] || w[4] || v[5] || w[5] || v[6] !== w[6] || v[0] >= 0.99 * v[3] || w[0] <= 0) continue;
-      const won = w[8] - v[8];
-      if (won < 30) continue;
-      vals.push((v[0] - w[0] + v[2] * 3600 * dt) / (won * a.imp));
-    }
-  }
-  vals.sort((x, y) => x - y);
-  return vals.length >= 10 ? vals[Math.floor(vals.length / 2)] : 100;
-})();
+const infMeasurement = measureMissionImpact(hist.samples);
+const inf = infMeasurement.value;
 
 // galactic war effects: what Super Earth Command (or the enemy) has switched on, planet by planet.
 // Only the types that change the war or a mission are kept; map decorations are left out.
@@ -519,7 +505,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), histJson);
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10), unknownFoes,
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, infMeasurement, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10), unknownFoes,
   // names the wiki gives for units our list doesn't have yet: the page uses them until the list does
   itemHints: hist.wikiCheck?.itemHints || {},
   foeHints: Object.fromEntries(Object.entries(hist.wikiCheck?.hints || {}).filter(([id]) => !foes[id]).map(([id, h]) => [id, { one: h.one, many: h.many }])),

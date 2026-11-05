@@ -9,36 +9,16 @@
   document.addEventListener('keydown', () => { viaKeys = true; }, true);
   document.addEventListener('pointerdown', () => { viaKeys = false; }, true);
 
-  // 1. The call's headline decodes like a Super Earth transmission: the first time an order shows in this
-  //    visit, and when its call changes. The real words are in the heading's label the whole time.
-  // block glyphs, never letters: a half-decoded name must not read as another word (critique 8)
-  const GLYPHS = '▮▯▚▞▙▟▛▜▖▗▘▝';
-  const decoded = {};
-  function decode(view, entry) {
-    const head = view.querySelector('.call-head'), tgt = head && head.querySelector('.tgt');
-    if (!tgt) return;
-    const id = String(entry ? entry.a.id : 'none'), text = tgt.textContent, now = performance.now();
-    const n = [...text].length, step = Math.min(2, 14 / Math.max(1, n)), total = Math.ceil(6 + n * step);   // frames of 32 ms: half a second, never more than 0.65 s
-    const d = decoded[id];
-    // a re-render in the middle of the effect picks it up where it was
-    if (d && d.text === text && (!d.t0 || now - d.t0 > total * 32)) return;
-    if (!d || d.text !== text) {
-      // only the first time an order shows: when its call changes, the sweep and the "New call" flag say it
-      decoded[id] = { text, t0: !d && fxOn() && !viaKeys ? now : 0 };
-      if (!decoded[id].t0) return;
-    }
-    const t0 = decoded[id].t0, chars = [...text];
-    head.setAttribute('aria-label', head.textContent.replace(/\s+/g, ' ').trim());
-    head.style.minHeight = head.offsetHeight + 'px';
-    head.classList.add('decoding');
-    const run = () => {
-      if (!tgt.isConnected) return;
-      const frame = Math.floor((performance.now() - t0) / 32) + 1;
-      if (frame >= total) { tgt.textContent = text; head.classList.remove('decoding'); head.style.minHeight = ''; head.removeAttribute('aria-label'); return; }
-      tgt.innerHTML = chars.map((c, i) => c === ' ' || frame >= 4 + i * step ? esc(c) : `<span class="scr">${GLYPHS[Math.floor(Math.random() * GLYPHS.length)]}</span>`).join('');
-      setTimeout(run, 32);
-    };
-    run();
+  // The destination is readable from the first frame; only a decorative underline moves.
+  const revealed = new Set();
+  function revealCall(view, entry) {
+    const head = view.querySelector('.call-head');
+    const id = String(entry ? entry.a.id : 'none');
+    if (!head || revealed.has(id)) return;
+    revealed.add(id);
+    if (!fxOn() || viaKeys) return;
+    head.classList.add('signal-in');
+    setTimeout(() => head.classList.remove('signal-in'), 600);
   }
 
   // 2. The tab underline slides from the tab you left to the one you picked (pointer only).
@@ -61,13 +41,13 @@
   // only on panels that are buttons: the light says "this can be pressed"
   const GLARE = '.otab, .planet-btn, .sb-key button, .glance-btn';
   let glEl = null, glRaf = 0;
-  const gl = { x: .5, y: .5, tx: .5, ty: .5 };
+  const gl = { x: .5, y: .5, tx: .5, ty: .5, w: 0, h: 0 };
   function glFrame() {
     glRaf = 0;
     if (!glEl) return;
     gl.x += (gl.tx - gl.x) * .2; gl.y += (gl.ty - gl.y) * .2;
-    glEl.style.setProperty('--mx', (gl.x * 100).toFixed(1) + '%');
-    glEl.style.setProperty('--my', (gl.y * 100).toFixed(1) + '%');
+    const light = glEl.querySelector(':scope > .fx-glare');
+    if (light) light.style.transform = `translate(${(gl.x * gl.w - 110).toFixed(1)}px, ${(gl.y * gl.h - 110).toFixed(1)}px)`;
     if (Math.abs(gl.tx - gl.x) > .002 || Math.abs(gl.ty - gl.y) > .002) glRaf = requestAnimationFrame(glFrame);
   }
   function glLeave() {
@@ -88,7 +68,7 @@
       if (!el.querySelector(':scope > .fx-glare')) el.insertAdjacentHTML('beforeend', '<i class="fx-glare" aria-hidden="true"></i>');
       gl.x = gl.tx = x; gl.y = gl.ty = y;
     }
-    gl.tx = x; gl.ty = y;
+    gl.tx = x; gl.ty = y; gl.w = r.width; gl.h = r.height;
     if (!glRaf) glRaf = requestAnimationFrame(glFrame);
   }, { passive: true });
   document.addEventListener('pointerleave', glLeave);
@@ -116,5 +96,5 @@
   function fxAfterRender(view, entry) {
     if (glEl && !document.contains(glEl)) glEl = null;
     slideTabInk(view);
-    decode(view, entry);
+    revealCall(view, entry);
   }

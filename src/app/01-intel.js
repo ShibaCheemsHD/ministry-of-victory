@@ -39,7 +39,7 @@
       // the recorder's files are checked for shape before use: a broken file is ignored, not drawn (audit SEC-06)
       if (intel && Array.isArray(intel.alerts) && isNum(intel.updated)) {
         record = { t: intel.updated, since: isNum(intel.since) ? intel.since : null, every: isNum(intel.every) ? intel.every : 10, alerts: intel.alerts.filter(isObj), effects: arr(intel.effects).filter(isObj),
-          inf: isNum(intel.inf) ? intel.inf : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null, foeHints: foeHintsOf(intel.foeHints), itemHints: itemHintsOf(intel.itemHints),
+          inf: isNum(intel.inf) ? intel.inf : null, infMeasurement: isObj(intel.infMeasurement) ? intel.infMeasurement : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null, foeHints: foeHintsOf(intel.foeHints), itemHints: itemHintsOf(intel.itemHints),
           K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
         store.set('record', record);
       }
@@ -478,7 +478,7 @@
       // recorder over its history; and the multiplier's mean over the last day (to say if now is a good hour)
       const dayImp = samples.filter(s => s.imp && now - s.t < 24 * 3600e3).map(s => s.imp);
       const impDay = dayImp.length >= 12 ? dayImp.reduce((a, b) => a + b, 0) / dayImp.length : null;
-      last = { N, planets, dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
+      last = { N, planets, dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, infMeasurement: record?.infMeasurement || null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
       if (!seed) freshDone = true;
       lastOk = now;
       if (dragging) pendingRender = true; else render();

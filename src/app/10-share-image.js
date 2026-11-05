@@ -187,7 +187,7 @@
     const w = pl && missionWorth(pl);
     if (!w) return t('faq.noLive');
     const day = w.vsDay && Math.abs(w.vsDay - 1) >= 0.1 ? esc(fill(t(w.vsDay > 1 ? 'worth.more' : 'worth.less'), { p: Math.round(Math.abs(w.vsDay - 1) * 100) + '%' })) : '';
-    return fill(t('faq.live'), { planet: planetName(pl), m: tinyPct(w.frac), n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')), day });
+    return fill(t('faq.live'), { source: esc(t(w.measured ? 'worth.measured' : 'worth.default')), remaining: w.left == null ? '' : fill(t(w.defend ? 'worth.remainingDefense' : 'worth.remaining'), { n: nice(w.left) }), planet: planetName(pl), m: tinyPct(w.frac), n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')), day });
   }
   function openFaq(id) {
     const F = t('faq'), dlg = $('dlg-faq');
