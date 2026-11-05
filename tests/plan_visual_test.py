@@ -22,6 +22,7 @@ with sync_playwright() as p:
             assert pg.locator('.move-featured .mv-explain').get_attribute('open') is None
             pg.locator('[data-toggle-nums]').click()
             assert 'show-nums' in plan.get_attribute('class')
+            assert 'about Helldivers' not in plan.inner_text(), 'Missing player quantity'
             pg.locator('.tab[data-tab="races"]').first.click()
             pg.locator('.tab[data-tab="strategy"]').first.click()
             assert pg.locator('.move-featured .mv-explain').get_attribute('open') is None, 'Disclosure reset'

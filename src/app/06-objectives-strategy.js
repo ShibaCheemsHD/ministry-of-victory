@@ -192,6 +192,7 @@
         break;
       }
     }
+    params.Helldivers = params.players;
     const [head, detail, nums] = R(key) || [key, '', ''];
     return `<${tag} class="${minor ? 'minor ' : ''}${cls}">${icon ? `<span class="fi">${icon}</span>` : ''}<div>
       <div class="head">${fill(head, params)}</div>
@@ -212,7 +213,7 @@
     else { cls = 'v-impossible'; bigTxt = t('simNone'); sub = t('simNoneSub'); }
     return `<div class="sim-out ${cls}">
       <div class="big">${esc(bigTxt)}</div>
-      <div class="sub">${fill(t('simShare'), { pct: `<b>${pct(share)}</b>`, players: people(share * N) })}</div>
+      <div class="sub">${fill(t('simShare'), { pct: `<b>${pct(share)}</b>`, players: people(share * N), Helldivers: people(share * N) })}</div>
       <div class="sub">${sub}</div>
       ${sm.wins || sm.count ? timelineHTML(sm.wins ? sm.segs : sm.segs.filter(s => sm.taken.includes(s.planet)), res.model.H, `sim:${res.id}`, res) : ''}
     </div>`;
@@ -331,6 +332,7 @@
       case 'cntWeapon': p = { item: esc(itemName(m.task.task.itemId) || '') }; break;
       case 'cntStart': p = { task: taskText(m.task), needed: big(m.needed) }; break;
     }
+    p.Helldivers = p.players;
     const subj = m.task && m.task.task ? taskNoun(m.task.task) : null;
     let fx = effectText(m.effect, subj);
     if (m.kind === 'cntMove' && m.short) { const g = effectText({ kind: 'gap', more: m.short, weaponUse: m.shortWeaponUse }); if (g) fx = fx ? fx + '. ' + g : g; }
