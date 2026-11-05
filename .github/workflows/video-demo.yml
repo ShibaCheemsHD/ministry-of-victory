@@ -1,0 +1,48 @@
+name: Render Ministry video
+on:
+  push:
+    branches: [video/render-demo]
+    paths: ['video-demo/**', '.github/workflows/video-demo.yml']
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Prepare licensed music
+        run: |
+          mkdir -p video-demo/assets/music
+          curl --fail --location --retry 2 https://raw.githubusercontent.com/latent-spaces/brag/669ab9286aa28b6c3ee30e75f181ee74319d012a/skills/brag/assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3 -o video-demo/assets/music/music.mp3
+          ffmpeg -version | head -1
+      - name: Install pinned renderer
+        run: npm install --prefix /tmp/video-tools hyperframes@0.9.15
+      - name: Validate and snapshot
+        working-directory: video-demo
+        run: |
+          /tmp/video-tools/node_modules/.bin/hyperframes check --json > check.json
+          /tmp/video-tools/node_modules/.bin/hyperframes snapshot --at 2,6,14,20
+      - name: Render MP4
+        working-directory: video-demo
+        run: |
+          /tmp/video-tools/node_modules/.bin/hyperframes render --quality delivery --workers 2 -o brag.mp4
+          ffmpeg -y -ss 6 -i brag.mp4 -frames:v 1 -q:v 2 brag.jpg
+          ffprobe -v error -show_entries format=duration -of json brag.mp4 > metadata.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ministry-video
+          path: |
+            video-demo/brag.mp4
+            video-demo/brag.jpg
+            video-demo/check.json
+            video-demo/metadata.json
+            video-demo/.hyperframes/artifacts/snapshots/
+          include-hidden-files: true
+          retention-days: 7

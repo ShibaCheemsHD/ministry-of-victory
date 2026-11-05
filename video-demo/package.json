@@ -1,0 +1,10 @@
+{
+  "name": "composition",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npx hyperframes@0.9.15 check",
+    "dev": "npx hyperframes@0.9.15 preview",
+    "render": "npx hyperframes@0.9.15 render --quality delivery -o ../brag.mp4"
+  }
+}
