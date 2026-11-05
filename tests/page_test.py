@@ -76,10 +76,6 @@ def run(br, query, width):
 
 with sync_playwright() as p:
     br = p.chromium.launch()
-    for s in SCENARIOS: run(br, s, 1366)
-    for s in ('default', 'none', 'sniper'): run(br, s, 390)
-    for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
-    for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
     # Dense log: clusters are separate hit targets, and selection stays visible after scrolling.
     for w in (320, 390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
@@ -105,6 +101,13 @@ with sync_playwright() as p:
         for i,a in enumerate(bounds):
             if any(a['l'] < b['r']-1 and b['l'] < a['r']-1 and a['t'] < b['b']-1 and b['t'] < a['b']-1 for b in bounds[i+1:]): problems.append(f'dense log @{w}: cluster targets overlap')
         pg.close()
+    if problems:
+        for problem in problems: print('PROBLEM', problem)
+        sys.exit(1)
+    for s in SCENARIOS: run(br, s, 1366)
+    for s in ('default', 'none', 'sniper'): run(br, s, 390)
+    for s in ('default', 'intel'): run(br, s, 320)   # the narrowest phones still in use
+    for seed in range(1, FUZZ + 1): run(br, f'fuzz&seed={seed}', 1366 if seed % 2 else 390)
     # GitHub raw down: the recorder's files come from jsDelivr instead (audit ARCH-05)
     pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
     via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")

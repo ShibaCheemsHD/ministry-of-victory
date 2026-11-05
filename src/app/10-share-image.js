@@ -355,7 +355,7 @@
   function placeCard() {
     const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : globeEl();
     if (!wrap || !g) return;
-    const r = g.getBoundingClientRect(), gap = 14, vw = innerWidth, vh = innerHeight;
+    const r = g.getBoundingClientRect(), gap = 14, vw = window.innerWidth, vh = window.innerHeight;
     const W = Math.min(780, vw - (vw <= 760 ? 16 : 32));
     wrap.style.width = W + 'px'; // Measure height at the final width, not the previous popup width.
     const h = wrap.offsetHeight, right = vw - r.right - gap - 16;
