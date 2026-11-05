@@ -41,16 +41,9 @@
     if (head) {
       const id = String(entry.a.id), text = head.textContent.replace(/\s+/g, ' ').trim();
       if (prev.dir[id] != null && prev.dir[id] !== text) {
-        toast(fill(t('dirChanged'), { x: text }));
-        // the change stays said on the call until the player dismisses it (a toast is gone in seconds)
-        ui.callChange = { id, was: prev.dir[id], at: Date.now() };
         if (settings.notify === 'on' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
           try { new Notification(t('notifyOn'), { body: text, tag: 'mov-call' }); } catch { /* not allowed here */ }
         }
-      }
-      const cc = ui.callChange, bar = head.closest('.call')?.querySelector('.call-bar');
-      if (cc && cc.id === id && bar && !bar.querySelector('.call-new')) {
-        bar.insertAdjacentHTML('beforeend', `<span class="call-new">${ICON.flag}<b>${esc(fill(t('callNew'), { t: new Date(cc.at).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }))}</b><span class="was">${esc(fill(t('callWas'), { x: cc.was }))}</span><button type="button" class="cn-x" data-callnew-x aria-label="${esc(t('callNewX'))}">${ICON.cross}</button></span>`);
       }
       if (!reduced() && prev.dir[id] !== text) { const c = head.closest('.call'); if (c) { c.classList.add('scan'); setTimeout(() => c.classList.remove('scan'), 1300); } }
       prev.dir[id] = text;

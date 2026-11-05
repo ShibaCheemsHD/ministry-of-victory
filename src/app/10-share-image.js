@@ -214,7 +214,6 @@
     document.querySelectorAll('.share-menu[open]').forEach(d => { if (!d.contains(e.target) || e.target.closest('.sm-item')) d.open = false; });
   }, true);
   document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-callnew-x]')) { ui.callChange = null; e.target.closest('.call-new')?.remove(); return; }
     if (e.target.closest('[data-glance]')) { setGlance(false); return; }
     if (e.target.closest('[data-glance-on]')) { setGlance(true); window.scrollTo({ top: 0 }); return; }
     const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-igroup],[data-intelfilter],[data-iclear]');
@@ -287,6 +286,7 @@
   // remember which objective details are open across the 60 s re-renders ('toggle' doesn't bubble)
   document.addEventListener('toggle', (e) => {
     const el = e.target;
+    if (el && el.dataset && el.dataset.evidence) evidenceOpen[el.dataset.evidence] = el.open;
     if (el && el.dataset && el.dataset.intel) ui.intelOpen[el.dataset.intel] = el.open;
     if (el && el.dataset && el.dataset.simbox) { ui.simOpen[el.dataset.simbox] = el.open; saveUi(); }
     if (el && el.dataset && el.dataset.brief) ui.briefOpen[el.dataset.brief] = el.open;

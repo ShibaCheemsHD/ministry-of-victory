@@ -36,6 +36,10 @@ with sync_playwright() as p:
         for w in (1366, 390):
             pg = open_page(br, sc, w)
             check(pg, f'{sc}@{w}')
+            if sc == 'default':
+                evidence = pg.locator('.forecast-evidence > summary').first
+                evidence.click(); pg.wait_for_timeout(100)
+                check(pg, f'{sc}/evidence-open@{w}')
             if w == 1366:
                 for tab in TABS:
                     b = pg.locator(f'.tab[data-tab="{tab}"]:visible')

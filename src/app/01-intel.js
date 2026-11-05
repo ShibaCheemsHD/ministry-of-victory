@@ -147,7 +147,32 @@
   const signed = (n) => (n > 0 ? '+' : '') + fmt(n) + '%';
   // a game multiplier in percent: +30% reads as such, 3,000% reads better as "x30"
   const boost = (p) => p >= 300 ? '×' + fmt(p / 100, p < 1000 ? 1 : 0) : signed(p - 100);
-  function effectLabel(type, v) {
+  // Type 40 uses division hashes, a different namespace from enemy objective ids.
+  function deploymentName(id) {
+    const n = GAME.fx?.[String(id)]?.n;
+    return n ? n.replace(/\s*\(enemies\)\s*$/i, '').trim() : null;
+  }
+  function isSeafEffect(x) {
+    return x.type === 40 && ([1400, 1401].includes(Number(x.eid ?? x.id)) || /heavy seaf presence/i.test(deploymentName(x.eid ?? x.id) || ''));
+  }
+  function extractionSeconds(v) {
+    const amount = valOf(v, 1), operation = valOf(v, 3);
+    // Current additive effects: value type 1 is seconds (#V_TWO in the game strings).
+    return operation === 0 && Number.isFinite(amount) ? amount : null;
+  }
+  function effectExplanation(x) {
+    if (isSeafEffect(x)) return esc(t('in.fx.seafDetail'));
+    if (x.type === 21) {
+      const seconds = extractionSeconds(x.v);
+      return esc(seconds == null ? t('in.fx.extractUnknown') : fill(t(x.kind !== 'active' && !x.on ? 'in.fx.extractRemoved' : seconds < 0 ? 'in.fx.extractFaster' : 'in.fx.extractSlower'), { n: fmt(Math.abs(seconds)) }));
+    }
+    if (x.type === 40) {
+      const def = GAME.fx?.[String(x.eid ?? x.id)];
+      return esc(def?.d ? plain(clean(def.d)) : t('in.fx.divisionUnknown'));
+    }
+    return '';
+  }
+  function effectLabel(type, v, id) {
     const pctv = valOf(v, 2), item = valOf(v, 4), foe = valOf(v, 16) ?? valOf(v, 13);
     const foeName = foe && enemyKnown(foe) ? esc(enemyName(foe)) : null;
     const L = t('in.fx');
@@ -163,8 +188,12 @@
       case 92: return L.demil;
       case 32: return itemKnown(item) ? fill(L.permit, { item: esc(itemKnown(item)) }) : L.permitAny;
       case 72: return pctv - 100 > 0 ? fill(foeName ? L.spawnMore : L.spawnMoreAny, { foe: foeName, x: boost(pctv) }) : fill(L.spawnLess, { foe: foeName || L.someFoe });
-      case 40: return foeName ? fill(L.division, { foe: foeName }) : L.divisionAny;
-      case 21: return L.extract;
+      case 40: {
+        if (isSeafEffect({ type, eid: id })) return L.seaf;
+        const division = deploymentName(id);
+        return division ? fill(L.division, { foe: esc(titleCase(division)) }) : L.divisionAny;
+      }
+      case 21: { const n = extractionSeconds(v); return n == null ? L.extract : fill(L.extractValue, { x: (n >= 0 ? '+' : '−') + fmt(Math.abs(n)) }); }
       case 36: return fill(itemKnown(item) ? L.cooldown : L.cooldownAny, { item: esc(itemKnown(item) || ''), x: signed(pctv || 0) });
       default: return L.other;
     }
@@ -178,7 +207,7 @@
   }
   function alertText(x, short, rel) {
     if (x.kind === 'effect' || x.kind === 'active') {
-      const label = effectLabel(x.type, x.v), where = planetList(x.planets || [], rel || new Set());
+      const label = effectLabel(x.type, x.v, x.eid ?? x.id), where = planetList(x.planets || [], rel || new Set());
       let out = fill(t((short ? 'in.s.' : 'in.') + (x.kind === 'active' ? 'active' : x.on ? 'fxOn' : 'fxOff')), { label, where });
       if (!short && (x.kind === 'active' || x.on) && [1, 74, 77, 90].includes(x.type)) out += ' ' + t('in.fxPace');
       return /^[a-z]/.test(out) ? out.charAt(0).toUpperCase() + out.slice(1) : out;
@@ -329,26 +358,30 @@
     const card = x => {
       const key = intelKey(x), cat = intelCategory(x), impact = intelImpact(x), sure = ['jump', 'setback'].includes(x.kind) ? 'lens' : 'data';
       const effect = x.kind === 'effect' || x.kind === 'active';
-      const title = x.kind === 'news' ? esc(titleCase(x.title)) : effect ? capFirst(effectLabel(x.type, x.v))
+      const title = x.kind === 'news' ? esc(titleCase(x.title)) : effect ? capFirst(effectLabel(x.type, x.v, x.eid ?? x.id))
         : x.kind === 'regen' ? esc(t(x.to < x.from ? 'it.resistanceDown' : 'it.resistanceUp')) : alertText(x, true, rel);
       const status = effect ? t(x.kind === 'active' ? 'it.enabledNow' : x.on ? 'it.enabled' : 'it.disabled') : '';
       const detail = x.kind === 'regen' ? `${last.planets[x.idx] ? planetName(last.planets[x.idx]) : esc(x.name || '')} · ${keyLine(x, rel)}` : keyLine(x, rel);
       const on = selected.has(key);
-      return `<article class="it-card cat-${cat}${on ? ' is-selected' : ''}" id="${key}" data-ikey="${key}" tabindex="-1">
-        <span class="it-ico" aria-hidden="true">${ICON[x.kind === 'news' ? NEWS_ICON[x.nk] || 'news' : INTEL_ICONS[cat]]}</span><div class="it-body">
-          <div class="it-card-tags"><span class="it-category">${esc(t('it.cat.' + cat))}</span>${status ? `<span class="it-status">${esc(status)}</span>` : ''}${impact !== 'neutral' ? `<span class="it-impact ${impact}">${esc(t('it.impact.' + impact))}</span>` : ''}<span class="it-selected-label"${on ? '' : ' hidden'}>${esc(t('it.selected'))}</span><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
+      return `<article class="it-card cat-${cat}${isSeafEffect(x) ? ' is-seaf' : ''}${on ? ' is-selected' : ''}" id="${key}" data-ikey="${key}" tabindex="-1">
+        <span class="it-ico" aria-hidden="true">${ICON[isSeafEffect(x) ? 'seaf' : x.kind === 'news' ? NEWS_ICON[x.nk] || 'news' : INTEL_ICONS[cat]]}</span><div class="it-body">
+          <div class="it-card-tags"><span class="it-category">${esc(t(isSeafEffect(x) ? 'it.allies' : 'it.cat.' + cat))}</span>${status ? `<span class="it-status">${esc(status)}</span>` : ''}${impact !== 'neutral' ? `<span class="it-impact ${impact}">${esc(t('it.impact.' + impact))}</span>` : ''}<span class="it-selected-label"${on ? '' : ' hidden'}>${esc(t('it.selected'))}</span><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
           <h5 aria-level="4">${title}</h5>${detail ? `<p class="it-key">${detail}</p>` : ''}${sparkHTML(x)}
-          ${x.kind === 'news' ? x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : '' : `<div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span><details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)}</p></details></div>`}</div></article>`;
+          ${x.kind === 'news' ? x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : '' : `<div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span><details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)} ${effectExplanation(x)}</p></details></div>`}</div></article>`;
     };
     return `<div class="intel-tab" data-intel-order="${esc(id)}">
       <div class="it-head"><div><h3>${esc(t('it.title'))}</h3><p>${esc(t('it.overview'))}</p></div></div>
       <div class="it-filters" role="group" aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
       ${timeline}
       <div class="it-selection" role="status"${state.selected.length ? '' : ' hidden'}><span data-intel-selection-label>${esc(fill(t('it.selectionCount'), { n: state.selected.length }))}</span><button type="button" class="linkish" data-iclear data-iorder="${esc(id)}">${esc(t('it.clearSelection'))}</button></div>
-      <div class="it-groups">${cats.map(c => {
+      <div class="it-groups${cats.length < 2 ? ' single' : ''}">${(() => {
+        const stacks = cats.includes('mission') && cats.length > 1 ? [cats.filter(c => c !== 'mission'), ['mission']] : [cats.filter((_, i) => i % 2 === 0), cats.filter((_, i) => i % 2)];
+        return stacks.filter(s => s.length).map(stack => `<div class="it-stack">${stack.map(c => {
         const changes = events.filter(x => intelCategory(x) === c), live = active.filter(x => intelCategory(x) === c);
         return `<section class="it-event-group cat-${c}"><h4 class="mod-h">${ICON[INTEL_ICONS[c]]}${esc(t('it.cat.' + c))} <span>${counts[c]}</span></h4>${changes.map(card).join('')}${live.length ? `<p class="it-active-label">${esc(t('it.activeNow'))}</p>${live.map(card).join('')}` : ''}</section>`;
-      }).join('')}${!cats.length ? `<p class="it-empty">${esc(t('it.none'))}</p>` : ''}</div>
+
+        }).join('')}</div>`).join('');
+      })()}${!cats.length ? `<p class="it-empty">${esc(t('it.none'))}</p>` : ''}</div>
       <p class="foot">${esc(record && record.since ? fill(t('it.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('it.footLocal'))}</p>
     </div>`;
   }

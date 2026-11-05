@@ -41,6 +41,14 @@ jobs:
           npm i --no-save axe-core@4.10.2
           python3 tests/a11y_test.py
 
+      - name: Forecast evidence layout snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecast-evidence-layout
+          path: build/evidence-*.png
+          retention-days: 7
+
   # The page goes online only once every test above has passed (audit OPS-01).
   # Needs Settings -> Pages -> Source: "GitHub Actions".
   deploy:

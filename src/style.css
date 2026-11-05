@@ -1424,3 +1424,28 @@ html.glance .mworth { display: none; }
 .it-body > h5 { font: 700 15px/1.35 var(--ui); overflow-wrap: anywhere; }
 .it-filter { min-width: 0; } .it-filter > span { min-width: 0; text-align: left; }
 @media (max-width: 760px) { .it-axis, .it-lane { grid-template-columns: 68px repeat(var(--slots), minmax(0, 1fr)); } }
+
+/* Evidence stays neutral: observations, not another win/loss colour scale. */
+.forecast-evidence { min-width: 0; border: 1px solid var(--rule-2); background: var(--desk); }
+.forecast-evidence > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 10px 12px; cursor: pointer; list-style: none; font: 600 14px/1.4 var(--ui); }
+.forecast-evidence > summary::-webkit-details-marker { display: none; }
+.forecast-evidence > summary:hover { background: var(--desk-3); }
+.forecast-evidence > summary:focus-visible { outline: 2px solid var(--se); outline-offset: 3px; }
+.fe-title { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); }
+.fe-title .ico { flex: none; }
+.fe-level { margin-left: auto; color: var(--fg); }
+.forecast-evidence > summary > .ico { width: 12px; height: 12px; flex: none; color: var(--muted); }
+.forecast-evidence[open] > summary > .ico { transform: rotate(180deg); }
+.fe-body { padding: 12px 14px; border-top: 1px solid var(--rule); font: 400 14px/1.6 var(--ui); color: var(--fg); overflow-wrap: anywhere; }
+.fe-body ul { padding-left: 18px; margin: 0; }
+.fe-body li + li { margin-top: 7px; }
+.fe-body p { color: var(--muted); margin: 12px 0 0; font-size: 13px; }
+html.glance .forecast-evidence { display: none; }
+
+.it-groups.single { grid-template-columns: minmax(0, 1fr); }
+.it-stack { min-width: 0; display: grid; align-content: start; gap: 24px; }
+.it-card.is-seaf { --c: #67b7ee; }
+.race-group-label { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; color: var(--muted); font: 700 13px/1.5 var(--ui); text-transform: uppercase; letter-spacing: .1em; }
+.race-group-label.completed { border-top: 1px solid var(--rule-2); margin-top: 20px; padding-top: 20px; }
+
+.pc-allies :is(.pc-sec, .pc-ic) { color: #67b7ee; }

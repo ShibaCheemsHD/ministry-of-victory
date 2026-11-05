@@ -72,7 +72,7 @@
       return { icon: 'edit', title, detail, t: x.t, when: x.ref === 'briefing' ? t('jo.launch') : null };
     }
     if (x.kind === 'effect' || x.kind === 'active') {
-      const lbl = plain(effectLabel(x.type, x.v));
+      const lbl = plain(effectLabel(x.type, x.v, x.eid ?? x.id));
       return { icon: 'fx', title: lbl.charAt(0).toUpperCase() + lbl.slice(1), detail: planetList(x.planets || [], rel && rel.size ? rel : new Set(x.planets || [])), t: x.t, when: x.kind === 'active' ? t('in.now') : null };
     }
     return { icon: KIND_ICON[x.kind] || 'warn', title: alertText(x, true, rel || new Set()), detail: '', t: x.t };

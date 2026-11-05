@@ -44,11 +44,26 @@
     </section>`;
   }
 
+  // Keep objective identifiers intact; ordering follows the call, then time pressure and shortfall.
+  function raceOrder(res) {
+    const focus = res.directive || {}, plan = res.liberation?.plan?.segs || [];
+    const chosen = r => res.anyOf ? r === res.tasks[res.pick] : focus.task ? r.idx === focus.task.idx : focus.planet ? r.planet?.index === focus.planet.index : plan[0]?.target === r;
+    const severity = { impossible: 0, nearly_impossible: 1, hard: 2, record: 2, effort: 3, focus: 3, unknown: 4, ontrack: 5 };
+    const shortfall = r => r.counter && r.task?.goal > 0 && Number.isFinite(r.projection) ? r.projection / r.task.goal : Infinity;
+    return [...res.tasks].sort((a, b) => Number(a.verdict === 'done') - Number(b.verdict === 'done') ||
+      Number(chosen(b)) - Number(chosen(a)) ||
+      (a.defense?.hoursToEnd ?? Infinity) - (b.defense?.hoursToEnd ?? Infinity) ||
+      (severity[a.verdict] ?? 4) - (severity[b.verdict] ?? 4) || shortfall(a) - shortfall(b) || a.idx - b.idx);
+  }
+
   function objectivesHTML(res) {
     const H = res.hoursLeft;
     const S = (k, p = {}) => fill(t('s.' + k), p);
     const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
-    return banner + res.tasks.map((r, i) => {
+    const ordered = raceOrder(res);
+    return banner + ordered.map((r, pos) => {
+      const i = res.tasks.indexOf(r), done = r.verdict === 'done';
+      const group = pos === 0 || done !== (ordered[pos - 1].verdict === 'done') ? `<p class="race-group-label${done ? ' completed' : ''}"${done ? '' : ` title="${esc(t('races.priorityNote'))}"`}>${esc(t(done ? 'races.completed' : res.ended ? 'races.unfinished' : 'races.active'))}</p>` : '';
       const tk = r.task;
       const p = r.planet;
       const fac = p ? factionOfPlanet(p) : tk.faction;
@@ -98,7 +113,7 @@
       const pv = pill(rv);
       // liberation that falls before the deadline: the bracket runs to the goal line
       if (r.pw && r.eta <= H && !res.ended && r.verdict !== 'done') { const frac = Math.max(0, 1 - p.health / p.maxHealth); bar = bar.replace('<div class="fill"', `<div class="proj" style="left:${frac * 100}%;width:${(1 - frac) * 100}%"></div><div class="fill"`).replace(/<\/div>$/, '<div class="goal"></div></div>'); }
-      return `<article class="race vl-${lvl(rv)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
+      return `${group}<article data-race-idx="${r.idx}" data-race-done="${done}" class="race vl-${lvl(rv)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
         <div class="race-head"><h3 class="race-name">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h3>
           <span class="race-call">${pv}</span></div>
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>

@@ -76,6 +76,47 @@ def run(br, query, width):
 
 with sync_playwright() as p:
     br = p.chromium.launch()
+    # Forecast evidence: native keyboard disclosure, persistent state and mobile containment.
+    for w in (320, 390, 1366):
+        pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
+        pg.goto(f'{PAGE}?s=default&motion=reduced'); pg.wait_for_timeout(1800)
+        summary = pg.locator('.forecast-evidence > summary').first
+        if not summary.count():
+            problems.append(f'evidence @{w}: missing indicator')
+        else:
+            key = summary.get_attribute('id')
+            summary.focus(); summary.press('Enter'); pg.wait_for_timeout(100)
+            box = pg.locator(f'#{key}').locator('..')
+            if not box.get_attribute('open') == '': problems.append(f'evidence @{w}: keyboard did not open details')
+            if not box.locator('.fe-body').is_visible(): problems.append(f'evidence @{w}: missing explanation')
+            if 'chance of winning' not in box.inner_text(): problems.append(f'evidence @{w}: missing distinction from verdict')
+            pg.locator('.tab[data-tab="history"]').first.click(); pg.wait_for_timeout(200)
+            if pg.locator(f'#{key}').locator('..').get_attribute('open') is None: problems.append(f'evidence @{w}: lost open state after rerender')
+            if pg.evaluate('document.documentElement.scrollWidth > window.innerWidth'): problems.append(f'evidence @{w}: horizontal overflow')
+            pg.locator('.call').first.screenshot(path=os.path.join(ROOT, 'build', f'evidence-{w}.png'))
+            pg.locator(f'#{key}').focus(); pg.locator(f'#{key}').press('Space'); pg.wait_for_timeout(100)
+            if pg.locator(f'#{key}').locator('..').get_attribute('open') is not None: problems.append(f'evidence @{w}: keyboard did not close details')
+        pg.close()
+    if problems:
+        print('FORECAST EVIDENCE REGRESSION FAILED\n' + '\n'.join(problems)); br.close(); sys.exit(1)
+    for w in (390, 1366):
+        pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
+        pg.goto(f'{PAGE}?s=intel&corrections=1&motion=reduced'); pg.wait_for_timeout(1800)
+        pg.locator('.tab[data-tab="intel"]').first.click(); pg.wait_for_timeout(250)
+        seaf = pg.locator('.it-card.is-seaf').first
+        if not seaf.count() or 'allied' not in seaf.inner_text().lower(): problems.append(f'corrections @{w}: missing allied SEAF')
+        if not pg.locator('.it-card h5').filter(has_text='Caustic Strain').count(): problems.append(f'corrections @{w}: missing named Caustic Strain')
+        extraction = pg.locator('.it-card').filter(has=pg.locator('h5').filter(has_text='extraction wait +20 seconds')).first
+        if not extraction.count(): problems.append(f'corrections @{w}: missing extraction amount')
+        else:
+            extraction.locator('summary').click()
+            if 'Adds 20 seconds' not in extraction.inner_text(): problems.append(f'corrections @{w}: missing extraction explanation')
+        if pg.locator('.call-new').count(): problems.append(f'corrections @{w}: obsolete New call banner')
+        if w == 1366:
+            gap = pg.locator('.it-event-group.cat-news').evaluate("e => e.previousElementSibling ? e.getBoundingClientRect().top - e.previousElementSibling.getBoundingClientRect().bottom : 0")
+            if gap > 32: problems.append(f'corrections: empty gap before dispatches: {gap}')
+        pg.locator('.intel-tab').screenshot(path=os.path.join(ROOT, 'build', f'evidence-log-{w}.png'))
+        pg.close()
     # Dense log: clusters are separate hit targets, and selection stays visible after scrolling.
     for w in (320, 390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')

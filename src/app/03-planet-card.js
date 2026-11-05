@@ -32,7 +32,7 @@
     const lib = m ? 1 - h / m : 0, regen = p.regenPerSecond && p.maxHealth ? p.regenPerSecond * 3600 / p.maxHealth : 0;
     const task = res.tasks.find(r => r.planet && r.planet.index === p.index);
     const fx = (record?.effects || []).filter(e => e.planets.includes(p.index) || e.planets.includes(-1));
-    const permits = fx.filter(e => e.type === 32), divs = fx.filter(e => e.type === 40 || e.type === 72);
+    const permits = fx.filter(e => e.type === 32), allies = fx.filter(isSeafEffect), divs = fx.filter(e => !isSeafEffect(e) && (e.type === 40 || e.type === 72));
     const weapons = res.tasks.filter(r => r.verdict !== 'done' && r.task.itemId && (!r.task.faction || r.task.faction === fac)).map(r => itemName(r.task.itemId));
     const bioKey = p.biome && Object.keys(G.bio).find(k => G.bio[k].n === p.biome.name);
     const hz = (p.hazards || []).map(x => ({ k: envKey(x.name), name: x.name, d: x.description || (G.env[envKey(x.name)] || {}).d })).filter(x => x.k !== 'none' && x.k !== 'normal_temp');
@@ -59,8 +59,9 @@
       </ul></section>
       ${fac && FAC_TIP(fac) ? `<section class="pc-section"><h3 class="label pc-sec">${esc(t('pc.enemy'))}</h3><ul class="pc-list">
         ${row(`<span class="pc-fdot"></span>`, esc(plain(facPlural(fac))), '', FAC_TIP(fac), '')}
-        ${divs.map(e => { const n = fxName(e.id) || effectLabel(e.type, e.v); const tip = divTip(n); return row(ICON.fx, esc(n), esc((G.fx[String(e.id)] || {}).d || ''), tip || '', ''); }).join('')}
+        ${divs.map(e => { const n = fxName(e.id) || effectLabel(e.type, e.v, e.id); const tip = divTip(n); return row(ICON.fx, esc(n), esc((G.fx[String(e.id)] || {}).d || ''), tip || '', ''); }).join('')}
       </ul></section>` : ''}
+      ${allies.length ? `<section class="pc-section pc-allies"><h3 class="label pc-sec">${esc(t('it.allies'))}</h3><ul class="pc-list">${allies.map(e => row(ICON.seaf, esc(effectLabel(e.type, e.v, e.id)), esc(t('in.fx.seafDetail')), '', '')).join('')}</ul></section>` : ''}
       ${weapons.length || permits.length ? `<section class="pc-section"><h3 class="label pc-sec">${esc(t('pc.order'))}</h3><ul class="pc-list">
         ${weapons.map(w => row(ICON.target, esc(w), esc(t('pc.reqS')), '', '')).join('')}
         ${permits.map(e => row(ICON.plus, esc(itemKnown(valOf(e.v, 4)) || fxName(e.id) || capFirst(t('in.fx.permitAny'))), esc(t('pc.freeS')), '', '')).join('')}
@@ -206,6 +207,7 @@
         <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || m.state === 'done' ? 'result' : 'forecast'))}</h3>
         <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
         <p class="meaning">${esc(t('m.' + v))}</p>
+        ${forecastEvidenceHTML(res, a)}
         ${res.ended || m.moveOn ? '' : whyHTML(res, p.d)}
         <dl class="clock">${clockRow}${reward}</dl>
         ${customModel() ? `<p class="model-note">${ICON.edit}<span>${esc(t('modelNote'))}</span><button type="button" class="linkish" data-model-reset>${esc(t('modelReset'))}</button></p>` : ''}

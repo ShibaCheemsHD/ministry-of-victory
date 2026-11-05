@@ -41,6 +41,7 @@
 
   /* ---------- small components ---------- */
   const ICON = {
+    seaf: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 5a4 4 0 0 1 8 0H2ZM3 5v2a3 3 0 0 0 6 0V5M2 11l1-2h6l1 2M6 1v3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
     image: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.2" y="2" width="9.6" height="8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 9l2.6-3 2 2 1.4-1.4L10 9" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="4.4" r=".9" fill="currentColor"/></svg>',
     check: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
     plus: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="2"/></svg>',

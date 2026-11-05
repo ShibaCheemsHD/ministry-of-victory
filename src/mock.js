@@ -204,6 +204,15 @@
         'recent.json':{v:2,updated:now,samples:[],prog:[]},
         'progress.json':{v:1,updated:now,since:now-30*H,orders:{[aid]:{start:now-30*H,exp:now+40*H,title:'X',pts:Array.from({length:30},(_,k)=>[now-(30-k)*H,...assignments[0].progress.map(v=>Math.round((v||0)*k/30))])}},planets:{}}};
     }
+    if (q.get('corrections') === '1' && record) {
+      const effects = [
+        {id:1401,type:40,v:[[16,3126357841],[0,0]],planets:[-1],events:[]},
+        {id:1430,type:40,v:[[16,585432236],[0,0]],planets:[-1],events:[]},
+        {id:1434,type:40,v:[[16,903954334],[0,0]],planets:[-1],events:[]},
+        {id:1312,type:21,v:[[3,0],[1,20]],planets:[-1],events:[]},
+      ];
+      record['intel.json'].effects.push(...effects);
+    }
     if (S==='apidown') record['live.json']={v:1,t:now-12*60e3,src:'official',
       war:{started:new Date(warStart - LAG).toISOString(),now:new Date(now - warStart).toISOString(),impactMultiplier:0.0191*56000/players,statistics:{playerCount:players}},
       assignments, campaigns:campaigns.map(p=>({planet:p})), stations:[], raw, extra:[]};
