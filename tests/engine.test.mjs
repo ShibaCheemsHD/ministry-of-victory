@@ -145,3 +145,35 @@ test('counts: players freed by a finished objective move to the others', () => {
   assert.ok(r2.recs.some(x => x.kind === 'cntFreed' && x.task === B2), 'the switch is the advice');
   assert.ok(!r2.recs.some(x => x.kind === 'cntOk' && x.task === B2), 'not "finishes on its own"');
 });
+
+test('calibration uses resistance recorded at each interval, not the new resistance', () => {
+  const H = 3.6e6, now = 3 * H;
+  const planets = { 7: { index: 7, currentOwner: 'Automaton', maxHealth: 1e6, regenPerSecond: 0 } };
+  const samples = Array.from({ length: 7 }, (_, k) => ({ t: k * H / 2, N: 100000, imp: .01,
+    planets: { 7: { h: 800000 - 5000 * k, p: 30000, r: 20000 / 3600 } } }));
+  // 10k net/h + 20k regen/h = 30k gross/h, at 30k players and multiplier .01.
+  near(E.calibrateK(samples, planets, now, 0, 1.8).K, 30000 / (30000 * .01 * 3600));
+  near(E.calibrate(samples, planets, now, 0, 1.8).capacity, 100000);
+  const future = { ...samples.at(-1), t: now + H / 2, planets: { 7: { h: 1000, p: 30000, r: 0 } } };
+  near(E.calibrateK([...samples, future], planets, now, 0, 1.8).K, E.calibrateK(samples, planets, now, 0, 1.8).K);
+});
+
+test('defense need and ETA agree on station bonuses, including off-station Heavy Ordnance', () => {
+  const now = Date.UTC(2026, 10, 5), C = 100000, N = 100000;
+  const settings = { ...E.DEFAULTS, dssBonus: .1, hodMult: 1.8 };
+  const p = { index: 7, event: { endTime: new Date(now + 10 * 3.6e6).toISOString(), health: 500000, maxHealth: 1000000 }, statistics: { playerCount: 10000 } };
+  for (const [station, hod, mult] of [[7, true, 1.1 * 1.8], [8, true, .72], [8, false, 1]]) {
+    const info = E.defenseInfo(p, { N, now, C, dssIdx: station, hod, settings, samples: [] }, 20);
+    near(info.need, E.shareFor(50000 / mult, C));
+    const exact = E.defenseInfo({ ...p, statistics: { playerCount: N * info.need } }, { N, now, C, dssIdx: station, hod, settings, samples: [] }, 20);
+    near(exact.eta, 10);
+  }
+});
+
+test('counter rates ignore future data, pre-order data and decreasing counters', () => {
+  const H = 3.6e6, now = 30 * H;
+  const samples = [{ t: 28 * H, prog: { A: [10] } }, { t: 29 * H, prog: { A: [20] } }, { t: 31 * H, prog: { A: [10000] } }];
+  near(E.counterRates(samples, 'A', 0, 20, 27 * H, now).recent.rate, 10);
+  assert.equal(E.counterRates(samples, 'A', 0, 20, 29.5 * H, now).recent, null);
+  assert.equal(E.counterRates([{ t: 28 * H, prog: { A: [20] } }, { t: 29 * H, prog: { A: [10] } }], 'A', 0, 10, H, now).recent, null);
+});

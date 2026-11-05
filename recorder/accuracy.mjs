@@ -35,7 +35,8 @@ export function liberationBacktest(hist, resort, { since = Date.parse('2026-01-0
   // strength of the playerbase (HP/h at 100% of players), median over the week before t
   const capCache = new Map();
   const capacityAt = (t) => {
-    const key = Math.floor(t / (24 * H)); if (capCache.has(key)) return capCache.get(key);
+    // Cache the exact cutoff: a later forecast on the same day must never lend future data to an earlier one.
+    const key = t; if (capCache.has(key)) return capCache.get(key);
     const vals = [];
     for (const l of Object.values(P)) {
       let prev = null;
