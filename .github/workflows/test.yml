@@ -31,11 +31,21 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Recorder scripts parse
         run: for f in recorder/*.mjs; do node --check "$f"; done
-      - name: Page in every scenario and with random data
+      - name: Browser dependencies
         run: |
           pip install playwright==1.48.0
           python -m playwright install --with-deps chromium
-          python3 tests/page_test.py 40
+      - name: Full Plan interactions and responsive previews
+        run: python3 -u tests/plan_visual_test.py
+      - name: Full Plan preview files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-plan-previews
+          path: build/plan-*.png
+          retention-days: 7
+      - name: Page in every scenario and with random data
+        run: python3 tests/page_test.py 40
       - name: Accessibility (axe-core on every view, dialogs by keyboard)
         run: |
           npm i --no-save axe-core@4.10.2

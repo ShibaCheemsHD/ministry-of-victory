@@ -1449,3 +1449,66 @@ html.glance .forecast-evidence { display: none; }
 .race-group-label.completed { border-top: 1px solid var(--rule-2); margin-top: 20px; padding-top: 20px; }
 
 .pc-allies :is(.pc-sec, .pc-ic) { color: #67b7ee; }
+
+/* Full Plan: a tactical briefing, using the terminal's existing palette and type. */
+.plan-briefing { gap: 24px; }
+.plan-mast { position: relative; padding: 22px 24px; border: 1px solid var(--rule-2); border-top: 3px solid var(--se); background: linear-gradient(110deg, rgba(255,233,0,.09), transparent 65%), var(--desk); }
+.plan-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--se); font: 700 12px/1.5 var(--ui); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 12px; }
+.plan-mast .sec-head { gap: 16px; align-items: center; }
+.plan-mast .sec-head h3 { font-size: clamp(24px, 3vw, 36px); line-height: 1.1; }
+.plan-sub { margin-top: 8px; color: var(--muted); font-size: 14px; }
+.plan-mast .ghost { flex: none; min-height: 44px; background: var(--desk); }
+.plan-briefing > .moves { gap: 18px; padding-left: 16px; border-left: 1px solid var(--rule-2); }
+.plan-briefing .move { padding: 24px 24px 24px 90px; gap: 14px; border-left: 2px solid var(--lc); transition: transform .2s var(--ease-out), border-color .2s, box-shadow .2s; }
+.plan-briefing .move::before { content: counter(mv, decimal-leading-zero); top: 24px; left: 18px; width: 54px; height: auto; border: 0; background: none; color: var(--muted); font-size: 38px; line-height: 1; opacity: .85; }
+.plan-briefing .move::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--se), transparent); transform: scaleX(0); transform-origin: left; transition: transform .28s var(--ease-out); pointer-events: none; }
+.plan-briefing .move:focus-within { box-shadow: inset 0 0 0 1px var(--se); }
+.plan-briefing .move-featured { padding-top: 28px; padding-bottom: 28px; border-left: 4px solid var(--se); background: radial-gradient(ellipse at 100% 0, rgba(255,233,0,.1), transparent 65%), linear-gradient(140deg, #25251b, #121317 75%); box-shadow: inset 0 1px 0 rgba(255,233,0,.25); }
+.plan-briefing .move-featured::before { top: 28px; color: var(--se); font-size: 46px; opacity: 1; }
+.mv-priority { display: flex; align-items: center; gap: 8px; color: var(--se); font: 700 12px/1.4 var(--ui); letter-spacing: .13em; text-transform: uppercase; }
+.plan-briefing .mv-top { align-items: start; gap: 10px; }
+.plan-briefing .mv-top h4 { flex-basis: 100%; font-size: clamp(19px, 2vw, 26px); line-height: 1.2; max-width: 38ch; }
+.plan-briefing .move-featured .mv-top h4 { font-size: clamp(22px, 2.7vw, 32px); }
+.mv-explain { min-width: 0; }
+.mv-explain > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; font: 600 13px var(--ui); color: var(--muted); }
+.mv-explain > summary::-webkit-details-marker { display: none; }
+.mv-explain > summary:hover { color: var(--fg); }
+.mv-explain > summary:focus-visible { outline: 2px solid var(--se); outline-offset: 3px; }
+.mv-explain > summary .ico { width: 12px; height: 12px; transition: transform .2s; }
+.mv-explain[open] > summary .ico { transform: rotate(180deg); }
+.mv-explain-body { padding: 0 0 4px; }
+.plan-briefing .mv-why { font-size: 15px; line-height: 1.7; color: var(--muted); }
+.mv-impact { padding: 14px 16px; background: rgba(7,8,11,.55); border-left: 2px solid var(--lc); }
+.mv-impact-label { display: block; margin-bottom: 6px; color: var(--muted); font: 700 11px/1.4 var(--ui); letter-spacing: .12em; text-transform: uppercase; }
+.plan-briefing .mv-fx { font-size: 15px; line-height: 1.6; }
+.plan-briefing .more-tips > summary { min-height: 48px; padding: 8px 14px; border: 1px solid var(--rule-2); background: var(--desk); }
+.plan-briefing .moves.minor { gap: 12px; }
+.plan-simulator { padding: 0 22px; border: 1px solid var(--rule-2); border-top: 2px solid var(--se); }
+.plan-simulator > summary { display: flex; width: 100%; min-height: 68px; gap: 14px; color: var(--fg); font-size: 16px; }
+.plan-simulator > summary > .ico { color: var(--se); }
+.plan-simulator .sim-out { background: linear-gradient(120deg, rgba(255,233,0,.035), transparent), var(--desk-2); }
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  html:not(.calm) .plan-briefing .move:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--rule-2); }
+  html:not(.calm) .plan-briefing .move:hover::after { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion:no-preference) {
+  html:not(.calm) .mv-explain[open] .mv-explain-body { animation: planDetailIn .24s var(--ease-out); }
+}
+@keyframes planDetailIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width:640px) {
+  .plan-mast { padding: 18px 16px; }
+  .plan-mast .sec-head { align-items: start; flex-wrap: wrap; }
+  .plan-mast .ghost { width: 100%; justify-content: center; }
+  .plan-briefing > .moves { padding-left: 8px; }
+  .plan-briefing .move { padding: 20px 16px 20px 58px; gap: 10px; }
+  .plan-briefing .move::before, .plan-briefing .move-featured::before { left: 10px; top: 22px; width: 38px; font-size: 27px; }
+  .plan-briefing .mv-req { padding: 8px; }
+  .mv-impact { padding: 10px; }
+  .plan-simulator { padding-left: 16px; padding-right: 16px; }
+}
+@media (prefers-reduced-motion:reduce) { .plan-briefing .move, .plan-briefing .move::after, .mv-explain > summary .ico { transition: none; } }
+
+html.calm .plan-briefing .move, html.calm .plan-briefing .move::after, html.calm .mv-explain > summary .ico { transition: none; }
+.postmortem { border-top: 3px solid var(--rule-2); padding: 24px; background: linear-gradient(135deg, rgba(160,169,187,.07), transparent 65%); }
+.postmortem .pm-story { border-left-color: var(--rule-2); }
+@media (max-width:640px) { .postmortem { padding: 18px 14px; } }

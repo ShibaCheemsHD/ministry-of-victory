@@ -123,6 +123,7 @@ const TEXT = {
     alt: 'Major Order briefing image', note: 'Everything that matters in one picture, made for Reddit and Discord. Times are in UTC.',
     dl: 'Download PNG', copy: 'Copy image', share: 'Share…', copied: 'Image copied: paste it into your post.' },
   shareOf: '{p} of everyone online', shareX: '{x}× everyone online', shareInf: 'more than everyone online',
+  planVisual: { kicker: 'Tactical briefing', first: 'First priority', sub: 'Your priorities, in order of impact.', empty: 'The current position and what comes next.', why: 'Why this move', effect: 'Expected effect' },
   evidence: {
     title: 'Forecast basis', levels: ['Limited', 'Developing', 'Well observed'],
     note: 'A conservative check of data coverage and model assumptions, not a measured accuracy score or a chance of winning. It follows the least-supported unfinished objective; option orders use the selected option. Even well-observed forecasts can change.',

@@ -289,7 +289,8 @@
       default: return '';
     }
   }
-  function moveHTML(m, res) {
+  const planDetailsOpen = Object.create(null);
+  function moveHTML(m, res, position = 0, featured = false) {
     const MV = tHas('mv.' + m.kind);
     if (!MV) return recItem(m, res);
     const P = (p) => planetName(p);
@@ -334,11 +335,14 @@
     let fx = effectText(m.effect, subj);
     if (m.kind === 'cntMove' && m.short) { const g = effectText({ kind: 'gap', more: m.short, weaponUse: m.shortWeaponUse }); if (g) fx = fx ? fx + '. ' + g : g; }
     const nums = MV.nums != null ? MV.nums : (R(m.kind) || [])[2] || '';
-    return `<li class="move lvl-${res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip'}">
+    const detailKey = [res.id, m.kind, m.planet?.index ?? m.task?.idx ?? m.to ?? position].join(':');
+    const expanded = planDetailsOpen[detailKey] ?? featured;
+    return `<li class="move${featured ? ' move-featured' : ''} lvl-${res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip'}">
+      ${featured ? `<div class="mv-priority">${ICON.target}<span>${esc(t('planVisual.first'))}</span></div>` : ''}
       <div class="mv-top"><span class="lvl">${esc(t('lv.' + (res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip')))}</span><h4>${fill(m.kind === 'cntMove' && m.short ? t('mv.cntMoveShortHead') : MV.head, p)}</h4></div>
-      <p class="mv-why">${fill(why, p)}</p>
+      <details class="mv-explain" data-plan-detail="${esc(detailKey)}"${expanded ? ' open' : ''}><summary id="plan-detail-${esc(detailKey)}"><span>${esc(t('planVisual.why'))}</span>${ICON.chev}</summary><div class="mv-explain-body"><p class="mv-why">${fill(why, p)}</p></div></details>
       ${m.weapon && (m.kind === 'cntMove' || m.kind === 'cntShort') ? `<p class="mv-req"><span class="label">${esc(t('mvReq'))}</span><b>${esc(itemName(m.weapon))}</b><span>${esc(t('mvReqS'))}</span></p>` : ''}
-      ${fx ? `<p class="mv-fx">${ICON.target}<span>${fx}</span></p>` : ''}
+      ${fx ? `<div class="mv-impact"><span class="mv-impact-label">${esc(t('planVisual.effect'))}</span><p class="mv-fx">${ICON.target}<span>${fx}</span></p></div>` : ''}
       ${nums ? `<div class="nums">${fill(nums, p)}</div>` : ''}${extra}</li>`;
   }
 
@@ -413,13 +417,13 @@
     const sitCls = assess.some(r => r.kind === 'libImpossible') ? 'k-bad' : 'k-warn';
     const lostNow = res.verdict === 'impossible' || (res.directive && res.directive.kind === 'lost');
     const across = crossHTML();
-    return `<section class="plan ${ui.showNums ? 'show-nums' : ''}" id="steps-${esc(res.id)}">
+    return `<section class="plan plan-briefing ${ui.showNums ? 'show-nums' : ''}" id="steps-${esc(res.id)}">
         ${longShot}
-        <div class="sec-head"><h3>${t('planTitle')}</h3>
-          <button type="button" class="ghost" data-toggle-nums aria-pressed="${ui.showNums}">${ui.showNums ? t('hideNums') : t('showNums')}</button></div>
+        <div class="plan-mast"><div class="plan-eyebrow">${ICON.flag}${esc(t('planVisual.kicker'))}</div><div class="sec-head"><div><h3>${t('planTitle')}</h3><p class="plan-sub">${esc(t(moves.length ? 'planVisual.sub' : 'planVisual.empty'))}</p></div>
+          <button type="button" class="ghost" data-toggle-nums aria-pressed="${ui.showNums}">${ui.showNums ? t('hideNums') : t('showNums')}</button></div></div>
         ${across}
-        ${moves.length ? `<ol class="moves">${moves.map(r => moveHTML(r, res)).join('')}</ol>
-          ${tips.length ? `<details class="more-tips"><summary>${ICON.chev}<span>${fill(t('moreTips'), { n: tips.length })}</span></summary><ol class="moves minor" style="counter-reset: mv ${moves.length}">${tips.map(r => moveHTML(r, res)).join('')}</ol></details>` : ''}`
+        ${moves.length ? `<ol class="moves">${moves.map((r, i) => moveHTML(r, res, i, i === 0)).join('')}</ol>
+          ${tips.length ? `<details class="more-tips"><summary>${ICON.chev}<span>${fill(t('moreTips'), { n: tips.length })}</span></summary><ol class="moves minor" style="counter-reset: mv ${moves.length}">${tips.map((r, i) => moveHTML(r, res, moves.length + i)).join('')}</ol></details>` : ''}`
           : res.directive && res.directive.kind === 'play' ? `<p class="empty-moves unknown">${ICON.dots}<span>${t('noMovesUnknown')}</span></p>`
           : res.ended && res.verdict !== 'done' ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesEnded')}</span></p>`
           : lostNow ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesLost')}</span></p>` : `<p class="empty-moves">${ICON.check}<span>${t(res.verdict === 'done' ? 'noMovesDone' : 'noMoves')}</span></p>`}
@@ -429,6 +433,6 @@
           <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`, res)}</div>` : ''}
         ${fine.length && res.verdict !== 'done' ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
       </section>
-      ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
+      ${simHTML(res) || paceHTML(res) ? `<details class="sim-box plan-simulator" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
   }
 

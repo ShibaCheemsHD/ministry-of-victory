@@ -43,7 +43,10 @@ with sync_playwright() as p:
             if w == 1366:
                 for tab in TABS:
                     b = pg.locator(f'.tab[data-tab="{tab}"]:visible')
-                    if b.count(): b.first.click(); pg.wait_for_timeout(250); check(pg, f'{sc}/{tab}')
+                    if b.count():
+                        b.first.click(); pg.wait_for_timeout(250); check(pg, f'{sc}/{tab}')
+                        if tab == 'strategy' and pg.locator('.mv-explain > summary').count():
+                            pg.locator('.mv-explain > summary').first.click(); check(pg, f'{sc}/{tab}/disclosure')
             pg.close()
     pg = open_page(br, 'default')
     pg.click('#open-archive'); pg.wait_for_timeout(900); check(pg, 'archive')

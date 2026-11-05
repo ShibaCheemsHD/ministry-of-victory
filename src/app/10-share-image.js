@@ -286,6 +286,7 @@
   // remember which objective details are open across the 60 s re-renders ('toggle' doesn't bubble)
   document.addEventListener('toggle', (e) => {
     const el = e.target;
+    if (el && el.dataset && el.dataset.planDetail) planDetailsOpen[el.dataset.planDetail] = el.open;
     if (el && el.dataset && el.dataset.evidence) evidenceOpen[el.dataset.evidence] = el.open;
     if (el && el.dataset && el.dataset.intel) ui.intelOpen[el.dataset.intel] = el.open;
     if (el && el.dataset && el.dataset.simbox) { ui.simOpen[el.dataset.simbox] = el.open; saveUi(); }
