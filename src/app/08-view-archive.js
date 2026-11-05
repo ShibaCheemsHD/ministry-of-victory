@@ -36,7 +36,7 @@
     const el = document.activeElement;
     if (!el || el === document.body || !(el.closest('#view') || el.closest('#order-tabs'))) return null;
     if (el.id) return '#' + CSS.escape(el.id);
-    for (const k of ['sim', 'pace', 'copy', 'goto', 'preset', 'brief']) if (el.dataset[k] != null) return `[data-${k}="${CSS.escape(el.dataset[k])}"]${k === 'preset' ? `[data-v="${CSS.escape(el.dataset.v)}"]` : k === 'goto' && el.dataset.scroll ? '[data-scroll]' : k === 'goto' ? ':not([data-scroll])' : ''}`;
+    for (const k of ['sim', 'pace', 'copy', 'goto', 'preset', 'brief', 'intelfilter', 'igroup']) if (el.dataset[k] != null) return `[data-${k}="${CSS.escape(el.dataset[k])}"]${k === 'preset' ? `[data-v="${CSS.escape(el.dataset.v)}"]` : k === 'goto' && el.dataset.scroll ? '[data-scroll]' : k === 'goto' ? ':not([data-scroll])' : ''}`;
     const det = el.closest('details[data-intel]');
     if (det) return `details[data-intel="${CSS.escape(det.dataset.intel)}"] > summary`;
     if (el.hasAttribute('data-toggle-nums')) return '[data-toggle-nums]';

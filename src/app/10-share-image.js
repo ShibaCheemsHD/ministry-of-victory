@@ -217,7 +217,7 @@
     if (e.target.closest('[data-callnew-x]')) { ui.callChange = null; e.target.closest('.call-new')?.remove(); return; }
     if (e.target.closest('[data-glance]')) { setGlance(false); return; }
     if (e.target.closest('[data-glance-on]')) { setGlance(true); window.scrollTo({ top: 0 }); return; }
-    const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-ifocus]');
+    const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-igroup],[data-intelfilter],[data-iclear]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart
       const id = el.dataset.legend, k = el.dataset.s, off = (ui.chartOff[id] ||= {});
@@ -227,7 +227,15 @@
       return;
     }
     if (el.dataset.hmode) { ui.histMode[el.dataset.hmode] = el.dataset.v; saveUi(); render(); return; }
-    if (el.dataset.ifocus) { const c = $(el.dataset.ifocus); if (c) { c.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); } return; }
+    if (el.dataset.intelfilter) {
+      intelState(el.dataset.iorder).filter = el.dataset.intelfilter;
+      intelState(el.dataset.iorder).selected = [];
+      render();
+      document.querySelector(`[data-intelfilter="${CSS.escape(el.dataset.intelfilter)}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    if (el.dataset.igroup) { selectIntelEvents(el.dataset.igroup.split(','), el.dataset.iorder, el); return; }
+    if (el.hasAttribute('data-iclear')) { selectIntelEvents([], el.dataset.iorder, el); return; }
     if (el.hasAttribute('data-retry')) { refresh(); return; }
     if (el.hasAttribute('data-follow')) { ui.orderManual = false; saveUi(); render(); return; }
     if (el.dataset.otab) { ui.order = el.dataset.otab; ui.orderManual = true; saveUi(); render(); if (el.hasAttribute('data-pick')) window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); return; }
@@ -347,21 +355,23 @@
   function placeCard() {
     const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : globeEl();
     if (!wrap || !g) return;
-    if (window.innerWidth <= 760) { wrap.style.left = wrap.style.top = ''; wrap.removeAttribute('data-side'); return; }
     const r = g.getBoundingClientRect(), gap = 14, vw = window.innerWidth, vh = window.innerHeight;
-    const roomR = vw - r.right - gap - 16;
-    let W = Math.min(400, vw - 32), left, side;
-    if (roomR >= 320) { W = Math.min(400, roomR); left = r.right + gap; side = 'right'; }
-    else if (r.left - gap - 16 >= W) { left = r.left - gap - W; side = 'left'; }
-    else { left = Math.max(16, Math.min(vw - W - 16, r.left + r.width / 2 - W / 2)); side = 'below'; }
-    const h = wrap.offsetHeight || 420;
-    let top = side === 'below' ? r.bottom + gap : r.top - 10;
-    top = Math.max(76, Math.min(vh - h - 12, top));
-    wrap.style.width = W + 'px'; wrap.style.left = Math.round(left) + 'px'; wrap.style.top = Math.round(top) + 'px'; wrap.dataset.side = side;
+    const W = Math.min(780, vw - (vw <= 760 ? 16 : 32));
+    wrap.style.width = W + 'px'; // Measure height at the final width, not the previous popup width.
+    const h = wrap.offsetHeight, right = vw - r.right - gap - 16;
+    let left, top, side;
+    if (right >= W) { left = r.right + gap; side = 'right'; }
+    else if (r.left >= W + gap + 16) { left = r.left - W - gap; side = 'left'; }
+    else { left = Math.max(8, Math.min(vw - W - 8, r.left + r.width / 2 - W / 2)); side = 'below'; }
+    top = side === 'below' ? r.bottom + gap : r.top - 10;
+    if (h <= vh - 96) top = Math.max(76, Math.min(vh - h - 12, top));
+    else top = Math.max(76, r.top - 10);
+    // An unusually long briefing can extend with the document, never inside a scrolling card.
+    wrap.style.left = Math.round(left + window.scrollX) + 'px';
+    wrap.style.top = Math.round(top + window.scrollY) + 'px'; wrap.dataset.side = side;
   }
   let placeRaf = 0;
   const placeSoon = () => { if (placeRaf) return; placeRaf = requestAnimationFrame(() => { placeRaf = 0; placeCard(); }); };
-  window.addEventListener('scroll', placeSoon, { passive: true });
   window.addEventListener('resize', placeSoon);
   function closeCard(force) {
     if (ui.pcPinned && !force) return;
@@ -413,6 +423,7 @@
     const tab = e.target.closest('[data-pcplanet]');
     if (tab) { ui.pcPlanet = tab.dataset.pcplanet; openCard(ui.pcPinned); return; }
     if (ui.pcPinned && !e.target.closest('.pc-wrap')) closeCard(true);
+
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.querySelector('.pc-wrap.open')) { closeCard(true); return; }

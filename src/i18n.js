@@ -198,6 +198,12 @@ const TEXT = {
     foot: 'Conditions and enemies as the game describes them. The advice is ours; numbers from the Helldivers Wiki. Click the planet to keep this open.',
   },
   it: {
+    cat: { all: 'All events', resistance: 'Resistance', battle: 'Battlefield', mission: 'Mission effects', orders: 'Order changes', news: 'Dispatches' },
+    type: 'Event type', overview: 'Browse changes by type. Labels distinguish their impact from their source.', filterLabel: 'Filter command log by event type',
+    groupHelp: 'Each count groups events of the same type and time window. Select it to highlight the matching entries below.',
+    groupLabel: '{n} events · {type} · {start} to {end}', selected: 'Selected', selectionCount: 'Selected entries: {n}', clearSelection: 'Clear selection',
+    resistanceDown: 'Enemy resistance decreased', resistanceUp: 'Enemy resistance increased', enabled: 'Enabled', disabled: 'Disabled', enabledNow: 'Active now',
+    impact: { help: 'Helps us', hurt: 'Works against us' },
     title: 'Command log · last 48 hours', none: 'Nothing new in the last 48 hours.', n1: '1 event', n: '{n} events', nActive1: '1 effect active', nActive: '{n} effects active', nNews1: '1 news item', nNews: '{n} news',
     cmd: 'Command & battlefield', keyData: 'read straight from the game', keyDeduced: 'worked out from the numbers', activeNow: 'Active right now', quiet: 'All quiet: no Command action on this order\'s planets in the last 48 hours.',
     noNews: 'No news from Super Earth in the last 48 hours.', read: 'Read all', why: 'Why we think so', details: 'Details',
