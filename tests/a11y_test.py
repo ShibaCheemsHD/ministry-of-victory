@@ -60,7 +60,7 @@ with sync_playwright() as p:
     pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(250); check(pg, 'grouped command log')
     clusters = pg.locator('[data-igroup]')
     if clusters.count(): clusters.first.click(); pg.wait_for_timeout(100); check(pg, 'selected command events')
-    pg.locator('[data-globe]:visible').first.click(); pg.wait_for_timeout(250); check(pg, 'inline planet briefing')
+    pg.locator('[data-globe]:visible').first.click(); pg.wait_for_timeout(250); check(pg, 'planet popup briefing')
     pg.keyboard.press('Escape'); pg.close()
     # every control reachable by Tab has a visible focus style
     pg = open_page(br, 'default')

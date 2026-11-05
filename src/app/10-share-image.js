@@ -331,39 +331,53 @@
     }, 0);
   });
   // planet card: opens on hover (mouse) or tap, stays while the pointer is over it, pinned by a click
-  let pcOpener = null;
+  let pcTimer = 0;
   function openCard(pin) {
-    if (!last || !pin) return; // An in-page briefing opens deliberately, never just on hover.
+    if (!last) return;
     const forced = ui.pcForce != null && last.planets[ui.pcForce];
+    // the card lives at the end of the page, outside the cut-corner panels (a clip-path also clips fixed
+    // children: critique 1 Nov 2026, its title and close button were cut off)
+    const wrap = document.querySelector('.pc-wrap.free') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'pc-wrap free', hidden: true }));
     let entry = last.results.find(x => String(x.a.id) === String(ui.order));
     if (!entry && forced) entry = { res: { tasks: [], id: 'none' }, a: {} };
-    if (!entry) return;
+    if (!wrap || !entry) return;
     const cp = forced ? { planet: forced, list: null } : cardPlanets(entry); if (!cp) return;
-    const firstOpen = !ui.pcPinned;
-    if (firstOpen) pcOpener = document.activeElement;
-    const wrap = document.querySelector('.pc-wrap') || document.createElement('div');
-    wrap.className = 'pc-wrap open pinned'; wrap.id = 'planet-briefing';
-    // Full-width, in document flow and outside every cut-corner surface.
-    const map = ui.pcAnchor === 'map' && document.querySelector('.map-tab');
-    const anchor = map || document.querySelector('.order > .call') || document.querySelector('.empty-main > .call');
-    if (!anchor) return;
-    anchor.after(wrap);
-    wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list); wrap.hidden = false;
-    ui.pcPinned = true;
-    if (!store.get('pcSeen', false)) store.set('pcSeen', true);
-    document.querySelectorAll('[data-globe]').forEach(g => { g.classList.remove('g-new'); g.setAttribute('aria-expanded', 'true'); g.setAttribute('aria-controls', 'planet-briefing'); });
-    if (firstOpen) {
-      wrap.querySelector('.pcard').focus({ preventScroll: true });
-      wrap.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
-    }
+    wrap.innerHTML = planetCardHTML(cp.planet, entry, cp.list);
+    wrap.hidden = false; wrap.classList.add('open');
+    if (!store.get('pcSeen', false)) { store.set('pcSeen', true); document.querySelectorAll('[data-globe]').forEach(g => g.classList.remove('g-new')); }
+    placeCard();
+    if (pin) ui.pcPinned = true;
+    wrap.classList.toggle('pinned', !!ui.pcPinned);
+    document.querySelectorAll('[data-globe]').forEach(g => g.setAttribute('aria-expanded', 'true'));
   }
+  // desktop: beside the globe, over the side column when it fits there, never over the headline;
+  // phones get a bottom sheet from the stylesheet
+  function placeCard() {
+    const wrap = document.querySelector('.pc-wrap.open'), g = ui.pcAnchor === 'map' ? (document.querySelector(`.mp[data-mp="${ui.pcForce}"]`) || document.querySelector('.war-map')) : globeEl();
+    if (!wrap || !g) return;
+    const r = g.getBoundingClientRect(), gap = 14, vw = innerWidth, vh = innerHeight;
+    const W = Math.min(780, vw - (vw <= 760 ? 16 : 32));
+    wrap.style.width = W + 'px'; // Measure height at the final width, not the previous popup width.
+    const h = wrap.offsetHeight, right = vw - r.right - gap - 16;
+    let left, top, side;
+    if (right >= W) { left = r.right + gap; side = 'right'; }
+    else if (r.left >= W + gap + 16) { left = r.left - W - gap; side = 'left'; }
+    else { left = Math.max(8, Math.min(vw - W - 8, r.left + r.width / 2 - W / 2)); side = 'below'; }
+    top = side === 'below' ? r.bottom + gap : r.top - 10;
+    if (h <= vh - 96) top = Math.max(76, Math.min(vh - h - 12, top));
+    else top = Math.max(76, r.top - 10);
+    // An unusually long briefing can extend with the document, never inside a scrolling card.
+    wrap.style.left = Math.round(left + window.scrollX) + 'px';
+    wrap.style.top = Math.round(top + window.scrollY) + 'px'; wrap.dataset.side = side;
+  }
+  let placeRaf = 0;
+  const placeSoon = () => { if (placeRaf) return; placeRaf = requestAnimationFrame(() => { placeRaf = 0; placeCard(); }); };
+  window.addEventListener('resize', placeSoon);
   function closeCard(force) {
     if (ui.pcPinned && !force) return;
-    const restore = !!document.activeElement?.closest('.pc-wrap');
     ui.pcPinned = false; ui.pcForce = null; ui.pcAnchor = null;
     document.querySelectorAll('.pc-wrap').forEach(wrap => { wrap.hidden = true; wrap.classList.remove('open'); });
     document.querySelectorAll('[data-globe]').forEach(g => g.setAttribute('aria-expanded', 'false'));
-    if (restore) (pcOpener?.isConnected ? pcOpener : globeEl())?.focus({ preventScroll: true });
   }
   // war map: tooltip on hover/focus, click opens the planet card for that planet
   function mapTip(g) {
@@ -382,6 +396,15 @@
   document.addEventListener('pointerout', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.mp') === g)) mapTipOff(g.closest('.war-map')); });
   document.addEventListener('focusin', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTip(g); });
   document.addEventListener('focusout', (e) => { const g = e.target.closest && e.target.closest('.mp'); if (g) mapTipOff(g.closest('.war-map')); });
+  document.addEventListener('pointerover', (e) => {
+    const inGlobe = e.target.closest && e.target.closest('[data-globe]'), inCard = e.target.closest && e.target.closest('.pc-wrap');
+    if ((inGlobe || inCard) && e.pointerType !== 'touch') { clearTimeout(pcTimer); if (inGlobe && !document.querySelector('.pc-wrap.open')) pcTimer = setTimeout(() => openCard(false), 450); }
+  });
+  document.addEventListener('pointerout', (e) => {
+    const from = e.target.closest && (e.target.closest('[data-globe]') || e.target.closest('.pc-wrap'));
+    const to = e.relatedTarget && e.relatedTarget.closest && (e.relatedTarget.closest('[data-globe]') || e.relatedTarget.closest('.pc-wrap'));
+    if (from && !to && e.pointerType !== 'touch') { clearTimeout(pcTimer); pcTimer = setTimeout(() => closeCard(false), 260); }
+  });
   document.addEventListener('click', (e) => {
     const g = e.target.closest('[data-globe]');
     if (g) { if (ui.pcPinned) closeCard(true); else openCard(true); return; }
@@ -399,6 +422,7 @@
     const tq = e.target.closest('[data-tipq]'); if (tq) { toast(tq.dataset.tipq, 8000); return; }
     const tab = e.target.closest('[data-pcplanet]');
     if (tab) { ui.pcPlanet = tab.dataset.pcplanet; openCard(ui.pcPinned); return; }
+    if (ui.pcPinned && !e.target.closest('.pc-wrap')) closeCard(true);
 
   });
   document.addEventListener('keydown', (e) => {

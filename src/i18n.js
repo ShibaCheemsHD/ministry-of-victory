@@ -195,7 +195,7 @@ const TEXT = {
     where: 'Conditions', enemy: 'Enemies', order: 'For this order', noHz: 'No special conditions reported on this planet.',
     reqS: 'Required: only kills with it count.', freeS: 'Free right now on this planet: Super Earth Command added it to every loadout.',
     src: { wiki: 'Helldivers Wiki', game: 'game description' },
-    foot: 'Conditions and enemies as the game describes them. The advice is ours; numbers from the Helldivers Wiki. Close this briefing to return to the overview.',
+    foot: 'Conditions and enemies as the game describes them. The advice is ours; numbers from the Helldivers Wiki. Click the planet to keep this open.',
   },
   it: {
     cat: { all: 'All events', resistance: 'Resistance', battle: 'Battlefield', mission: 'Mission effects', orders: 'Order changes', news: 'Dispatches' },
