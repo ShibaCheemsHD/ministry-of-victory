@@ -181,7 +181,7 @@ const ENGINE = (() => {
   // go are left out: they are region captures (whose bonus the remaining work already accounts for) or
   // Super Earth Command stepping in, and would make the forecast far too optimistic.
   function observedNet(samples, idx, now, maxH) {
-    const pts = samples.filter(s => s.planets && s.planets[idx] && s.planets[idx].h != null && now - s.t <= 90 * 60e3)
+    const pts = samples.filter(s => s.planets && s.planets[idx] && s.planets[idx].h != null && now - s.t <= 90 * 60e3 && s.t <= now)
       .map(s => ({ t: s.t, h: s.planets[idx].h }));
     if (pts.length < 2) return null;
     let dh = 0, dt = 0;
@@ -197,9 +197,8 @@ const ENGINE = (() => {
 
   /* ---------- when will a planet fall? (forecast v2, Nov 2026) ----------
      Fitted on the war log (CrossWaveOmega) of 2024-25, every reading in the 48 h before each liberation, and
-     checked on 2026, which it never saw (recorder/accuracy.mjs replays it): within 25% of the real fall time
-     6 / 12 / 24 h ahead 81% / 76% / 62% of the time, against 72% / 65% / 52% for what the page showed before
-     (the last 90 minutes' pace when it had one, else players there x everyone's strength).
+     replayed on the available 2026 archive (recorder/accuracy.mjs). Scores must be recomputed
+     when the replay or data changes; they describe eligible completed liberations, not every campaign.
      1. The planet's own strength: HP it lost over the last 6 h per share of players on it, pulled 30%
         towards everyone's strength. It carries what the global figure can't: the DSS, Joel's multipliers,
         the planet's difficulty, the faction.
@@ -208,7 +207,8 @@ const ENGINE = (() => {
      3. Within 10 h the planet's own strength decides, past 36 h everyone's, in between a blend.
      Knowing the future player counts exactly would still leave it at about 80% / 74% / 78%: the rest is
      what nobody can know in advance (Joel, sudden surges, the war log's own 1-2 h resolution). */
-  // tuned on the 2026 backtest (recorder/accuracy.mjs); frozen so no other code can change them by accident (audit ARCH-08)
+  // Fixed empirical parameters; retrospective scores are not an independent prospective validation.
+  // Frozen so no other code can change them by accident (audit ARCH-08).
   const FC = Object.freeze({ shrink: 0.3, a0: 1.5, smax: 0.6, cap: 48, near: 10, far: 36, window: 6 });
   // HP/h the planet's fighters would deal with everyone online there (the planet's own C), from the samples
   // Samples may carry a player count without a health reading (h null): they still tell the share in between.
@@ -283,18 +283,18 @@ const ENGINE = (() => {
       if (!isEnemy(p) || p.event) continue;
       // planets with open regions are left out: part of the damage goes to the regions, not the planet
       if ((p.regions || []).some(r => r && r.isAvailable && (r.health || 0) > 0)) continue;
-      const pts = samples.filter(s => s.imp && s.planets && s.planets[idx] && now - s.t <= 3 * 3600e3);
+      const pts = samples.filter(s => s.imp && s.planets && s.planets[idx] && now - s.t <= 3 * 3600e3 && s.t <= now);
       let g = 0, w = 0, sp = 0;
       for (let i = 1; i < pts.length; i++) {
         const s0 = pts[i - 1], s1 = pts[i];
         const a = s0.planets[idx], b = s1.planets[idx];
         const dt = (s1.t - s0.t) / 1000;
         if (dt <= 0 || dt > 1800) continue;
-        if (Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
+        if (![a.h, b.h, a.p].every(Number.isFinite) || Math.max(a.h, b.h) > 0.995 * p.maxHealth || b.h <= 0 || a.p < 300) continue;
         // a drop far beyond what the players there could deal is an intervention, not damage
         if (a.h - b.h > 0.03 * p.maxHealth && a.h - b.h > 5 * a.p * s0.imp * K_TYPICAL * dt) continue;
         const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1) * (s0.hod && s0.dss != idx ? DEFAULTS.hodOther : 1);
-        g += (a.h - b.h) + (p.regenPerSecond || 0) * dt;
+        g += (a.h - b.h) + (a.r ?? p.regenPerSecond ?? 0) * dt;
         const corr = s0.N ? Math.pow((a.p / s0.N) / SHARE_REF, SHARE_EXP - 1) : 1;
         w += a.p * s0.imp * mult * corr * dt;
         sp += dt;
@@ -442,17 +442,17 @@ const ENGINE = (() => {
     let G = 0, W = 0, span = 0;
     for (const [idx, p] of Object.entries(planetsNow)) {
       if (!isEnemy(p) || p.event) continue;
-      const pts = samples.filter(s => s.planets && s.planets[idx] && now - s.t <= 3 * 3600e3);
+      const pts = samples.filter(s => s.planets && s.planets[idx] && now - s.t <= 3 * 3600e3 && s.t <= now);
       for (let i = 1; i < pts.length; i++) {
         const s0 = pts[i - 1], s1 = pts[i];
         const a = s0.planets[idx], b = s1.planets[idx];
         const dt = (s1.t - s0.t) / 3.6e6;
         if (dt <= 0 || dt > 0.5 || !s0.N) continue;
-        if (Math.max(a.h, b.h) > 0.98 * p.maxHealth || b.h <= 0) continue;
+        if (![a.h, b.h, a.p].every(Number.isFinite) || Math.max(a.h, b.h) > 0.98 * p.maxHealth || b.h <= 0) continue;
         const share = a.p / s0.N;
         if (share < 0.03) continue;
         const mult = (s0.dss == idx ? 1 + dssBonus : 1) * (s0.dss == idx && s0.hod ? hodMult : 1) * (s0.hod && s0.dss != idx ? DEFAULTS.hodOther : 1);
-        G += (a.h - b.h) + (p.regenPerSecond || 0) * 3600 * dt;
+        G += (a.h - b.h) + (a.r ?? p.regenPerSecond ?? 0) * 3600 * dt;
         W += share * mult * dt;
         span += dt;
       }
@@ -465,7 +465,7 @@ const ENGINE = (() => {
   function counterRates(samples, assignmentId, taskIdx, progress, startMs, now) {
     const out = { sinceStart: null, recent: null, recentSpan: 0, day: null };
     // last 24 hours (from the site's recorder): current, and it covers a whole day-night cycle
-    const day = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 26 * 3600e3 && s.prog[assignmentId][taskIdx] != null)
+    const day = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 26 * 3600e3 && s.t <= now && s.t >= (startMs || -Infinity) && s.prog[assignmentId][taskIdx] != null)
       .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
     if (day.length >= 2) {
       const a = day.find(x => now - x.t <= 24.5 * 3600e3) || day[0], b = day[day.length - 1], span = (b.t - a.t) / 3.6e6;
@@ -475,12 +475,12 @@ const ENGINE = (() => {
       const h = (now - startMs) / 3.6e6;
       if (h > 0.25) out.sinceStart = { rate: progress / h, hours: h, kind: 'start' };
     }
-    const pts = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 3 * 3600e3)
+    const pts = samples.filter(s => s.prog && s.prog[assignmentId] && now - s.t <= 3 * 3600e3 && s.t <= now && s.t >= (startMs || -Infinity) && Number.isFinite(Number(s.prog[assignmentId][taskIdx])))
       .map(s => ({ t: s.t, v: Number(s.prog[assignmentId][taskIdx]) }));
     if (pts.length >= 2) {
       const a = pts[0], b = pts[pts.length - 1];
       const span = (b.t - a.t) / 3.6e6;
-      if (span >= 0.2) { out.recent = { rate: (b.v - a.v) / span, hours: span, kind: 'recent' }; out.recentSpan = span; }
+      if (span >= 0.2 && b.v >= a.v) { out.recent = { rate: (b.v - a.v) / span, hours: span, kind: 'recent' }; out.recentSpan = span; }
     }
     return out;
   }
@@ -1070,7 +1070,7 @@ const ENGINE = (() => {
     const model = dmg(share, C) * mult;
     const obs = observedNet(ctx.samples || [], p.index, now, e.maxHealth);
     const rate = obs && obs.net > 0 ? obs.net : model;
-    const need = shareFor(e.health / hEvent / (1 + settings.dssBonus), C);
+    const need = shareFor(e.health / hEvent / mult, C);
     const eta = rate > 0 ? e.health / rate : Infinity;
     const outlastsMO = hEvent > H; // the attack ends after the MO: planet is still ours at MO end
     let verdict = eta <= hEvent ? 'ontrack' : need <= share ? 'focus' : need <= 0.6 ? 'effort' : need <= settings.recordShare ? 'record' : need <= 1 ? 'nearly_impossible' : 'impossible';

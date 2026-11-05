@@ -89,3 +89,16 @@ test('defenses: replayed on the recorder\'s snapshots, Command\'s jumps flagged'
   const a = defenseAccuracy(rec);
   assert.equal(a.calledRight, 1); assert.equal(a.within25, 1);
 });
+
+test('historical calibration is independent of the order in which forecast horizons are replayed', () => {
+  const events = Array.from({ length: 60 }, (_, h) => ({ time: stamp(t0 + h * H), all_players: 100000, log: [] }));
+  const target = Array.from({ length: 40 }, (_, h) => ({ eind: h, hp: 1e6 - h * 25000, pl: 20000, r: 0, t: 49 }));
+  target.push({ eind: 40, hp: 1e6, t: 16 });
+  const calibration = Array.from({ length: 40 }, (_, h) => ({ eind: h, hp: 1e7 - h * 10000 - Math.max(0, h - 30) * 70000, pl: 10000, r: 0, t: 49 }));
+  const replay = horizons => liberationBacktest({ events }, { 5: target, 6: calibration }, { since: t0, horizons, E, withRows: true });
+  const forward = replay([6, 12]), reverse = replay([12, 6]);
+  for (const hz of [6, 12]) {
+    assert.equal(forward.rows.find(x => x.hz === hz).C, reverse.rows.find(x => x.hz === hz).C);
+    assert.deepEqual(forward.v2[hz], reverse.v2[hz]);
+  }
+});

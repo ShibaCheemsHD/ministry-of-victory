@@ -4,67 +4,63 @@
     layoutCharts();
     if (ui.pcPinned) openCard(true);
     const motion = !reduced();
-    if (motion && firstTime) view.querySelector('.order')?.classList.add('anim');
+    // the page renders two or three times in its first second (saved snapshot, fresh data, names): a
+    // motion started by the first render carries on through the next ones instead of being cut off
+    const ord = view.querySelector('.order'), oid = entry ? String(entry.a.id) : '';
+    if (motion && ord) {
+      if (firstTime) animT0[oid] = performance.now();
+      const el = performance.now() - (animT0[oid] ?? -1e9);
+      if (el < 700) { ord.classList.add('anim'); ord.style.setProperty('--skip', (-el).toFixed(0) + 'ms'); }
+    }
     // bars: from previous width to new width
-    const bars = view.querySelectorAll('[data-w]');
-    bars.forEach(el => {
-      const key = el.dataset.key, w = Number(el.dataset.w);
-      const from = motion ? (prev.bars[key] ?? 0) : w;
-      el.style.transition = 'none';
-      el.style.width = from + '%';
-    });
+    const bars = [...view.querySelectorAll('[data-w]')].map(el => ({ el, g: motion ? glide(el.dataset.key, Number(el.dataset.w), 700) : { from: Number(el.dataset.w) } }));
+    bars.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.width = g.from + '%'; });
     // orbit rings: same idea, on stroke-dashoffset (pathLength = 100)
-    const rings = view.querySelectorAll('[data-ring]');
-    rings.forEach(el => {
-      const key = el.dataset.ring, f = Number(el.dataset.frac);
-      el.style.transition = 'none';
-      el.style.strokeDashoffset = String(100 - (motion ? (prev.bars[key] ?? 0) : f));
-    });
+    const rings = [...view.querySelectorAll('[data-ring]')].map(el => ({ el, g: motion ? glide(el.dataset.ring, Number(el.dataset.frac), 1200) : { from: Number(el.dataset.frac) } }));
+    rings.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.strokeDashoffset = String(100 - g.from); });
     void view.offsetWidth;
     requestAnimationFrame(() => {
-      bars.forEach(el => {
+      bars.forEach(({ el, g }) => {
         el.style.transition = '';
+        if (g.cont) { el.style.transitionDuration = g.dur.toFixed(0) + 'ms'; el.style.transitionDelay = '0s'; }
         el.style.width = el.dataset.w + '%';
         prev.bars[el.dataset.key] = Number(el.dataset.w);
       });
-      rings.forEach(el => {
+      rings.forEach(({ el, g }) => {
         el.style.transition = '';
+        if (g.cont) el.style.transitionDuration = g.dur.toFixed(0) + 'ms';
         el.style.strokeDashoffset = String(100 - Number(el.dataset.frac));
         prev.bars[el.dataset.ring] = Number(el.dataset.frac);
       });
     });
     fitTarget();
-    // briefing: no fade or "read more" when the text already fits (skip when hidden, as on phones)
-    view.querySelectorAll('.brief-card .text').forEach(el => {
-      if (el.classList.contains('open') || !el.clientHeight) return;
-      const short = el.scrollHeight <= el.clientHeight + 2;
-      el.classList.toggle('short', short);
-      const btn = el.parentElement.querySelector('[data-brief]');
-      if (btn) btn.hidden = short;
-    });
     // numbers
     document.querySelectorAll('[data-count]').forEach(el => countUp(el));
-    // stamp
-    const stamp = view.querySelector('[data-stamp]');
-    if (stamp) {
-      const id = String(entry.a.id), v = stamp.dataset.stamp;
-      if (motion && prev.verdict[id] !== v) stamp.classList.add('slam');
-      prev.verdict[id] = v;
-    }
-    // directive headline decrypt
-    const tgt = view.querySelector('[data-decrypt]');
-    if (tgt) {
-      const id = String(entry.a.id), text = tgt.dataset.decrypt;
-      if (motion && prev.dir[id] !== text) decrypt(tgt, text);
-      if (prev.dir[id] != null && prev.dir[id] !== text) toast(fill(t('dirChanged'), { x: directiveParts(entry.res).title }));
+    // the call changed since the last refresh: said once, in a toast
+    const head = view.querySelector('.call-head');
+    if (head) {
+      const id = String(entry.a.id), text = head.textContent.replace(/\s+/g, ' ').trim();
+      if (prev.dir[id] != null && prev.dir[id] !== text) {
+        toast(fill(t('dirChanged'), { x: text }));
+        // the change stays said on the call until the player dismisses it (a toast is gone in seconds)
+        ui.callChange = { id, was: prev.dir[id], at: Date.now() };
+        if (settings.notify === 'on' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+          try { new Notification(t('notifyOn'), { body: text, tag: 'mov-call' }); } catch { /* not allowed here */ }
+        }
+      }
+      const cc = ui.callChange, bar = head.closest('.call')?.querySelector('.call-bar');
+      if (cc && cc.id === id && bar && !bar.querySelector('.call-new')) {
+        bar.insertAdjacentHTML('beforeend', `<span class="call-new">${ICON.flag}<b>${esc(fill(t('callNew'), { t: new Date(cc.at).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }))}</b><span class="was">${esc(fill(t('callWas'), { x: cc.was }))}</span><button type="button" class="cn-x" data-callnew-x aria-label="${esc(t('callNewX'))}">${ICON.cross}</button></span>`);
+      }
+      if (!reduced() && prev.dir[id] !== text) { const c = head.closest('.call'); if (c) { c.classList.add('scan'); setTimeout(() => c.classList.remove('scan'), 1300); } }
       prev.dir[id] = text;
     }
-    fxAfterRender(entry, firstTime);
+    fxAfterRender(view, entry);
   }
 
   // shrink the headline until no single word overflows its column (names vary a lot in length)
   function fitTarget() {
-    const el = $('view').querySelector('.directive .target');
+    const el = $('view').querySelector('.call-head');
     if (!el) return;
     el.style.fontSize = ''; el.style.overflowWrap = '';
     let size = parseFloat(getComputedStyle(el).fontSize) || 60, guard = 0;
@@ -75,55 +71,59 @@
   window.addEventListener('resize', () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTarget()).catch(() => {});
 
+  // numbers: the first time one shows it counts up beside its bar or ring; when a refresh changes it, it
+  // rolls to the new value and flashes once, so a change is seen without hunting for it. Text is final
+  // for screen readers from the start (aria-label), and nothing counts with animations off.
+  const animT0 = {}, runs = {}, countRuns = {};
+  // where a bar or ring starts: its last value, or the point it had reached if a re-render caught it moving
+  function glide(key, to, D) {
+    const now = performance.now(), r = runs[key];
+    if (r && r.to === to && now - r.t0 < r.D) {
+      const k = (now - r.t0) / r.D, e = 1 - Math.pow(1 - k, 3);
+      return { from: r.from + (to - r.from) * e, dur: r.D - (now - r.t0), cont: true };
+    }
+    const from = prev.bars[key] ?? 0;
+    if (from !== to) runs[key] = { from, to, t0: now, D };
+    return { from, dur: D };
+  }
   function countUp(el) {
     const key = el.dataset.count, to = Number(el.dataset.to);
     const show = el.dataset.pct ? (v) => pct(v) : (v) => fmt(v);
-    // the first time a number shows up it counts up from zero, after that from its last value
-    const from = prev.count[key] ?? 0;
-    const first = prev.count[key] == null;
+    const from = prev.count[key], first = from == null, now = performance.now();
     prev.count[key] = to;
-    if (reduced() || from === to || !isFinite(to)) { el.textContent = show(to); return; }
-    const t0 = performance.now(), D = first ? 1200 : 900;
-    const step = (now) => {
-      const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-      el.textContent = show(from + (to - from) * e);
-      if (k < 1) requestAnimationFrame(step);
+    let r = countRuns[key];
+    if (!(r && r.to === to && now - r.t0 < r.D)) {
+      // a count (Helldivers online) is never shown passing through numbers it never had: it is set, and
+      // flashes when a refresh changed it; only a percentage beside its bar or ring counts up
+      if (!el.dataset.pct && !reduced() && !first && from !== to) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      if (reduced() || !isFinite(to) || from === to || !el.dataset.pct) { el.textContent = show(to); return; }
+      r = countRuns[key] = { a: first ? 0 : from, to, t0: now, D: first ? 1000 : 650 };
+      if (!first) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    }
+    el.setAttribute('aria-label', show(to));
+    const step = (t) => {
+      const k = Math.min(1, (t - r.t0) / r.D), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = show(r.a + (to - r.a) * e);
+      if (k < 1 && el.isConnected) requestAnimationFrame(step); else el.removeAttribute('aria-label');
     };
-    requestAnimationFrame(step);
-  }
-
-  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$';
-  function decrypt(el, text) {
-    const chars = [...text];
-    let frame = 0;
-    const total = 18 + chars.length;
-    const run = () => {
-      frame++;
-      el.innerHTML = chars.map((c, i) => {
-        if (c === ' ') return ' ';
-        const settle = 6 + i * 1.2;
-        if (frame >= settle) return esc(c);
-        return `<span class="ch scr">${GLYPHS[Math.floor(Math.random() * GLYPHS.length)]}</span>`;
-      }).join('');
-      if (frame < total) setTimeout(run, 34); else el.textContent = text;
-    };
-    run();
+    step(now);
   }
 
   /* ---------- live updates (every second) ---------- */
   function fmtCountdown(ms) {
     if (!isFinite(ms)) return '—';
     const s = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
     const u = t('dhms'), p2 = (n) => String(n).padStart(2, '0');
-    return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>${p2(sec)}<span>${u[3]}</span>`;
+    // days, hours and minutes: on a second screen a ticking seconds field only pulls the eye
+    return `${d ? d + `<span>${u[0]}</span>` : ''}${p2(h)}<span>${u[1]}</span>${p2(m)}<span>${u[2]}</span>`;
   }
-  // the countdown as a split-flap board: every digit in its own cell, and the ones that change roll in
+  // the countdown as the game's split-flap board: digits that change roll in (once a minute at most)
   function rollDigits(el, html) {
     const digits = html.replace(/<span>[^<]*<\/span>/g, '|').replace(/[^0-9|]/g, '');
     const was = el.dataset.dg || '';
-    el.dataset.dg = digits;
     if (was === digits && el.firstChild) return;
+    el.dataset.dg = digits;
     let k = 0;
     el.innerHTML = html.replace(/<span>[^<]*<\/span>|\d/g, (m) => {
       if (m.length > 1) { k++; return m; }
@@ -135,9 +135,13 @@
   // live counters: between refreshes, objectives count up at the pace just measured
   function tickCounters() {
     const now = Date.now();
+    const still = reduced();
     document.querySelectorAll('.tick[data-tick]').forEach(el => {
-      const v = Math.min(Number(el.dataset.goal), Number(el.dataset.tick) + Number(el.dataset.rate) * (now - Number(el.dataset.t0)) / 1000);
-      el.textContent = fmt(Math.floor(v));
+      // an estimate between refreshes: shown to the precision it has (critique 8: single kills ticking
+      // four times a second claimed more than the data knows), and still with animations off
+      const v = Math.min(Number(el.dataset.goal), Number(el.dataset.tick) + (still ? 0 : Number(el.dataset.rate) * (now - Number(el.dataset.t0)) / 1000));
+      const s = v >= 1e6 ? (v / 1e6).toFixed(v >= 1e8 ? 1 : 2) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'k' : fmt(Math.floor(v));
+      if (el.textContent !== s) el.textContent = s;
     });
   }
   setInterval(tickCounters, 250);
@@ -146,16 +150,17 @@
       const ms = Number(el.dataset.exp) - Date.now();
       rollDigits(el, fmtCountdown(ms));
       const card = el.closest('.timer');
-      if (card && !card.classList.contains('finished')) { card.classList.toggle('soon', ms < 24 * 3600e3 && ms >= 6 * 3600e3); card.classList.toggle('urgent', ms < 6 * 3600e3); }
+      if (card) { card.classList.toggle('soon', ms < 24 * 3600e3 && ms >= 6 * 3600e3); card.classList.toggle('urgent', ms < 6 * 3600e3); }
     });
-    // live dot goes grey when the data is getting old (failed refreshes)
-    const stale = !lastOk || Date.now() - lastOk > 3 * REFRESH_MS;
-    document.querySelectorAll('.hud .live, .directive .live').forEach(el => el.classList.toggle('off', stale));
+    // the live dot turns amber when the data is getting old (failed refreshes, or the API is down and the
+    // page shows the recorder's copy): the call says it is not live (critique 1 Nov 2026)
+    const stale = !lastOk || Date.now() - lastOk > 3 * REFRESH_MS || !!(last && last.stale);
+    document.querySelectorAll('.mast .live, .call .live').forEach(el => el.classList.toggle('off', stale));
+    document.querySelectorAll('.call').forEach(el => el.classList.toggle('is-stale', stale));
     if (!lastRun) return;
     const left = Math.max(0, REFRESH_MS - (Date.now() - lastRun));
-    const ring = $('ring');
-    if (ring) ring.style.strokeDashoffset = String(RING * (1 - left / REFRESH_MS));
     const btn = $('refresh');
+    btn.style.setProperty('--left', String(left / REFRESH_MS));
     btn.title = (last ? fill(t('updatedAt'), { t: new Date(last.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }) + ' · ' : '') + fill(t('nextIn'), { s: Math.ceil(left / 1000) });
     btn.setAttribute('aria-label', busy ? t('loading') : t('refresh') + '. ' + btn.title);
     if (left === 0 && !document.hidden && !busy) refresh();
@@ -195,10 +200,10 @@
     if (btn && !scrollTo) btn.focus({ preventScroll: true });
   }
 
-  function cycleTab(step) {
+  function cycleTab(step, show = false) {
     if (!ui.order) return;
-    const cur = TABS.indexOf(ui.tab[ui.order] || 'objectives');
-    selectTab(TABS[(cur + step + TABS.length) % TABS.length]);
+    const cur = TABS.indexOf(curTab(ui.order));
+    selectTab(TABS[((cur < 0 ? 0 : cur) + step + TABS.length) % TABS.length], show ? 'tabs' : undefined);
   }
 
   /* share the order of the day as plain text (Discord, Reddit, chat) */
@@ -207,16 +212,30 @@
   const plainDoc = typeof DOMParser !== 'undefined' ? new DOMParser() : null;
   const plain = (html) => (plainDoc ? plainDoc.parseFromString(String(html ?? ''), 'text/html').body.textContent || ''
     : String(html ?? '').replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+  // the desk's pick across several orders, in one line, for the share image and the copied text
+  // (critique 1 Nov 2026: a shared call could send people to the worse order)
+  function pickLine(entry) {
+    const cx = crossNow();
+    if (!cx || cx.verdict !== 'pick') return '';
+    const pick = cx.orders.find(o => o.id === String(cx.pick));
+    if (!pick) return '';
+    return String(cx.pick) === String(entry.a.id) ? fill(t('sh.pickThis'), { n: cx.orders.length }) : fill(t('sh.pickOther'), { title: pick.title, n: cx.orders.length });
+  }
   function shareText(entry) {
     const { a, res } = entry;
-    const p = directiveParts(res);
+    // times in UTC, as on the share image: the text is read all over the world
+    clockUTC = true;
+    let p, m; try { p = directiveParts(res); m = callMove(res, p); } finally { clockUTC = false; }
     const left = Date.parse(a.expiration) - Date.now();
     const lines = [
       `MINISTRY OF VICTORY · ${plain(clean(txt(a.title) || 'Major Order')).toUpperCase()}`,
-      `${t('dirLabel')}: ${(['steady', 'lost'].includes(p.d.kind) ? p.target : `${p.kicker} ${p.target}`).toUpperCase()}`,
-      plain(p.why),
-      p.cap ? plain(p.cap) : '',
+      pickLine(entry),
+      `**${m.tag}: ${(m.verb ? `${m.verb} ${m.target}` : m.target).toUpperCase()}**`,
+      plain(m.why),
+      p.cap && !m.moveOn ? plain(p.cap) : '',
       `${t('forecast')}: ${t('v.' + res.verdict)} · ${t('timeLeft')}: ${isFinite(left) ? durDown(left / 3.6e6) : '—'}`,
+      customModel() ? t('modelNote') + '.' : '',
+      `https://shibacheemshd.github.io/ministry-of-victory/#order=${encodeURIComponent(String(a.id))}`,
     ];
     return lines.filter(Boolean).join('\n');
   }

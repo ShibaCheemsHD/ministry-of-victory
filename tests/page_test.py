@@ -6,7 +6,7 @@ import os, re, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
-BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|\b\d{4,}%|(?<![\d.,])1 (times|planets|missions|attacks|objectives|operations|extractions)\b|(?<![\d.,])1 (?!news\b|less\b|plus\b|bonus\b|status\b|gas\b)[a-z]{2,}s\b|stratagem: a stratagem|about 0 needed|\b0 Helldivers needed|#\d{6,}')
+BAD = re.compile(r'\bNaN\b|\bundefined\b|Infinity|\[object |\bnull\b|\{[a-z]+\}|\b\d{1,3}(,\d{3})+%|(?<![\d.])\d{4,}%|(?<![\d.,])1 (times|planets|missions|attacks|objectives|operations|extractions)\b|(?<![\d.,])1 (?!news\b|less\b|plus\b|bonus\b|status\b|gas\b)[a-z]{2,}s\b|stratagem: a stratagem|about 0 needed|\b0 Helldivers needed|#\d{6,}')
 SCENARIOS = ['default', 'done', 'steady', 'impossible', 'none', 'fail', 'apidown', 'libn', 'measure', 'win', 'last', 'ended', 'edited',
              'regions', 'sector', 'intel', 'sniper', 'sniperlost', 'anyof', 'newmo'] + [f'type&t={t}' for t in (1, 2, 4, 5, 6, 7, 9, 10, 15, 16)]
 FUZZ = int(sys.argv[1]) if len(sys.argv) > 1 else 25
@@ -34,16 +34,27 @@ def run(br, query, width):
       const a = [logo, r('#hud-stats .stat .v'), r('.hud-actions')].filter(x => x && x.width);
       for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].left < a[j].right - 1 && a[j].left < a[i].right - 1 && a[i].top < a[j].bottom - 1 && a[j].top < a[i].bottom - 1) return true; return false; }""")
     if clash: errs.append('header pieces overlap')
+    # the planet card opens fully on screen, its close button reachable (1 Nov 2026: a panel's cut-corner
+    # clip-path hid its title and close button)
+    pb = pg.locator('[data-globe]:visible')
+    if pb.count():
+        pb.first.click(timeout=3000); pg.wait_for_timeout(250)
+        bad = pg.evaluate("""() => { const c = document.querySelector('.pc-wrap.open .pcard'), x = document.querySelector('.pc-wrap.open .pc-x'); if (!c || !x) return 'did not open';
+          const r = c.getBoundingClientRect(), b = x.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          return r.top < -1 || r.bottom > innerHeight + 1 ? 'off screen' : !(hit && (hit === x || x.contains(hit))) ? 'close button covered' : null; }""")
+        if bad: errs.append('planet card: ' + bad)
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(100)
     tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)
-        for tb in ('objectives', 'strategy', 'history', 'intel'):
+        for tb in ('races', 'strategy', 'history', 'intel', 'map'):
             el = pg.locator(f'.tab[data-tab="{tb}"]:visible')
             if el.count():
                 el.first.click(timeout=3000); pg.wait_for_timeout(150); check(pg, f'{label} order {oi + 1} {tb}', errs)
                 # nothing runs off the right edge, on every tab (1 Nov 2026: the Plan tab was cut on phones)
                 over = pg.evaluate(f"""() => [...document.querySelectorAll('#view *')].filter(e => {{ const r = e.getBoundingClientRect(); return r.width > 0 && r.right > {width} + 1 && !e.closest('svg, .pc-wrap, .war-map'); }}).slice(0, 2).map(e => e.tagName + '.' + String(e.className).split(' ')[0])""")
                 if over: errs.append(f'{tb} tab: wider than the screen ({", ".join(over)})')
+        pg.evaluate("document.querySelectorAll('.share-menu').forEach(d => { d.open = true; })")   # the image sits in the Share menu
         sh = pg.locator('[data-shareimg]:visible')
         if sh.count():
             sh.first.click(timeout=3000)
@@ -71,7 +82,7 @@ with sync_playwright() as p:
     pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
     via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")
     if 'cdn.jsdelivr.net' not in via: problems.append('raw down: the recorder data did not come from the fallback')
-    if not pg.locator('.trust-link').count(): problems.append('raw down: the page lost the recorder data')
+    if not pg.locator('.mworth').count(): problems.append('raw down: the page lost the recorder data')
     pg.close()
     # outside text never runs as code (1 Nov 2026: an order name with markup ran its onerror in the archive)
     pg = br.new_page()

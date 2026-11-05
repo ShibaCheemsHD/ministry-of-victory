@@ -12,7 +12,7 @@ PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
 AXE = open(os.path.join(ROOT, 'node_modules', 'axe-core', 'axe.min.js')).read()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 SCENARIOS = ['default', 'none', 'fail', 'measure', 'win', 'ended', 'regions', 'intel', 'sniper', 'anyof', 'newmo', 'type&t=9']
-TABS = ['objectives', 'strategy', 'history', 'intel']
+TABS = ['races', 'strategy', 'history', 'intel', 'map']
 RUN = """async () => { const r = await axe.run(document, { resultTypes: ['violations'] });
   return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help,
     nodes: v.nodes.slice(0, 3).map(n => n.target.join(' ') + ' :: ' + (n.failureSummary || '').split('\\n').slice(1, 2).join(' ')) })); }"""
@@ -45,7 +45,7 @@ with sync_playwright() as p:
     pg.click('#open-archive'); pg.wait_for_timeout(900); check(pg, 'archive')
     pg.close()
     pg = open_page(br, 'default')
-    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-info', 'dlg-info')]:
+    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-info', 'dlg-info'), ('#open-faq', 'dlg-faq')]:
         pg.focus(opener); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
         check(pg, dlg)
         inside = pg.evaluate(f"() => !!document.activeElement.closest('#{dlg}')")
@@ -53,6 +53,7 @@ with sync_playwright() as p:
         back = pg.evaluate(f"() => '#' + document.activeElement.id === '{opener}' && !document.getElementById('{dlg}').open")
         if not inside: keys.append(f'{dlg}: focus does not move into the dialog')
         if not back: keys.append(f'{dlg}: Escape does not close it and return focus to {opener}')
+    pg.evaluate("document.querySelectorAll('.share-menu').forEach(d => { d.open = true; })"); check(pg, 'share menu')
     pg.locator('[data-shareimg]:visible').first.click(); pg.wait_for_selector('#share-body img'); check(pg, 'share')
     pg.close()
     # every control reachable by Tab has a visible focus style

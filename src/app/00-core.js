@@ -18,7 +18,6 @@
   // live on 28 Oct 2026; plausible range used to reject bad measurements
   const K_REF = 0.027, K_MIN = 0.005, K_MAX = 0.2;
   const KEEP_MS = 48 * 3600e3;
-  const RING = 75.4;
 
   /* ---------- storage (per-browser conveniences; never required) ---------- */
   const store = {
@@ -105,11 +104,15 @@
 
   /* ---------- settings ---------- */
   const settings = Object.assign({ capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus,
-    hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare, contact: 'ministry-of-victory-user', motion: 'full' }, store.get('settings', {}));
+    hodMult: ENGINE.DEFAULTS.hodMult, recordShare: ENGINE.DEFAULTS.recordShare, contact: '', motion: 'full', layout: 'full', notify: 'off' }, store.get('settings', {}));
+  if (settings.contact === 'ministry-of-victory-user') settings.contact = '';
   // 1.3 was the old default for Heavy Ordnance, measured on one order; the war log since 2025 says x1.8
   if (settings.hodMult === 1.3) settings.hodMult = ENGINE.DEFAULTS.hodMult;
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   const reduced = () => settings.motion === 'reduced' || mq.matches;
+  // the forecast runs on numbers set by hand: said beside it, on the image and in the copied text, so a test
+  // never travels as the live forecast (critique 1 Nov 2026)
+  const customModel = () => settings.capMode === 'manual' || ['dssBonus', 'hodMult', 'recordShare'].some(k => Number(settings[k]) !== ENGINE.DEFAULTS[k]);
 
   /* ---------- enemy / item names (best effort) ---------- */
   const names = { enemies: store.get('names.enemies', null), enemy1: store.get('names.enemy1', null), items: store.get('names.items', null), strats: store.get('names.strats', null) };
@@ -192,7 +195,7 @@
   let samples = store.get('samples', []);
   let last = null, busy = false, lastRun = 0, lastOk = 0, lastStack = '', firstDone = false;
   const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false, histMode: {}, chartOff: {} }, store.get('ui', {}));
-  const saveUi = () => store.set('ui', { order: ui.order, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {} });
+  const saveUi = () => store.set('ui', { order: ui.order, orderManual: !!ui.orderManual, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {}, nf: ui.nf || null, histMode: ui.histMode, simOpen: ui.simOpen });
   const prev = { bars: {}, count: {}, dir: {}, verdict: {}, seen: {} };
   const $ = (id) => document.getElementById(id);
   // An order is identified by its id *and* its task list: if Super Earth edits an order in place,

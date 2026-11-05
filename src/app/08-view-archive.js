@@ -1,23 +1,34 @@
   /* ---------- view ---------- */
-  const TABS = ['objectives', 'strategy', 'history', 'intel'];
+  // the call and the races are always on screen; the rest is one tab away (critique 1 Nov 2026: the side
+  // column of equal boxes — forecast, map, Joel, briefing — became the call's forecast, the map tab and the
+  // races' briefing; "What did Joel do?" repeated the Command log and is gone)
+  // the races are the first tab, so the tab bar sits right under the call (critique 1 Nov 2026: the tabs
+  // were 1,400 px down and a key took the call off screen)
+  const TABS = ['races', 'strategy', 'history', 'intel', 'map'];
+  // the tab names in the address (#order=…&tab=plan), so a call can be linked to straight
+  const TAB_SLUG = { races: 'races', strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
+  function curTab(id) {
+    let tab = ui.tab[id] || 'races';
+    if (tab === 'data') tab = 'history';
+    if (tab === 'objectives') tab = 'races';
+    return TABS.includes(tab) ? tab : 'races';
+  }
   function viewHTML(entry) {
     const { a, res } = entry;
-    let tab = ui.tab[a.id] || 'objectives';
-    if (tab === 'data') tab = 'history';
-    if (!TABS.includes(tab)) tab = 'objectives';
-    const panel = tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : objectivesHTML(res);
+    const tab = curTab(a.id);
+    const panel = tab === 'races' ? racesHTML(res, a) : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { objectives: t('tObj'), strategy: t('tStrat'), history: t('tHist'), intel: `<span class="tl-long">${t('tIntel')}</span><span class="tl-short" aria-hidden="true">${t('tIntelS')}</span>` + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : '') };
+    const label = { races: t('tRaces'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
-      ${directiveHTML(res, a)}
-      <div class="area-tabs" id="tabs-${esc(a.id)}">
-        <div class="tabbar">
-          <div class="tabs" role="tablist" aria-label="${esc(clean(txt(a.title) || 'Major Order'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div>
-        </div>
-        <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}">${panel}</div>
-      </div>
-      ${railHTML(res, a)}
+      ${callHTML(res, a)}
+      ${settings.layout === 'glance' ? `<p class="glance-note"><span>${esc(t('glanceOn'))}</span><button type="button" class="btn ghostly" data-glance>${esc(t('glanceShow'))}<span class="kcap sm" aria-hidden="true">G</span></button></p>` : `<section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
+        <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span><button type="button" class="glance-btn" data-glance-on title="${esc(t('hLayout'))}">${esc(t('glanceBtn'))}<span class="kcap sm" aria-hidden="true">G</span></button></div>
+        <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
+      </section>`}
     </div>`;
+  }
+  function mapTabHTML(res) {
+    return `<div class="map-tab">${mapHTML(res)}<p class="map-help">${esc(t('map.help'))}</p></div>`;
   }
 
   // where the keyboard focus is, as a selector that still matches after the view is rebuilt
@@ -44,7 +55,7 @@
     if (!st) { box.innerHTML = ''; return; }
     const mins = Math.max(1, Math.round((Date.now() - st.t) / 60e3));
     const ago = mins < 90 ? fill(t('staleMin'), { n: mins }) : fill(t('staleH'), { n: fmt(mins / 60, 1) });
-    box.innerHTML = `<div class="stale-bar" role="status">${ICON.warn}<p>${fill(t('stale'), { when: esc(new Date(st.t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })), ago: esc(ago), src: esc(t(st.src === 'official' ? 'staleOff' : 'staleCom')) })}</p></div>`;
+    box.innerHTML = `<div class="stale-bar" role="status">${ICON.warn}<p>${fill(t('stale'), { when: esc(new Date(st.t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })), ago: esc(ago), src: esc(t(st.src === 'official' ? 'staleOff' : 'staleCom')) })}</p><button type="button" class="btn ghostly" data-retry>${esc(t('retry'))}</button></div>`;
   }
   /* ---------- archive: every Major Order, and whether it was winnable ---------- */
   let archive = null, archiveT = 0, archiveBusy = false, archiveFail = 0;
@@ -99,7 +110,7 @@
   }
   const orderObj = (o) => o.obj || [...new Set((o.tasks || []).map(tk => TASK_OBJ[tk.type]).filter(Boolean))].join('/');
   function archiveHTML() {
-    if (!archive) { loadArchive(); return `<section class="arch"><div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button></div><p class="arch-load">${ICON.dots}<span>${esc(t(archiveFail ? 'ar.notYet' : 'ar.loading'))}</span></p></section>`; }
+    if (!archive) { loadArchive(); return `<section class="arch"><div class="ar-head"><button type="button" class="ghost back" data-view="war">${ICON.track}<span>${esc(t('ar.back'))}</span></button></div><p class="arch-load">${ICON.dots}<span>${esc(t(archiveFail ? 'ar.notYet' : 'ar.loading'))}</span></p></section>`; }
     const now = Date.now();
     const running = new Set((last && last.results || []).map(x => String(x.a.id)));
     const starts = (last && last.results || []).map(x => x.start).filter(Boolean);
@@ -126,7 +137,9 @@
     const FILTERS = ['all', 'won', 'lost', ...GROUPS.map(g => 'g-' + g), 'g-none'];
     const f = FILTERS.includes(ui.af) ? ui.af : 'all';
     const match = (o) => f === 'all' || (f.startsWith('g-') ? o.result === 'lost' && (o.grp || 'none') === f.slice(2) : o.result === f);
-    const list = all.filter(match);
+    // a search over names, codes and objective types (critique 1 Nov 2026: 232 orders and only All / Won / Lost)
+    const q = String(ui.arq || '').trim().toLowerCase();
+    const list = all.filter(match).filter(o => !q || `${orderName(o)} ${o.code || ''} ${orderObj(o)} ${o.name || ''}`.toLowerCase().includes(q));
     const pctx = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
     const day = (ms) => ms ? new Date(ms).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
     const first = all.length ? Math.min(...all.map(o => o.start || o.end || now)) : now;
@@ -142,12 +155,12 @@
     const out = G.impossible + G.long;
     const head = !checked ? t('ar.hNone') : out ? fill(t(out === 1 ? 'ar.hOut1' : 'ar.hOut'), { n: out, c: checked }) : fill(t('ar.hFair'), { c: checked });
     const sub = checked ? [out ? fill(t('ar.hSubOut'), { i: G.impossible, l: G.long }) : '', G.hard ? fill(t(G.hard === 1 ? 'ar.hSubRec1' : 'ar.hSubRec'), { n: G.hard }) : '', G.fair ? fill(t(G.fair === 1 ? 'ar.hSubWin1' : 'ar.hSubWin'), { n: G.fair }) : ''].filter(Boolean).join(' ') : '';
-    const seg = (g) => G[g] ? `<button type="button" class="sb-seg cg-${g}" style="flex:${G[g]}" data-af="g-${g}" aria-pressed="${f === 'g-' + g}" aria-label="${esc(G[g] + ' ' + t('ar.g.' + g))}"></button>` : '';
+    const seg = (g) => G[g] ? `<i class="sb-seg cg-${g}${f === 'g-' + g ? ' on' : ''}" style="flex:${G[g]}"></i>` : '';
     const verdict = `<section class="ar-verdict">
-      <span class="label">${esc(t('ar.q'))}</span>
+      <h3 class="mod-h">${esc(t('ar.q'))}</h3>
       <p class="sb-head">${esc(head)}</p>
       ${sub ? `<p class="sb-sub">${esc(sub)}</p>` : ''}
-      <div class="sb-bar" role="group" aria-label="${esc(fill(t('ar.chkA'), { n: defeats.length }))}">${[...GROUPS, 'none'].map(seg).join('')}</div>
+      <div class="sb-bar" role="img" aria-label="${esc(fill(t('ar.chkA'), { n: defeats.length }))}">${[...GROUPS, 'none'].map(seg).join('')}</div>
       <ul class="sb-key">${[...GROUPS, 'none'].filter(g => G[g] || g !== 'none').map(g => `<li class="cg-${g}"><button type="button" data-af="g-${g}" aria-pressed="${f === 'g-' + g}"><i></i><b>${G[g]}</b><span>${esc(t('ar.g.' + g))}</span><small>${esc(t('ar.gs.' + g))}</small></button></li>`).join('')}</ul>
       <details class="ar-how"><summary>${esc(t('ar.howT'))}</summary>
         <ul>${t('ar.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul>
@@ -170,7 +183,6 @@
         const on = x.kind ? ' · ' + t('acc.on.' + x.kind) : '';
         return `<li><span>${esc(t(lbl))}</span><b>${esc(v)}</b><small>${esc(wiki + on)}</small></li>`; };
       return `<section class="ar-acc" aria-labelledby="acc-t">
-        <span class="label">${esc(t('acc.kicker'))}</span>
         <h3 id="acc-t">${esc(t('acc.title'))}</h3>
         <p class="sb-sub">${esc(t('acc.sub'))}</p>
         <div class="acc-grid">
@@ -191,7 +203,7 @@
         <details class="ar-how"><summary>${esc(t('acc.howT'))}</summary><ul>${t('acc.howL').map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>
       </section>`;
     })();
-    const tools = `<div class="ar-tools"><h3>${esc(t('ar.listT'))}</h3><div class="nk-filter ar-filter" role="group" aria-label="${esc(t('nw.filter'))}">${['all', 'won', 'lost'].map(k => `<button type="button" data-af="${k}" aria-pressed="${f === k || (k === 'lost' && f.startsWith('g-'))}">${esc(t('ar.f.' + k))}</button>`).join('')}</div>
+    const tools = `<div class="ar-tools"><h3>${esc(t('ar.listT'))}</h3><label class="ar-search"><span class="sr-only">${esc(t('ar.qL'))}</span>${ICON.lens}<input type="search" id="ar-q" placeholder="${esc(t('ar.qP'))}" value="${esc(ui.arq || '')}" autocomplete="off"></label>${q ? `<p class="ar-fnow">${esc(fill(t('ar.qN'), { n: list.length }))}</p>` : ''}<div class="nk-filter ar-filter" role="group" aria-label="${esc(t('nw.filter'))}">${['all', 'won', 'lost'].map(k => `<button type="button" data-af="${k}" aria-pressed="${f === k || (k === 'lost' && f.startsWith('g-'))}">${esc(t('ar.f.' + k))}</button>`).join('')}</div>
       ${f.startsWith('g-') ? `<p class="ar-fnow">${esc(fill(t('ar.fNow'), { what: t('ar.g.' + f.slice(2)), n: list.length }))} <button type="button" class="linkish" data-af="all">${esc(t('ar.fClear'))}</button></p>` : ''}</div>`;
     // the bar an order sat on: share of everyone needed (liberation) or best-day pace vs goal (counts)
     const meter = (x, marks, max, g, label) => `<div class="ar-meter cg-${g}" role="img" aria-label="${esc(label)}"><i style="width:${(Math.min(max, x) / max * 100).toFixed(1)}%"></i>${marks.map(s => `<s style="left:${(s / max * 100).toFixed(1)}%" data-l="${Math.round(s * 100)}%"></s>`).join('')}</div>`;
@@ -235,7 +247,7 @@
     for (const o of shown) {
       const y = new Date(o.start || o.end || now).getFullYear();
       if (y !== curY) {
-        const open = ui_y[y] ?? (curY === null || f !== 'all');
+        const open = q ? true : ui_y[y] ?? (curY === null || f !== 'all');
         rows += `${curY ? '</ul></details>' : ''}<details class="ar-year" data-year="${y}" ${open ? 'open' : ''}><summary>${ICON.chev}<span class="fd-day">${y}</span><span class="ar-ycount">${esc(fill(t('ar.yCount'), { n: perYear[y] }))}</span></summary><ul class="ar-list">`;
         curY = y;
       }
@@ -251,7 +263,7 @@
     }
     rows += curY ? '</ul></details>' : '';
     return `<section class="arch">
-      <div class="ar-head"><button type="button" class="ghost" data-view="war">← ${esc(t('ar.back'))}</button>
+      <div class="ar-head"><button type="button" class="ghost back" data-view="war">${ICON.track}<span>${esc(t('ar.back'))}</span></button>
         <div><h2>${esc(t('ar.title'))}</h2><p>${esc(fill(t('ar.sub'), { when: day(first) }))}</p></div></div>
       ${stats}${verdict}${accuracy}${tools}
       <div class="feed">${rows || `<p class="ar-note">${esc(t('ar.empty'))}</p>`}</div>
@@ -260,12 +272,13 @@
   }
   function render(opts = {}) {
     if (!last) return;
+    document.documentElement.classList.toggle('glance', settings.layout === 'glance');
     const keepFocus = focusSelector();
     renderHud();
     renderStale();
     $('open-archive').setAttribute('aria-pressed', String(ui.view === 'archive'));
     if (ui.view === 'archive') {
-      $('order-tabs').hidden = true; $('cross').innerHTML = ''; $('intel').innerHTML = '';
+      $('ot-nav').hidden = true; $('cross').innerHTML = ''; $('intel').innerHTML = '';
       $('view').innerHTML = archiveHTML();
       document.title = `${t('ar.title')} · Ministry of Victory`;
       return;
@@ -277,20 +290,23 @@
     const view = $('view');
     if (!entry) {
       view.innerHTML = `<div class="empty-wrap"><div class="empty-main">
-          <p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>
-          ${meanwhileHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
+          ${betweenCallHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
+      syncHash();
       document.title = 'Ministry of Victory';
+      fxAfterRender(view, null);
       return;
     }
     const firstTime = !prev.seen[entry.a.id];
     view.innerHTML = viewHTML(entry);
-    if (opts.tabEnter) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
+    if (opts.tabEnter && !viaKeys) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
     afterRender(entry, firstTime);
     prev.seen[entry.a.id] = true;
     const title = directiveParts(entry.res).title;
     document.title = `${title ? title.charAt(0).toUpperCase() + title.slice(1) + ' · ' : ''}Ministry of Victory`;
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }
+    syncHash();
+    if (tabScrollDue) { tabScrollDue = false; requestAnimationFrame(() => { const el = $('tabs-' + entry.a.id); if (el) el.scrollIntoView({ block: 'start' }); }); }
     try { tick(); } catch {}
   }
 

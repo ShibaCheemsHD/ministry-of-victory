@@ -17,8 +17,8 @@
     } else if (r.counter && !r.simpleCount) {
       rows.push(kv(t('done'), `${big(tk.progress)} / ${big(tk.goal)}`));
       rows.push(kv(t('needRate'), `${big(r.needed)}${t('perHour')}`));
-      rows.push(kv(t('rateStart'), r.rates.sinceStart ? big(r.rates.sinceStart.rate) + t('perHour') : '—'));
-      rows.push(kv(t('rateRecent'), r.rates.recent ? big(r.rates.recent.rate) + t('perHour') : '—'));
+      rows.push(kv(t('rateStart'), r.rates.sinceStart ? big(r.rates.sinceStart.rate) + t('perHour') : esc(t('notYet'))));
+      rows.push(kv(t('rateRecent'), r.rates.recent ? big(r.rates.recent.rate) + t('perHour') : esc(t('notYet'))));
     } else if (r.libN && r.libN.rank) {
       rows.push(kv(t('iQuickest'), r.libN.rank.slice(0, 4).map(x => planetName(x.planet)).join(', ')));
       rows.push(kv(t('iFront'), `${fmt(Math.round(r.libN.frontShare * res.model.N))} (${pct(r.libN.frontShare, 1)})`));
@@ -30,11 +30,23 @@
     return `<details class="intel" data-intel="${esc(key)}" ${open ? 'open' : ''}><summary>${ICON.chev}<span>${t('intel')}</span></summary><div class="kv">${rows.join('')}</div></details>`;
   }
 
+  // The races: every objective on one shared scale, each bar ending at its goal, with the bracket showing
+  // where today's pace lands by the deadline (the desk's signature: a race is called only once it's settled)
+  function racesHTML(res, a) {
+    const id = String(a.id);
+    const brief = clean(txt(a.briefing));
+    const desc = txt(a.description) && txt(a.description) !== txt(a.briefing) ? clean(txt(a.description)) : '';
+    const open = !!ui.briefOpen[id];
+    return `<section class="races" aria-labelledby="races-${esc(id)}">
+      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2>${res.ended ? `<p class="sec-note">${esc(t('races.noteEnded'))}</p>` : `<p class="race-key" aria-label="${esc(t('races.note'))}"><span><i class="k-done"></i>${esc(t('lgDone'))}</span><span><i class="k-pace"></i>${esc(t('lgPace'))}</span><span><i class="k-goal"></i>${esc(t('lgGoal'))}</span><span><i class="k-front"></i>${esc(t('lgFront'))}</span></p>`}</div>
+      <div class="race-list">${objectivesHTML(res)}</div>
+      ${brief || desc ? `<details class="brief" data-brief="${esc(id)}" ${open ? 'open' : ''}><summary>${ICON.chev}<span>${esc(t('brief'))}</span></summary><div class="brief-text"><p>${brief}</p>${desc ? `<p>${desc}</p>` : ''}</div></details>` : ''}
+    </section>`;
+  }
+
   function objectivesHTML(res) {
     const H = res.hoursLeft;
     const S = (k, p = {}) => fill(t('s.' + k), p);
-    // one planet of several: "on track" next to an order that isn't reads as a contradiction (audit UX-03)
-    const multiLib = res.tasks.filter(r => r.pw || r.task.type === 11).length > 1;
     const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
     return banner + res.tasks.map((r, i) => {
       const tk = r.task;
@@ -49,7 +61,7 @@
           bar = `<div class="bar lib ${r.net > 0 ? 'moving' : 'stuck'}" role="img" aria-label="${pct(frac)}">${barFill(key, frac)}</div>`;
           const L = res.liberation, seg = L && L.plan && isFinite(L.seqNeed) && L.seqNeed <= 1 ? L.plan.segs.findIndex(sg => sg.target === r) : -1;
           const planned = seg > 0 && !(r.eta <= H) ? fill(t('libPlan'), { prev: planetName(L.plan.segs[seg - 1].target.planet), a: clock(L.plan.segs[seg].start), b: clock(L.plan.segs[seg].end) }) : null;
-          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('fallsAt', { when: clock(r.eta) }) + (r.fc?.band ? ` <span class="band" title="${esc(S('fallsTip', { when: clock(r.eta), a: clock(r.fc.band.lo), b: clock(Math.min(r.fc.band.hi, H)) }))}">${S('range', { a: clockNear(r.fc.band.lo, r.eta), b: clockNear(Math.min(r.fc.band.hi, H), r.eta) })}</span>` : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
+          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('fallsAt', { when: clock(r.eta) }) + ` · ${esc(fill(t('s.ahead'), { d: dur(H - r.eta) }))}` + (r.fc?.band ? ` <span class="band" title="${esc(S('fallsTip', { when: clock(r.eta), a: clock(r.fc.band.lo), b: clock(r.fc.band.hi) }))}">${S('range', { a: clockNear(r.fc.band.lo, r.eta), b: clockNear(r.fc.band.hi, r.eta) })}</span>` : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
           if (r.onDss) chips.push(`<span class="chip" style="color:var(--info)">${t('chipDss')}</span>`);
           if (r.onDss && last.hod) chips.push(`<span class="chip" style="color:var(--yellow)">${t('chipHod')}</span>`);
           if (r.holdLost) chips.push(`<span class="chip" style="color:var(--warn)">${t('chipRetake')}</span>`);
@@ -59,7 +71,10 @@
         line = r.defense.outlastsMO ? S('defOut') : r.defense.verdict === 'ontrack' ? S('defOk') : S('defHelp', { when: clock(r.defense.hoursToEnd) });
       } else if (r.counter && !r.simpleCount) {
         const frac = tk.goal ? Math.min(1, tk.progress / tk.goal) : 0;
-        const pf = r.projection != null && tk.goal ? Math.min(1, r.projection / tk.goal) : null;
+        // the pale band is today's pace, as on the Progress chart and in the simulator; when the objective
+        // gets there only with players switching over, that is a second number, named (critique 1 Nov 2026)
+        const own = r.freed ? r.freed.plain : r.projection;
+        const pf = own != null && tk.goal ? Math.min(1, own / tk.goal) : null;
         const proj = r.projection != null && tk.goal ? projPct(r.projection / tk.goal) : null;
         bar = `<div class="bar">${pf != null && pf > frac ? `<div class="proj" style="left:${frac * 100}%;width:${(pf - frac) * 100}%"></div>` : ''}${barFill(key, frac)}<div class="goal"></div></div>`;
         const rate = r.rates && (r.rates.recent || r.primary) ? (r.rates.recent || r.primary).rate : null;
@@ -67,7 +82,7 @@
           ? `<span class="tick-wrap"><i class="live"></i><span class="tick" data-tick="${tk.progress}" data-rate="${(rate / 3600).toFixed(3)}" data-goal="${tk.goal}" data-t0="${last.now}">${fmt(tk.progress)}</span> / ${big(tk.goal)}</span> · ` : '';
         // far ahead: "done by Sun 14:00" reads better than "about 5,575% by the deadline"
         const doneIn = r.verdict === 'ontrack' && r.primary && r.primary.rate > 0 && r.projection / tk.goal > 1.5 ? (tk.goal - tk.progress) / r.primary.rate : null;
-        line = `${r.early ? `<span class="chip early" title="${esc(t('earlyWhy'))}">${esc(t('early'))}</span> ` : ''}<b>${pct(frac)}</b> · ${live}${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj || r.verdict === 'unknown' ? S('cWait') : doneIn != null ? S('cOkBy', { when: clock(doneIn) }) : r.verdict === 'ontrack' ? S(r.freed ? 'cOkFreed' : 'cOk', { proj }) : S('cBehind', { proj })}`;
+        line = `${r.early ? `<span class="chip early" title="${esc(t('earlyWhy'))}">${esc(t('early'))}</span> ` : ''}<b>${pct(frac)}</b> · ${live}${r.verdict === 'done' ? S('cDone') : res.ended ? S('missed') : !proj || r.verdict === 'unknown' ? S('cWait') : doneIn != null ? S('cOkBy', { when: clock(doneIn) }) : r.verdict === 'ontrack' ? (r.freed ? S('cOkFreed', { plain: projPct(r.freed.plain / tk.goal), proj }) : S('cOk', { proj })) : S('cBehind', { proj })}`;
       } else {
         const frac = tk.goal ? Math.min(1, tk.progress / tk.goal) : null;
         if (frac != null) bar = `<div class="bar">${barFill(key, frac)}<div class="goal"></div></div>`;
@@ -75,9 +90,17 @@
         if (r.libN && r.libN.first && r.verdict !== 'done') line += ` · ${S('nNext', { planet: planetName(r.libN.first.planet) })}`;
         if (r.defenses && r.verdict !== 'done') line += ` · ${r.defenses.length > 1 ? S('nAttacks', { n: r.defenses.length }) : r.defenses.length ? S('nAttack1') : S('nNoAttack')}`;
       }
-      const check = r.verdict === 'done' ? `<span class="check done">${ICON.check}</span>` : r.verdict === 'impossible' || r.verdict === 'failed' ? `<span class="check fail">${ICON.cross}</span>` : '<span class="check"></span>';
-      return `<article class="objective ${fac ? 'fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
-        ${check}<h4 aria-level="3">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h4>${multiLib && r.pw && r.verdict === 'ontrack' && res.verdict !== 'ontrack' && res.verdict !== 'done' ? pill('planet', t('vPlanetOk')) : multiLib && r.pw && r.verdict === 'ontrack' ? pill('ontrack', t('vPlanetOk')) : pill(r.verdict)}
+      // the race's own call: per objective, on the same five-step scale as the order (a planet that falls in
+      // time inside an order that is still short says so in words, not with a green tick)
+      // every race says one of the five calls (critique 1 Nov 2026: "Falls in time", "on pace" and "Called: done"
+      // sat beside them); on track only if players switch over is a push, not on track
+      const rv = raceVerdict(r, res);
+      const pv = pill(rv);
+      // liberation that falls before the deadline: the bracket runs to the goal line
+      if (r.pw && r.eta <= H && !res.ended && r.verdict !== 'done') { const frac = Math.max(0, 1 - p.health / p.maxHealth); bar = bar.replace('<div class="fill"', `<div class="proj" style="left:${frac * 100}%;width:${(1 - frac) * 100}%"></div><div class="fill"`).replace(/<\/div>$/, '<div class="goal"></div></div>'); }
+      return `<article class="race vl-${lvl(rv)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
+        <div class="race-head"><h3 class="race-name">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h3>
+          <span class="race-call">${pv}</span></div>
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
     }).join('');
@@ -325,9 +348,10 @@
       if (f.best > f.avg * 1.05) tiles.push(tile(t('pm.tBest'), big(f.best) + '<small>/h</small>', esc(t('pm.tBestS'))));
       tiles.push(tile(t('pm.tNeed'), big(f.needed) + '<small>/h</small>', esc(fill(t('pm.tNeedS'), { x: fmt(f.needed / f.avg, 1, 1) })), 'key'));
     } else if (lib && isFinite(lib.currentShare)) {
-      tiles.push(tile(t('pm.tPlNow'), pct(lib.currentShare), esc(t('pm.tPlNowS'))));
-      tiles.push(tile(t('pm.tPlNeed'), sharePct(lib.seqNeed), esc(fill(t('pm.tPlNeedS'), { n: people((isFinite(lib.seqNeed) ? lib.seqNeed : 5) * res.model.N) })), 'key'));
-      tiles.push(tile(t('pm.tRecord'), pct(settings.recordShare), esc(t('pm.tRecordS'))));
+      // in Helldivers, as everywhere else on the page; the share of everyone online underneath
+      tiles.push(tile(t('pm.tPlNow'), people(lib.currentShare * res.model.N), esc(fill(t('pm.tPlNowS'), { p: pct(lib.currentShare) }))));
+      tiles.push(tile(t('pm.tPlNeed'), people((isFinite(lib.seqNeed) ? lib.seqNeed : 5) * res.model.N), esc(fill(t('pm.tPlNeedS'), { x: sharePct(lib.seqNeed) })), 'key'));
+      tiles.push(tile(t('pm.tRecord'), people(settings.recordShare * res.model.N), esc(fill(t('pm.tRecordS'), { p: pct(settings.recordShare) }))));
     }
     return tiles.length ? `<div class="pm-tiles">${tiles.join('')}</div>` : '';
   }
@@ -342,7 +366,7 @@
     for (const x of alerts.filter(al => al.kind === 'edited' && al.order === String(a.id))) items.push({ t: x.t, html: alertText(x, false) });
     if (worst && worst.f.ponr && !fromDayOne) items.push({ t: worst.f.ponr, cls: 'bad', html: fill(t('pm.sPonr'), { best: big(worst.f.best) }) });
     const lib = res.liberation;
-    if (!worst && lib && isFinite(lib.currentShare)) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNowLib'), { need: shareOf(lib.seqNeed), rec: pct(settings.recordShare) }) });
+    if (!worst && lib && isFinite(lib.currentShare)) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNowLib'), { need: people((isFinite(lib.seqNeed) ? lib.seqNeed : 5) * res.model.N), rec: pct(settings.recordShare), recN: people(settings.recordShare * res.model.N) }) });
     for (const r of res.tasks.filter(x => x.verdict === 'done')) items.push({ t: last.now - 1, cls: 'ok', html: fill(t('pm.sDone'), { task: taskText(r) }) });
     if (worst) items.push({ t: last.now, cls: 'now', html: fill(t('pm.sNow'), { p: projPct(worst.r.projection / worst.r.task.goal) }) });
     if (!items.length) return '';
@@ -354,9 +378,9 @@
     return `<section class="plan postmortem" id="steps-${esc(res.id)}">
       <div class="pm-head">${ICON.cross}<div><h3>${esc(t(lost ? 'pm.lostTitle' : 'pm.title'))}</h3><p>${esc(t(lost ? 'pm.lostSub' : 'pm.sub'))}</p></div></div>
       ${factsHTML(entry)}
-      <span class="label sub-label">${esc(t('pm.howTitle'))}</span>${storyHTML(entry)}
+      <h4 class="mod-h">${esc(t('pm.howTitle'))}</h4>${storyHTML(entry)}
       <button type="button" class="ghost" data-goto="history" data-scroll="tabs">${esc(t('pm.chart'))} ›</button>
-      <div class="pm-still"><span class="label">${esc(t('pm.stillTitle'))}</span><p>${esc(t(lost ? 'pm.stillLost' : 'pm.still'))}</p></div>
+      <div class="pm-still"><h4 class="mod-h">${esc(t('pm.stillTitle'))}</h4><p>${esc(t(lost ? 'pm.stillLost' : 'pm.still'))}</p></div>
     </section>`;
   }
   function strategyHTML(res, entry) {
@@ -373,20 +397,22 @@
     const moves = main.length ? main : tips.splice(0, 3);
     const sitCls = assess.some(r => r.kind === 'libImpossible') ? 'k-bad' : 'k-warn';
     const lostNow = res.verdict === 'impossible' || (res.directive && res.directive.kind === 'lost');
+    const across = crossHTML();
     return `<section class="plan ${ui.showNums ? 'show-nums' : ''}" id="steps-${esc(res.id)}">
         ${longShot}
         <div class="sec-head"><h3>${t('planTitle')}</h3>
           <button type="button" class="ghost" data-toggle-nums aria-pressed="${ui.showNums}">${ui.showNums ? t('hideNums') : t('showNums')}</button></div>
+        ${across}
         ${moves.length ? `<ol class="moves">${moves.map(r => moveHTML(r, res)).join('')}</ol>
           ${tips.length ? `<details class="more-tips"><summary>${ICON.chev}<span>${fill(t('moreTips'), { n: tips.length })}</span></summary><ol class="moves minor" style="counter-reset: mv ${moves.length}">${tips.map(r => moveHTML(r, res)).join('')}</ol></details>` : ''}`
           : res.directive && res.directive.kind === 'play' ? `<p class="empty-moves unknown">${ICON.dots}<span>${t('noMovesUnknown')}</span></p>`
           : res.ended && res.verdict !== 'done' ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesEnded')}</span></p>`
-          : lostNow ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesLost')}</span></p>` : `<p class="empty-moves">${ICON.check}<span>${t('noMoves')}</span></p>`}
-        ${assess.length || order ? `<span class="label sub-label">${t('bigPicture')}</span>` : ''}
-        ${assess.length ? `<div class="situation ${sitCls}"><span class="label">${t('sitTitle')}</span>${assess.map(r => recItem(r, res, 'div')).join('')}</div>` : ''}
-        ${order ? `<div class="the-plan"><span class="label">${t(order.partial ? 'planBlockPartial' : res.liberation && !res.liberation.winnableNow ? 'planBlockIf' : 'planBlock')}</span>
+          : lostNow ? `<p class="empty-moves lost">${ICON.cross}<span>${t('noMovesLost')}</span></p>` : `<p class="empty-moves">${ICON.check}<span>${t(res.verdict === 'done' ? 'noMovesDone' : 'noMoves')}</span></p>`}
+        ${assess.length || order ? `<h4 class="mod-h">${t('bigPicture')}</h4>` : ''}
+        ${assess.length ? `<div class="situation ${sitCls}"><h5 class="sit-h">${t('sitTitle')}</h5>${assess.map(r => recItem(r, res, 'div')).join('')}</div>` : ''}
+        ${order ? `<div class="the-plan"><h5 class="sit-h">${t(order.partial ? 'planBlockPartial' : res.liberation && !res.liberation.winnableNow ? 'planBlockIf' : 'planBlock')}</h5>
           <p>${order.segs.map((s, i) => fill(t(i ? 'orderThen' : 'orderFirst'), { a: planetName(s.planet) })).join('')}.</p>${timelineHTML(order.segs, order.H, `plan:${res.id}`, res)}</div>` : ''}
-        ${fine.length ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
+        ${fine.length && res.verdict !== 'done' ? `<details class="more-tips fine-box"><summary>${ICON.chev}<span>${fill(t('fineN'), { n: fine.length })}</span></summary><ul class="fine">${fine.map(r => recItem(r, res, 'li', ICON.check)).join('')}</ul></details>` : ''}
       </section>
       ${simHTML(res) || paceHTML(res) ? `<details class="sim-box" data-simbox="${esc(res.id)}" ${ui.simOpen[res.id] ? 'open' : ''}><summary>${ICON.chev}<span>${t('simBox')}</span></summary>${simHTML(res)}${paceHTML(res)}</details>` : ''}`;
   }

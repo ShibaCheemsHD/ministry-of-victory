@@ -100,3 +100,29 @@ export function logStation(hist, st, now) {
   if (M.taKey === key) return;
   M.taKey = key; M.ta.push({ t: now, planet: st.planet?.index ?? null, a: cur });
 }
+
+// Calibrate only ordinary liberation intervals: station bonuses must not be learned here and
+// multiplied a second time by the client. Preserve provenance when the fallback is used.
+export function measureMissionImpact(samples) {
+  const values = [];
+  let updated = null;
+  for (let k = 1; k < samples.length; k++) {
+    const a = samples[k - 1], b = samples[k], dt = (b.t - a.t) / 3600000;
+    if (!(dt > 0 && dt <= 35 / 60) || !(a.imp > 0) || a.hod || b.hod) continue;
+    for (const [i, v] of Object.entries(a.pl || {})) {
+      const w = b.pl?.[i];
+      if (!w || v[8] == null || w[8] == null || v[4] || w[4] || v[5] || w[5]
+        || v[6] !== w[6] || v[6] === 'Humans' || v[3] !== w[3] || v[2] !== w[2]
+        || String(a.dss) === i || String(b.dss) === i || v[0] >= 0.99 * v[3] || w[0] <= 0) continue;
+      const won = w[8] - v[8];
+      if (won < 30) continue;
+      const value = (v[0] - w[0] + v[2] * 3600 * dt) / (won * a.imp);
+      if (!(value > 0) || !Number.isFinite(value)) continue;
+      values.push(value); updated = Math.max(updated || 0, b.t);
+    }
+  }
+  values.sort((a, b) => a - b);
+  const measured = values.length >= 10;
+  return { value: measured ? values[Math.floor(values.length / 2)] : 100,
+    source: measured ? 'measured' : 'default', samples: values.length, updated };
+}

@@ -14,11 +14,12 @@ head = '''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ministry of Victory · Helldivers 2 Major Order terminal</title>
-<meta name="description" content="Unofficial tactical terminal for Helldivers 2 Major Orders: can we win it, and what should the community do right now?">
+<title>Ministry of Victory · Helldivers 2 Major Order decision desk</title>
+<meta name="theme-color" content="#0a1120">
+<meta name="description" content="Unofficial decision desk for Helldivers 2 Major Orders: can we win it, and where should the community drop right now?">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Ministry of Victory · Can we win this Major Order?">
-<meta property="og:description" content="Free Helldivers 2 Major Order terminal: live odds, where to drop right now, and every MO since 2024 checked for whether it was ever winnable.">
+<meta property="og:description" content="Free Helldivers 2 Major Order decision desk: live odds, where to drop right now, and every MO since 2024 checked for whether it was ever winnable.">
 <meta property="og:url" content="https://shibacheemshd.github.io/ministry-of-victory/">
 <meta property="og:image" content="https://shibacheemshd.github.io/ministry-of-victory/preview.png">
 <meta property="og:image:width" content="1920"><meta property="og:image:height" content="1080">
@@ -26,7 +27,7 @@ head = '''<!doctype html>
 <link rel="alternate" type="application/rss+xml" title="Ministry of Victory · Major Orders" href="https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/data/feed.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@100..125,500..900&family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap">
 <style>
 '''
 out = head + read(S('style.css')) + '</style>\n</head>\n<body>\n' + read(S('body.html'))
