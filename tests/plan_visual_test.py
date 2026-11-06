@@ -36,6 +36,19 @@ with sync_playwright() as p:
         plan.screenshot(path=str(ROOT/'build'/f'plan-{sc}-{width}.png'))
         print(f'Full Plan: {sc}@{width} OK',flush=True)
         pg.close()
+    # Cold start paints coherent recorder data before the deliberately delayed live API responds.
+    pg=br.new_page(viewport={'width':1366,'height':900},reduced_motion='reduce')
+    pg.goto((ROOT/'build/test.html').as_uri()+'?s=sniper&boot=1&motion=reduced')
+    pg.wait_for_selector('.call',timeout=2500)
+    assert not pg.locator('#skeleton').count(), 'Skeleton retained after initial snapshot'
+    assert pg.locator('.call .tgt').first.inner_text() != 'MAJOR ORDER', 'Incomplete first paint'
+    assert 'TOO EARLY TO CALL' not in pg.locator('.call').first.inner_text(), 'History missing at first paint'
+    assert pg.locator('.game-icon').count()
+    pg.locator('.call').first.screenshot(path=str(ROOT/'build'/'plan-loading-first-paint.png'))
+    pg.goto((ROOT/'build/test.html').as_uri()+'?s=sniper&boot=1&warm=1&motion=reduced')
+    pg.wait_for_selector('.call',timeout=1500)
+    assert pg.evaluate("!window.__mockLog.some(x => x.rec === 'bootstrap.json')"), 'Warm start fetched data before painting'
+    pg.close()
     # Motion preference is respected even if the OS itself allows motion.
     pg=br.new_page(viewport={'width':1366,'height':900})
     pg.goto((ROOT/'build/test.html').as_uri()+'?s=sniper&motion=reduced');pg.wait_for_timeout(1800)

@@ -30,25 +30,35 @@
   const foeHintsOf = (x) => isObj(x) ? Object.fromEntries(Object.entries(x).filter(([id, h]) => /^\d+$/.test(id) && isObj(h)
     && [h.one, h.many].every(s => typeof s === 'string' && /^[A-Za-z][A-Za-z' -]{0,39}$/.test(s)))) : {};
   const itemHintsOf = (x) => isObj(x) ? Object.fromEntries(Object.entries(x).filter(([id, s]) => /^\d+$/.test(id) && typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ./'()-]{0,59}$/.test(s))) : {};
-  async function loadRecord(now) {
+  function applyRecord(intel, recent, prog) {
+    if (record && intel && intel.updated < record.t && recordSamples.length) return false;
+    // the recorder's files are checked for shape before use: a broken file is ignored, not drawn (audit SEC-06)
+    if (intel && Array.isArray(intel.alerts) && isNum(intel.updated)) {
+      record = { t: intel.updated, since: isNum(intel.since) ? intel.since : null, every: isNum(intel.every) ? intel.every : 10, alerts: intel.alerts.filter(isObj), effects: arr(intel.effects).filter(isObj),
+        inf: isNum(intel.inf) ? intel.inf : null, infMeasurement: isObj(intel.infMeasurement) ? intel.infMeasurement : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null, foeHints: foeHintsOf(intel.foeHints), itemHints: itemHintsOf(intel.itemHints),
+        K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
+      store.set('record', record);
+    }
+    if (prog && isObj(prog.orders)) { recordProgress = prog; saveRecap(); }
+    if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.filter(x => isObj(x) && isNum(x.t)).map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
+      planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] ?? null, w: v[8] ?? null }])), prog: x.prog || {} }))
+      // older progress only (no planets), so a full day of pace is known on a first visit
+      .concat(arr(recent.prog).filter(x => isObj(x) && isNum(x.t)).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
+    return true;
+  }
+  let recordFlight = null;
+  function loadRecord(now) {
+    if (recordFlight) return recordFlight;
+    recordFlight = fetchRecord(now).finally(() => { recordFlight = null; });
+    return recordFlight;
+  }
+  async function fetchRecord(now) {
     if (now - recordFetched < 5 * 60e3) return false;
     recordFetched = now;
     try {
       const [intel, recent, prog] = await Promise.all(['intel.json', 'recent.json', 'progress.json'].map(f =>
         ghFetch(RECORD + f + '?t=' + Math.floor(now / 300e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
-      // the recorder's files are checked for shape before use: a broken file is ignored, not drawn (audit SEC-06)
-      if (intel && Array.isArray(intel.alerts) && isNum(intel.updated)) {
-        record = { t: intel.updated, since: isNum(intel.since) ? intel.since : null, every: isNum(intel.every) ? intel.every : 10, alerts: intel.alerts.filter(isObj), effects: arr(intel.effects).filter(isObj),
-          inf: isNum(intel.inf) ? intel.inf : null, infMeasurement: isObj(intel.infMeasurement) ? intel.infMeasurement : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null, foeHints: foeHintsOf(intel.foeHints), itemHints: itemHintsOf(intel.itemHints),
-          K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
-        store.set('record', record);
-      }
-      if (prog && isObj(prog.orders)) { recordProgress = prog; saveRecap(); }
-      if (recent && Array.isArray(recent.samples)) recordSamples = recent.samples.filter(x => isObj(x) && isNum(x.t)).map(x => ({ t: x.t, N: x.N, imp: x.imp, dss: x.dss, hod: x.hod, rec: true,
-        planets: Object.fromEntries(Object.entries(x.pl || {}).map(([i, v]) => [i, { h: v[0], p: v[1], r: v[2] ?? null, w: v[8] ?? null }])), prog: x.prog || {} }))
-        // older progress only (no planets), so a full day of pace is known on a first visit
-        .concat(arr(recent.prog).filter(x => isObj(x) && isNum(x.t)).filter(x => !recent.samples.length || x.t < recent.samples[0].t).map(x => ({ t: x.t, rec: true, planets: {}, prog: x.prog || {} })));
-      return true;
+      return applyRecord(intel, recent, prog);
     } catch { return false; }
   }
   // Plan B: when the community API can't be reached, the recorder's last copy of the war (taken from
@@ -450,7 +460,7 @@
     }
     const errors = [];
     try {
-      const recP = seed ? Promise.resolve(false) : loadRecord(Date.now());
+      const recP = seed ? (opts.ready || loadRecord(Date.now())) : loadRecord(Date.now());
       let war, assignments, campaigns, stations, live = seed;
       if (seed) ({ war, assignments, campaigns, stations } = seed);
       else try {
@@ -607,7 +617,7 @@
       const impDay = dayImp.length >= 12 ? dayImp.reduce((a, b) => a + b, 0) / dayImp.length : null;
       last = { N, planets, dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, infMeasurement: record?.infMeasurement || null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
       if (!seed) freshDone = true;
-      lastOk = now;
+      lastOk = seed && Number.isFinite(seed.t) ? seed.t : now;
       if (dragging) pendingRender = true; else render();
       // news last, in the background: it never holds up the numbers
       if (!live && !seed && now - news.t >= 15 * 60e3) loadNews(now).then(() => { if (last && !dragging) render(); });

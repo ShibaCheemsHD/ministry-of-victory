@@ -544,4 +544,8 @@ fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));
 fs.writeFileSync(path.join(outDir, 'archive.json'), JSON.stringify(archive));
 const progDay = thin(hist.samples.filter(s => now - s.t < 26 * H && s.prog).map(s => [s.t, s.prog])).map(([t, prog]) => ({ t, prog }));
 fs.writeFileSync(path.join(outDir, 'recent.json'), JSON.stringify({ v: 2, updated: now, samples: hist.samples.filter(s => now - s.t < 6 * H), prog: progDay }));
+// Publish one coherent first-paint packet, so history and war state cannot arrive out of order.
+const bootstrap = { v: 1, t: now };
+for (const key of ['live', 'intel', 'recent', 'progress']) bootstrap[key] = JSON.parse(fs.readFileSync(path.join(outDir, key + '.json'), 'utf8'));
+fs.writeFileSync(path.join(outDir, 'bootstrap.json'), JSON.stringify(bootstrap));
 console.log(`snapshot ${new Date(now).toISOString()}: ${Object.keys(sample.pl).length} planets, ${hist.samples.length} samples since ${new Date(hist.since).toISOString()}, K ${K.toFixed(4)}, ${inf.toFixed(0)} HP per won mission per unit of impact, ${effects.length} active effects${status ? '' : ' (official API unreachable)'}, source ${src}, ${alerts.length} alerts`);

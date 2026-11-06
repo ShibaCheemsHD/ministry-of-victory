@@ -11,7 +11,7 @@
     } catch (e) { if (e && e.name === 'AbortError') throw e; }
     const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/([^?]+)/.exec(url);
     if (!m) throw new TypeError('Failed to fetch');
-    return fetch(`https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}`, { cache: 'no-store' });
+    return fetch(`https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}`, { ...opts, cache: 'no-store' });
   }
   const REFRESH_MS = 60000;
   // damage constant K (HP per second per player per unit of impact multiplier): reference value measured

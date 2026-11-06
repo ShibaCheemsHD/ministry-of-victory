@@ -246,6 +246,7 @@
     if (u.hostname.includes('helldivers2.dev')) {
       const h = opts.headers || {};
       window.__mockLog.push({ at: Date.now(), path: u.pathname, culture: u.searchParams.get('culture'), lang: h['Accept-Language'] || null });
+      if (q.get('boot') === '1') await new Promise(resolve => setTimeout(resolve, 5000));
       if (sc.mode==='fail') throw new TypeError('Failed to fetch');
       if (sc.mode==='slow') await new Promise((res, rej) => { const t=setTimeout(res, 25000); if (opts.signal) opts.signal.addEventListener('abort', () => { clearTimeout(t); const e=new Error('aborted'); e.name='AbortError'; rej(e); }); });
     } else if (u.hostname === 'raw.githubusercontent.com' && q.get('raw') === 'down') {
@@ -254,6 +255,10 @@
     } else if ((u.hostname === 'raw.githubusercontent.com' || u.hostname === 'cdn.jsdelivr.net') && u.pathname.includes('/ministry-of-victory')) {
       window.__mockLog.push({ rec: file, via: u.hostname });
       if (file === 'archive.json' && window.__mockArchive) return new Response(JSON.stringify(window.__mockArchive), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (file === 'bootstrap.json' && q.get('boot') === '1') {
+        const t = Date.now() - 60000;
+        return new Response(JSON.stringify({v:1,t,live:{v:1,t,src:'community',war:sc.data['/api/v1/war'],assignments:sc.data['/api/v1/assignments'],campaigns:sc.data['/api/v1/campaigns'],stations:sc.data['/api/v2/space-stations'],raw:sc.data['/raw/api/v2/Assignment/War/801'],extra:[]},intel:{...sc.record['intel.json'],updated:t},recent:{...sc.record['recent.json'],updated:t},progress:sc.record['progress.json']}), {status:200});
+      }
       const r = sc.record && sc.record[file];
       if (r && file === 'intel.json' && q.get('dense') === '1') {
         const base = Date.now() - 9 * H;
@@ -268,7 +273,7 @@
     if (body == null) return new Response('not found',{status:404});
     return new Response(typeof body==='string'?body:JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
   };
-  try { localStorage.clear(); if (q.get('motion')) localStorage.setItem('mocheck.settings', JSON.stringify({motion:q.get('motion')})); } catch {}
+  try { if (q.get('warm') !== '1') localStorage.clear(); if (q.get('motion')) localStorage.setItem('mocheck.settings', JSON.stringify({motion:q.get('motion')})); } catch {}
   if (window.__mockScenario === 'intel') try {
     // 45 minutes of history this browser "saw" before the jump
     const M=60e3, imp=0.0191*56000/82873, samples=[];
