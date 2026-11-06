@@ -36,24 +36,27 @@ with sync_playwright() as p:
         plan.screenshot(path=str(ROOT/'build'/f'plan-{sc}-{width}.png'))
         print(f'Full Plan: {sc}@{width} OK',flush=True)
         pg.close()
-    # Slow first load must never expose a provisional call, even with a complete cached packet.
+    # Complete packet: paint before the delayed live API. Incomplete packet: retain the loader.
     for warm in (False, True):
         pg = br.new_page(viewport={'width':1366,'height':900},reduced_motion='reduce')
         url=(ROOT/'build/test.html').as_uri()+'?s=sniper&boot=1&motion=reduced'
         if warm:
             pg.goto(url)
-            pg.locator('body:not(.data-loading)').wait_for(timeout=20000)
+            pg.locator('body:not(.data-loading)').wait_for(timeout=2500)
             url += '&warm=1'
         pg.goto(url)
-        pg.wait_for_timeout(1800)
-        assert pg.locator('#skeleton').is_visible(), 'Missing initial loading state'
-        assert not pg.locator('.call').count() or not pg.locator('.call').first.is_visible(), 'Provisional call exposed'
-        assert not pg.locator('#ot-nav').is_visible(), 'Provisional order cards exposed'
-        pg.locator('body:not(.data-loading)').wait_for(timeout=20000)
-        assert pg.locator('.call').first.is_visible(), 'Final call never revealed'
-        assert pg.locator('.call .tgt').first.inner_text() != 'MAJOR ORDER', 'Incomplete final call'
-        pg.locator('.call').first.screenshot(path=str(ROOT/'build'/f'plan-first-paint-{warm}.png'))
+        pg.locator('body:not(.data-loading)').wait_for(timeout=2500)
+        assert pg.locator('.call').first.is_visible(), 'Complete first call never revealed'
+        assert pg.locator('.call .tgt').first.inner_text() != 'MAJOR ORDER', 'Incomplete first call'
+        assert 'TOO EARLY TO CALL' not in pg.locator('.call').first.inner_text(), 'History not applied'
+        pg.locator('.call').first.screenshot(path=str(ROOT/'build'/f'plan-fast-start-{warm}.png'))
         pg.close()
+    pg=br.new_page(viewport={'width':390,'height':900},reduced_motion='reduce')
+    pg.goto((ROOT/'build/test.html').as_uri()+'?s=sniper&boot=1&missinghistory=1&motion=reduced')
+    pg.wait_for_timeout(1800)
+    assert pg.locator('#skeleton').is_visible(), 'Incomplete snapshot dismissed the loader'
+    assert not pg.locator('.call').count() or not pg.locator('.call').first.is_visible(), 'Incomplete call exposed'
+    pg.close()
     # Motion preference is respected even if the OS itself allows motion.
     pg=br.new_page(viewport={'width':1366,'height':900})
     pg.goto((ROOT/'build/test.html').as_uri()+'?s=sniper&motion=reduced');pg.wait_for_timeout(1800)

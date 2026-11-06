@@ -14,21 +14,43 @@
       && bundle.intel?.updated === bundle.t && Array.isArray(bundle.intel.alerts)
       && bundle.recent?.updated === bundle.t && Array.isArray(bundle.recent.samples);
   }
+  function preparedSnapshot(bundle) {
+    applyRecord(bundle.intel, bundle.recent, bundle.progress);
+    recordFetched = Date.now();
+    const live = bundle.live;
+    // Reuse the recorder's static order metadata and off-campaign planets instead of queuing API calls.
+    if (Array.isArray(live.raw)) memo['/raw/api/v2/Assignment/War/801'] = { t: live.t, data: live.raw };
+    const extras = store.get('xplanets', {});
+    for (const planet of live.extra || []) if (planet?.index != null && (!extras[planet.index] || extras[planet.index].t < live.t))
+      extras[planet.index] = { t: live.t, p: planet };
+    store.set('xplanets', extras);
+    return { ...live, bootstrap: true };
+  }
+  function initialForecastReady(results, planets, sectorOf) {
+    return results.every(({ a, res }) => {
+      if (res.verdict === 'unknown' || res.directive?.kind === 'play' || res.directive?.measuring) return false;
+      const key = orderKey(a);
+      return res.tasks.every(r => {
+        if (r.task.planetIndex != null && !planets[r.task.planetIndex]) return false;
+        if (r.task.sectorIndex != null && !sectorOf) return false;
+        if (!r.counter || r.simpleCount || r.verdict === 'done') return true;
+        return Number.isFinite(r.primary?.rate)
+          && recordSamples.filter(s => s.prog?.[key]?.[r.idx] != null && s.t <= Date.now()).length >= 2;
+      });
+    });
+  }
   async function initialSnapshot() {
     const cached = store.get('bootstrap', null);
     if (validBootstrap(cached)) {
-      applyRecord(cached.intel, cached.recent, cached.progress);
-      return cached.live;
+      return preparedSnapshot(cached);
     }
     try {
       const response = await ghFetch(RECORD + 'bootstrap.json?t=' + Math.floor(Date.now() / 300e3),
         { signal: AbortSignal.timeout(4000) });
       const bundle = response.ok ? await response.json() : null;
       if (validBootstrap(bundle)) {
-        applyRecord(bundle.intel, bundle.recent, bundle.progress);
-        recordFetched = Date.now();
         store.set('bootstrap', bundle);
-        return bundle.live;
+        return preparedSnapshot(bundle);
       }
     } catch { /* Older recorder versions and temporarily unavailable bundles use the separate files. */ }
     const ready = loadRecord(Date.now());
@@ -37,7 +59,10 @@
     await ready;
     return live;
   }
-  // Hydrate history in parallel, but reveal the first call only after the live refresh completes.
+  // A coherent snapshot can paint early only after its actual forecasts pass the readiness gate.
   const initialReady = initialSnapshot().catch(e => console.warn('Initial snapshot unavailable:', e.message));
+  initialReady.then(live => {
+    if (live?.bootstrap && !freshDone) return refresh({ seed: live, ready: Promise.resolve(true) });
+  }).catch(e => console.warn('Initial forecast unavailable:', e.message));
   refresh({ ready: initialReady });
   setInterval(tick, 1000);

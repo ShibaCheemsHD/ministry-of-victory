@@ -601,6 +601,7 @@
 
       const base = { planets, N, now, C, dssIdx, hod, settings, samples, sectorOf };
       const results = (assignments || []).map(a => ({ a, res: ENGINE.analyzeAssignment(a, { ...base, startMs: startOf(a.id), progKey: orderKey(a) }), start: startOf(a.id) }));
+      if (seed && !firstDone && !initialForecastReady(results, planets, sectorOf)) return;
       // a Major Order that wasn't there before: say so, and highlight its tab until it's opened
       const newOnes = results.filter(x => !known.has(String(x.a.id)));
       if (newOnes.length && last) {

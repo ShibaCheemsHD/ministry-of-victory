@@ -256,6 +256,7 @@
       window.__mockLog.push({ rec: file, via: u.hostname });
       if (file === 'archive.json' && window.__mockArchive) return new Response(JSON.stringify(window.__mockArchive), { status: 200, headers: { 'content-type': 'application/json' } });
       if (file === 'bootstrap.json' && q.get('boot') === '1') {
+        if (q.get('missinghistory') === '1') sc.record['recent.json'] = {samples:[],prog:[]};
         const t = Date.now() - 60000;
         return new Response(JSON.stringify({v:1,t,live:{v:1,t,src:'community',war:sc.data['/api/v1/war'],assignments:sc.data['/api/v1/assignments'],campaigns:sc.data['/api/v1/campaigns'],stations:sc.data['/api/v2/space-stations'],raw:sc.data['/raw/api/v2/Assignment/War/801'],extra:[]},intel:{...sc.record['intel.json'],updated:t},recent:{...sc.record['recent.json'],updated:t},progress:sc.record['progress.json']}), {status:200});
       }
