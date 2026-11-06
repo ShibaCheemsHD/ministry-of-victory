@@ -108,7 +108,7 @@ with sync_playwright() as p:
         pg.goto(f'{PAGE}?s=intel&corrections=1&motion=reduced'); pg.wait_for_timeout(1800)
         pg.locator('.tab[data-tab="intel"]').first.click(); pg.wait_for_timeout(250)
         resistance = pg.locator('.it-card.cat-resistance').filter(has=pg.locator('h5').filter(has_text='Enemy resistance set by Command'))
-        if resistance.count() != 1 or '1.75%/h' not in resistance.inner_text() or '0.5%/h' not in resistance.inner_text(): problems.append(f'values @{w}: missing historical resistance values')
+        if resistance.count() != 1 or '1.75%/h' not in resistance.inner_text() or '0.50%/h' not in resistance.inner_text(): problems.append(f'values @{w}: missing historical resistance values')
         if not pg.locator('.deadline-date').first.is_visible(): problems.append(f'values @{w}: missing visible deadline')
         seaf = pg.locator('.it-card.is-seaf').first
         if not seaf.count() or 'allied' not in seaf.inner_text().lower(): problems.append(f'corrections @{w}: missing allied SEAF')
