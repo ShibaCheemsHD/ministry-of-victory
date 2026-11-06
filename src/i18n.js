@@ -39,7 +39,7 @@ const TEXT = {
   inSector: 'in the {s} sector', inASector: 'in one sector',
   newOrder: 'New Major Order received: {title}', newOrders: '{n} new Major Orders received', newTag: 'New', dirChanged: 'New advice: {x}',
   order: 'Order {n}', noOrders: 'No Major Order right now. A new one usually arrives within hours; this page picks it up by itself.',
-  firstLoad: 'Reading the Helldivers 2 API…',
+  firstLoad: 'Loading the live war briefing…',
   stale: '<b>The community API isn\'t answering.</b> Showing the war as of {when} ({ago}), copied by our recorder from {src}. The page keeps trying and switches back by itself.',
   recStale: '<b>Our recorder last updated {ago}.</b> The live forecast is current, but the history, Joel\'s moves and the archive may be missing the latest hours.', staleD: '{n} days ago',
   staleMin: '{n} min ago', staleH: '{n} h ago', staleOff: 'the game\'s official servers', staleCom: 'the community API',

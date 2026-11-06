@@ -460,7 +460,7 @@
     }
     const errors = [];
     try {
-      const recP = seed ? (opts.ready || loadRecord(Date.now())) : loadRecord(Date.now());
+      const recP = opts.ready || loadRecord(Date.now());
       let war, assignments, campaigns, stations, live = seed;
       if (seed) ({ war, assignments, campaigns, stations } = seed);
       else try {

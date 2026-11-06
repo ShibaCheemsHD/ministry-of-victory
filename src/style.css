@@ -1524,3 +1524,8 @@ html.calm .plan-briefing .move, html.calm .plan-briefing .move::after, html.calm
 .race-name > .game-icon { width: 24px; height: 24px; margin-right: 9px; vertical-align: -4px; }
 .stratagem-icon { width: 26px; height: 26px; }
 .it-ico .stratagem-icon { width: 24px; height: 24px; }
+
+/* The first call is revealed atomically after the initial live refresh. */
+body.data-loading #view, body.data-loading #ot-nav { display: none; }
+
+#skeleton { min-height: 260px; align-content: center; justify-items: center; text-align: center; }

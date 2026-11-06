@@ -1,7 +1,7 @@
   /* ---------- start ----------
      No boot sequence: the page loads straight into the call, with a skeleton until the first data arrives
      (critique 1 Nov 2026: an orchestrated terminal boot delays the one thing a player came for). */
-  function bootFinish() { const sk = $('skeleton'); if (sk) sk.remove(); }
+  function bootFinish() { document.body.classList.remove('data-loading'); const sk = $('skeleton'); if (sk) sk.remove(); }
   bindSettings();
   applyTexts();
   document.documentElement.classList.toggle('calm', reduced());
@@ -37,7 +37,7 @@
     await ready;
     return live;
   }
-  initialSnapshot().then(async live => {
-    if (live) await refresh({ seed: live, ready: Promise.resolve(true) });
-  }).catch(e => console.warn('Initial snapshot unavailable:', e.message)).finally(() => refresh());
+  // Hydrate history in parallel, but reveal the first call only after the live refresh completes.
+  const initialReady = initialSnapshot().catch(e => console.warn('Initial snapshot unavailable:', e.message));
+  refresh({ ready: initialReady });
   setInterval(tick, 1000);
