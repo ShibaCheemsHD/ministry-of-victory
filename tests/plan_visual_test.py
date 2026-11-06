@@ -42,14 +42,14 @@ with sync_playwright() as p:
         url=(ROOT/'build/test.html').as_uri()+'?s=sniper&boot=1&motion=reduced'
         if warm:
             pg.goto(url)
-            pg.wait_for_function("!document.body.classList.contains('data-loading')",timeout=20000)
+            pg.locator('body:not(.data-loading)').wait_for(timeout=20000)
             url += '&warm=1'
         pg.goto(url)
         pg.wait_for_timeout(1800)
         assert pg.locator('#skeleton').is_visible(), 'Missing initial loading state'
         assert not pg.locator('.call').count() or not pg.locator('.call').first.is_visible(), 'Provisional call exposed'
         assert not pg.locator('#ot-nav').is_visible(), 'Provisional order cards exposed'
-        pg.wait_for_function("!document.body.classList.contains('data-loading')",timeout=20000)
+        pg.locator('body:not(.data-loading)').wait_for(timeout=20000)
         assert pg.locator('.call').first.is_visible(), 'Final call never revealed'
         assert pg.locator('.call .tgt').first.inner_text() != 'MAJOR ORDER', 'Incomplete final call'
         pg.locator('.call').first.screenshot(path=str(ROOT/'build'/f'plan-first-paint-{warm}.png'))
