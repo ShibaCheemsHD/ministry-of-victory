@@ -11,7 +11,7 @@
       const same = f.ref === 'briefing' ? alerts.find(x => x.ref === 'briefing' && x.order === f.order)
         : alerts.find(x => x.kind === f.kind && x.idx === f.idx && x.order === f.order && x.eid === f.eid && x.on === f.on && !x.ref && Math.abs(x.t - f.t) < 3 * 3.6e6);
       if (same && f.ref === 'briefing') { Object.assign(same, f, { id: same.id }); continue; }
-      if (same) { if ((f.pct || 0) > (same.pct || 0)) Object.assign(same, f, { id: same.id }); continue; }
+      if (same) { if (f.resistance) same.resistance = f.resistance; if ((f.pct || 0) > (same.pct || 0)) Object.assign(same, f, { id: same.id }); continue; }
       const a = { ...f, id: `${f.kind}:${f.idx ?? f.order ?? f.eid}:${f.t}`, fresh: live };
       alerts.push(a);
       if (live && f.kind !== 'regen' && now - f.t < 20 * 60e3) pendingToast.push(a);
@@ -180,23 +180,23 @@
     const L = t('in.fx');
     switch (type) {
       case 1: return pctv > 0 ? fill(L.lib, { x: boost(pctv) }) : L.libOdd;
-      case 74: return fill(L.regenPct, { x: signed(pctv || 0) });
+      case 74: return fill(L.regenPct, { x: Number.isFinite(pctv) ? signed(pctv) : t('it.valueUnknown') });
       case 77: return L.regenSet;
-      case 90: return fill(L.maxHp, { x: fmt(pctv || 0) + '%' });
+      case 90: return fill(L.maxHp, { x: Number.isFinite(pctv) ? fmt(pctv) + '%' : t('it.valueUnknown') });
       case 88: return L.pause;
       case 47: return L.noInvade;
       case 48: case 89: return L.noAttack;
-      case 49: return fill(L.attackUp, { x: signed(pctv || 0) });
+      case 49: return fill(L.attackUp, { x: Number.isFinite(pctv) ? signed(pctv) : t('it.valueUnknown') });
       case 92: return L.demil;
       case 32: return itemKnown(item) ? fill(L.permit, { item: esc(itemKnown(item)) }) : L.permitAny;
-      case 72: return pctv - 100 > 0 ? fill(foeName ? L.spawnMore : L.spawnMoreAny, { foe: foeName, x: boost(pctv) }) : fill(L.spawnLess, { foe: foeName || L.someFoe });
+      case 72: return pctv - 100 > 0 ? fill(foeName ? L.spawnMore : L.spawnMoreAny, { foe: foeName, x: boost(pctv) }) : fill(L.spawnLess, { foe: foeName || L.someFoe, x: pctv == null ? t('it.valueUnknown') : signed(pctv - 100) });
       case 40: {
         if (isSeafEffect({ type, eid: id })) return L.seaf;
         const division = deploymentName(id);
         return division ? fill(L.division, { foe: esc(titleCase(division)) }) : L.divisionAny;
       }
       case 21: { const n = extractionSeconds(v); return n == null ? L.extract : fill(L.extractValue, { x: (n >= 0 ? '+' : '−') + fmt(Math.abs(n)) }); }
-      case 36: return fill(itemKnown(item) ? L.cooldown : L.cooldownAny, { item: esc(itemKnown(item) || ''), x: signed(pctv || 0) });
+      case 36: return fill(itemKnown(item) ? L.cooldown : L.cooldownAny, { item: esc(itemKnown(item) || ''), x: Number.isFinite(pctv) ? signed(pctv) : t('it.valueUnknown') });
       default: return L.other;
     }
   }
@@ -206,6 +206,31 @@
     const mine = all.slice(0, 3), others = list.length - mine.length;
     if (others > 0) mine.push(fill(t(others === 1 ? 'in.fx.other1' : 'in.fx.others'), { n: others }));
     return listJoin(mine);
+  }
+  function effectValues(x, rel) {
+    const unknown = esc(t('it.valueUnknown'));
+    const state = x.kind === 'active' ? t('it.enabledNow') : x.on ? t('it.offOn') : t('it.onOff');
+    if ([74, 77].includes(x.type)) {
+      const indices = (x.planets || []).filter(i => i !== -1 && rel.has(i));
+      const rows = indices.map(idx => {
+        let values = x.resistance?.[idx];
+        if (!values && x.kind === 'effect') {
+          const change = (record?.alerts || []).find(a => a.kind === 'regen' && a.idx === idx && Math.abs(a.t - x.t) <= 12 * 60000);
+          if (change) values = { from: change.from, to: change.to };
+        }
+        if (values && (values.from != null || values.to != null)) {
+          const rate = v => Number.isFinite(v) ? pct(v, 2) + '/h' : unknown;
+          return planetList([idx], rel) + ' · ' + rate(values.from) + ' → <b>' + rate(values.to) + '</b>';
+        }
+        const planet = last.planets[idx];
+        const rate = planet?.maxHealth > 0 && Number.isFinite(planet.regenPerSecond) ? pct(planet.regenPerSecond * 3600 / planet.maxHealth, 2) + '/h' : unknown;
+        return planetList([idx], rel) + ' · ' + esc(t('it.currentObserved')) + ' <b>' + rate + '</b> · ' + esc(t('it.historicalUnknown'));
+      });
+      return rows.length ? rows.join('<br>') : planetList(x.planets || [], rel) + ' · ' + esc(t('it.historicalUnknown'));
+    }
+    const quantifiable = [1, 21, 36, 49, 72, 90].includes(x.type);
+    return planetList(x.planets || [], rel) + ' · ' + esc(state)
+      + (x.type === 40 ? ' · ' + esc(t('it.quantityUnknown')) : !quantifiable && x.type !== 32 ? ' · ' + esc(t('it.valueUnknown')) : '');
   }
   function alertText(x, short, rel) {
     if (x.kind === 'effect' || x.kind === 'active') {
@@ -286,7 +311,7 @@
         const so = soNews(x), cut = (x.diff || []).filter(d => d.kind === 'goal').map(d => `${big(d.from)} → <b>${big(d.to)}</b>`).join(' · ');
         return [cut, so ? fill(t(x.ref === 'briefing' ? 'it.afterSo2' : 'it.afterSo'), { title: esc((tl => tl.charAt(0) + tl.slice(1).toLowerCase())(plain(newsParts(so.msg).title))) }) : ''].filter(Boolean).join(' · ');
       }
-      case 'effect': case 'active': return planetList(x.planets || [], rel);
+      case 'effect': case 'active': return effectValues(x, rel);
       default: return '';
     }
   }

@@ -170,7 +170,7 @@
     const lost = res.ended || v === 'failed';
     const clockRow = m.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
       : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
-      : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd></div>`;
+      : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd><dd class="deadline-date">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }) : "—")}</dd></div>`;
     // the reward: on a won order the medals stand where the planet does; on a lost one they are not earned
     const reward = medals && m.state !== 'done' ? `<div><dt>${esc(t(lost ? 'rewardLost' : 'reward'))}</dt><dd class="reward${lost ? ' lost' : ''}">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : '';
     const meanwhile = m.state === 'done' && !m.next ? meanwhileHTML() : '';

@@ -213,6 +213,7 @@
         {id:1401,type:40,v:[[16,3126357841]],planets:[261],events:[]});
     }
     if (q.get('corrections') === '1' && record) {
+      record['intel.json'].alerts.push({kind:'effect',eid:1219,type:77,on:true,v:[[1,-10000]],planets:[7],t:now-2*H,resistance:{7:{from:.0175,to:-.005}}});
       const effects = [
         {id:1401,type:40,v:[[16,3126357841],[0,0]],planets:[-1],events:[]},
         {id:1430,type:40,v:[[16,585432236],[0,0]],planets:[-1],events:[]},

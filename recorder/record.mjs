@@ -358,6 +358,19 @@ if (status && hist.effDefs) {
   hist.effects = effects = next;
 }
 hist.effAlerts = (hist.effAlerts || []).filter(a => now - a.t < 3 * 24 * H);
+// Retain measured resistance with the intervention after the separate rate alert expires.
+for (const alert of hist.effAlerts) {
+  if (![74, 77].includes(alert.type)) continue;
+  alert.resistance ||= {};
+  for (const idx of alert.planets) {
+    if (idx === -1 || alert.resistance[idx]?.from != null && alert.resistance[idx]?.to != null) continue;
+    const points = hist.samples.filter(s => s.pl[idx] && Math.abs(s.t - alert.t) <= 20 * 60000);
+    const before = points.filter(s => s.t < alert.t).at(-1), after = points.find(s => s.t >= alert.t);
+    const rate = s => { const p = s?.pl[idx]; return p && p[3] > 0 && Number.isFinite(p[2]) ? p[2] * 3600 / p[3] : null; };
+    const previous = alert.resistance[idx] || {};
+    alert.resistance[idx] = { from: previous.from ?? rate(before), to: previous.to ?? rate(after) };
+  }
+}
 
 // Goals changed since launch: the game's own launch briefing (Episode / control centre) states the
 // original numbers ("kill 300,000,000 Terminids..."); the order today may ask for different ones.

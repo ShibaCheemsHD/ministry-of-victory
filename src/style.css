@@ -1513,3 +1513,5 @@ html.calm .plan-briefing .move, html.calm .plan-briefing .move::after, html.calm
 .postmortem { border-top: 3px solid var(--rule-2); padding: 24px; background: linear-gradient(135deg, rgba(160,169,187,.07), transparent 65%); }
 .postmortem .pm-story { border-left-color: var(--rule-2); }
 @media (max-width:640px) { .postmortem { padding: 18px 14px; } }
+
+.clock .deadline-date { font: 500 .75rem/1.5 var(--ui); color: var(--muted); margin: 5px 0 0; white-space: normal; }
