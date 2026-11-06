@@ -1515,3 +1515,12 @@ html.calm .plan-briefing .move, html.calm .plan-briefing .move::after, html.calm
 @media (max-width:640px) { .postmortem { padding: 18px 14px; } }
 
 .clock .deadline-date { font: 500 .75rem/1.5 var(--ui); color: var(--muted); margin: 5px 0 0; white-space: normal; }
+
+/* Game artwork keeps its original proportions and palette at each displayed size. */
+.game-icon { display: inline-block; width: 22px; height: 22px; object-fit: contain; vertical-align: middle; flex: none; }
+.faction-icon { width: 22px; height: 22px; }
+.call-front .faction-icon { width: 17px; height: 17px; margin-right: 5px; }
+.pc-head > .faction-icon { width: 26px; height: 28px; }
+.race-name > .game-icon { width: 24px; height: 24px; margin-right: 9px; vertical-align: -4px; }
+.stratagem-icon { width: 26px; height: 26px; }
+.it-ico .stratagem-icon { width: 24px; height: 24px; }

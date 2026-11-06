@@ -78,7 +78,27 @@
   // switch over is a push
   const raceVerdict = (r, res) => res.ended && r.verdict !== 'done' ? 'failed' : r.verdict === 'ontrack' && r.freed ? 'effort' : r.verdict;
   const pill = (v, label) => `<span class="pill vl-${lvl(v)}">${ICON[VICON[v] || 'dots']}<span>${esc(label || t('v.' + v))}</span></span>`;
-  const medalSvg = '<svg class="medal" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 1h10l-2 8h-6z" fill="var(--info)"/><circle cx="13" cy="16" r="8" fill="none" stroke="var(--yellow)" stroke-width="2"/><path d="M13 11.5l1.4 2.9 3.1.4-2.3 2.2.6 3.1-2.8-1.5-2.8 1.5.6-3.1-2.3-2.2 3.1-.4z" fill="var(--yellow)"/></svg>';
+  function gameIcon(key, classes = '') {
+    const asset = GAME.icons?.[key];
+    return asset ? '<img class="game-icon ' + esc(classes) + '" src="' + esc(asset.src) + '" alt="" aria-hidden="true" decoding="async">' : '';
+  }
+  const factionIcon = faction => gameIcon('faction-' + faction, 'faction-icon');
+  const medalSvg = gameIcon('medal', 'medal');
+  function stratagemIcon(name) {
+    const n = String(name || '').toLowerCase();
+    if (n.includes('maxigun')) return gameIcon('stratagem-maxigun', 'stratagem-icon');
+    if (/^resupply$/.test(n)) return gameIcon('stratagem-resupply', 'stratagem-icon');
+    if (/^eagle airstrike$/.test(n)) return gameIcon('stratagem-eagle-airstrike', 'stratagem-icon');
+    return '';
+  }
+  function taskGameIcon(r) {
+    if (r.task.type === 2 && r.task.itemId) {
+      const match = itemName(r.task.itemId).match(/\b(common|rare|super) samples?\b/i);
+      if (match) return gameIcon('sample-' + match[1].toLowerCase(), 'sample-icon');
+    }
+    return factionIcon(r.task.faction || factionOfPlanet(r.planet));
+  }
+
 
   // "Common Sample" -> "Common Samples" when there are several (the item lists name one)
   const pluralItem = (name, n) => n === 1 || !name ? name : /sample$/i.test(name) ? name + 's' : name;

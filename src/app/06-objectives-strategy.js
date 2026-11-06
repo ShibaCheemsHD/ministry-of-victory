@@ -114,7 +114,7 @@
       // liberation that falls before the deadline: the bracket runs to the goal line
       if (r.pw && r.eta <= H && !res.ended && r.verdict !== 'done') { const frac = Math.max(0, 1 - p.health / p.maxHealth); bar = bar.replace('<div class="fill"', `<div class="proj" style="left:${frac * 100}%;width:${(1 - frac) * 100}%"></div><div class="fill"`).replace(/<\/div>$/, '<div class="goal"></div></div>'); }
       return `${group}<article data-race-idx="${r.idx}" data-race-done="${done}" class="race vl-${lvl(rv)}${fac ? ' fac-' + esc(fac) : ''}" style="--i:${i}${p ? ';--fc:' + planetTone(res, p) : ''}">
-        <div class="race-head"><h3 class="race-name">${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h3>
+        <div class="race-head"><h3 class="race-name">${taskGameIcon(r)}${res.anyOf ? `<span class="opt ${i === res.pick ? 'best' : ''}">${fill(t('option'), { n: i + 1 })}</span>` : ''}${taskText(r)}</h3>
           <span class="race-call">${pv}</span></div>
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;

@@ -10,6 +10,10 @@ with sync_playwright() as p:
         pg.on('pageerror',lambda e: errors.append(str(e)))
         pg.goto((ROOT/'build/test.html').as_uri()+f'?s={sc}&motion=reduced')
         pg.wait_for_timeout(1800)
+        images = pg.locator('img.game-icon')
+        assert images.count(), f'No game artwork: {sc}'
+        assert images.evaluate_all('els => els.every(e => e.complete && e.naturalWidth > 0)'), f'Broken artwork: {sc}'
+        pg.locator('.call').first.screenshot(path=str(ROOT/'build'/f'plan-game-icons-{sc}-{width}.png'))
         pg.locator('.tab[data-tab="strategy"]').first.click()
         pg.wait_for_timeout(200)
         plan=pg.locator('.plan').first
