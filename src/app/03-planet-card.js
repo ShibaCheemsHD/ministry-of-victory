@@ -115,10 +115,8 @@
     const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: divers(cx.total), n })
       : cx.verdict === 'pick' ? fill(t('xPick'), { total: divers(cx.total), n, title: esc(pick.title), need: divers(pick.need) })
       : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: divers(cx.total), n });
-    const sum = cx.orders.reduce((a, o) => a + (o.unknown ? 0 : o.need || 0), 0);
-    const overlap = sum > cx.total + 0.02 ? ' ' + t('xOverlap') : '';
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
-    return `<div class="situation across x-${cx.verdict}"><h4 class="sit-h">${esc(fill(t('xLabelN'), { n: cx.orders.length }))}</h4><p>${msg}${overlap}${note}</p></div>`;
+    return `<div class="situation across x-${cx.verdict}"><h4 class="sit-h">${esc(fill(t('xLabelN'), { n: cx.orders.length }))}</h4><p>${msg}${note}</p></div>`;
   }
 
   // What the main button does: the plan while there is one; once the order is won, share it and point to

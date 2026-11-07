@@ -66,6 +66,7 @@ with sync_playwright() as p:
     pg.close()
     pg = open_page(br, 'intel')
     pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(250); check(pg, 'grouped command log')
+    pg.locator('.it-timeline > summary').first.click(); pg.wait_for_timeout(100); check(pg, 'command log timeline open')
     clusters = pg.locator('[data-igroup]')
     if clusters.count(): clusters.first.click(); pg.wait_for_timeout(100); check(pg, 'selected command events')
     pg.locator('[data-globe]:visible').first.click(); pg.wait_for_timeout(250); check(pg, 'planet popup briefing')

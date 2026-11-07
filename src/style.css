@@ -1535,3 +1535,10 @@ html.calm .plan-briefing .move, html.calm .plan-briefing .move::after, html.calm
 body.data-loading #view, body.data-loading #ot-nav { display: none; }
 
 #skeleton { min-height: 260px; align-content: center; justify-items: center; text-align: center; }
+
+/* the Command log's hour-by-hour grid, folded away (7 Nov 2026) */
+.it-timeline { margin: 0 0 16px; }
+.it-timeline > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; color: var(--muted); font: 600 14px var(--ui); list-style: none; }
+.it-timeline > summary::-webkit-details-marker { display: none; }
+.it-timeline > summary .ico { transition: transform .15s; }
+.it-timeline[open] > summary .ico { transform: rotate(180deg); }

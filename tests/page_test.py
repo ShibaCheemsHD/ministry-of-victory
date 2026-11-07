@@ -146,6 +146,8 @@ with sync_playwright() as p:
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
         pg.goto(f'{PAGE}?s=intel&dense=1&motion=reduced'); pg.wait_for_timeout(1800)
         pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(300)
+        # the timeline is folded away since 7 Nov 2026: open it, and it must stay open across re-renders
+        pg.locator('.it-timeline > summary').first.click(); pg.wait_for_timeout(100)
         dense_key = pg.locator('[data-igroup]').evaluate_all("els => els.find(e => e.dataset.igroup.split(',').length >= 24)?.dataset.igroup || null")
         cluster = pg.locator(f'[data-igroup="{dense_key}"]') if dense_key else None
         if cluster is None: problems.append(f'dense log @{w}: missing grouped events')

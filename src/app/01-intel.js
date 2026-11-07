@@ -383,7 +383,9 @@
     const cats = INTEL_CATS.filter(c => counts[c] && (state.filter === 'all' || state.filter === c));
     const time = tt => new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
     const groups = intelBuckets(events, from, span, slots);
-    const timeline = events.length ? `<div class="it-line it-matrix" style="--slots:${slots}" role="group" aria-label="${esc(t('it.lineAria'))}">
+    // the hour-by-hour grid is for the curious: folded away, it remembers being opened
+    const tlKey = 'timeline:' + id;
+    const timeline = events.length ? `<details class="it-timeline" data-intel="${esc(tlKey)}"${ui.intelOpen[tlKey] ? ' open' : ''}><summary>${ICON.chev}<span>${esc(t('it.timeline'))}</span></summary><div class="it-line it-matrix" style="--slots:${slots}" role="group" aria-label="${esc(t('it.lineAria'))}">
       <p class="it-line-help">${esc(t('it.groupHelp'))}</p>
       <div class="it-axis"><span>${esc(t('it.type'))}</span>${Array.from({ length: slots }, (_, k) => `<span>${esc(time(from + k * span / slots))}</span>`).join('')}</div>
       ${cats.map(c => `<div class="it-lane cat-${c}"><span class="it-lane-name">${ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span></span>${Array.from({ length: slots }, (_, k) => {
@@ -392,7 +394,7 @@
         const keys = group.events.map(intelKey), on = keys.some(key => selected.has(key));
         const label = fill(t('it.groupLabel'), { n: keys.length, type: t('it.cat.' + c), start: time(from + k * span / slots), end: time(from + (k + 1) * span / slots) });
         return `<button type="button" class="it-cluster${on ? ' is-selected' : ''}" data-igroup="${keys.join(',')}" data-iorder="${esc(id)}" aria-pressed="${on}" aria-label="${esc(label)}" title="${esc(label)}"><b>${keys.length}</b><span aria-hidden="true">${ICON[INTEL_ICONS[c]]}</span></button>`;
-      }).join('')}</div>`).join('')}</div>` : '';
+      }).join('')}</div>`).join('')}</div></details>` : '';
     const card = x => {
       const key = intelKey(x), cat = intelCategory(x), impact = intelImpact(x), sure = ['jump', 'setback'].includes(x.kind) ? 'lens' : 'data';
       const effect = x.kind === 'effect' || x.kind === 'active';
@@ -403,13 +405,13 @@
       const on = selected.has(key);
       return `<article class="it-card cat-${cat}${isSeafEffect(x) ? ' is-seaf' : ''}${on ? ' is-selected' : ''}" id="${key}" data-ikey="${key}" tabindex="-1">
         <span class="it-ico" aria-hidden="true">${(effect && x.type === 32 ? stratagemIcon(itemKnown(valOf(x.v, 4))) : '') || ICON[isSeafEffect(x) ? 'seaf' : x.kind === 'news' ? NEWS_ICON[x.nk] || 'news' : INTEL_ICONS[cat]]}</span><div class="it-body">
-          <div class="it-card-tags"><span class="it-category">${esc(t(isSeafEffect(x) ? 'it.allies' : 'it.cat.' + cat))}</span>${status ? `<span class="it-status">${esc(status)}</span>` : ''}${impact !== 'neutral' ? `<span class="it-impact ${impact}">${esc(t('it.impact.' + impact))}</span>` : ''}<span class="it-selected-label"${on ? '' : ' hidden'}>${esc(t('it.selected'))}</span><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
+          <div class="it-card-tags">${isSeafEffect(x) ? `<span class="it-category">${esc(t('it.allies'))}</span>` : ''}${status ? `<span class="it-status">${esc(status)}</span>` : ''}${impact !== 'neutral' ? `<span class="it-impact ${impact}">${esc(t('it.impact.' + impact))}</span>` : ''}<span class="it-selected-label"${on ? '' : ' hidden'}>${esc(t('it.selected'))}</span><span class="it-when">${esc(x.kind === 'active' ? t('in.now') : x.ref === 'briefing' && !x.merged ? t('it.sinceLaunch') : ago(x.t))}</span></div>
           <h5 aria-level="4">${title}</h5>${detail ? `<p class="it-key">${detail}</p>` : ''}${sparkHTML(x)}
-          ${x.kind === 'news' ? x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : '' : `<div class="it-foot"><span class="it-sure ${sure}" title="${esc(t(sure === 'lens' ? 'it.deducedT' : 'it.dataT'))}">${ICON[sure]}${esc(tagOf(x))}</span><details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)} ${effectExplanation(x)}</p></details></div>`}</div></article>`;
+          ${x.kind === 'news' ? x.body ? `<details class="it-more"><summary>${esc(t('it.read'))}</summary><p>${clean(x.body)}</p></details>` : '' : `<div class="it-foot">${sure === 'lens' ? `<span class="it-sure lens" title="${esc(t('it.deducedT'))}">${ICON.lens}${esc(tagOf(x))}</span>` : ''}<details class="it-more"><summary>${esc(t(sure === 'lens' ? 'it.why' : 'it.details'))}</summary><p>${alertText(x, false, rel)} ${effectExplanation(x)}</p></details></div>`}</div></article>`;
     };
     return `<div class="intel-tab" data-intel-order="${esc(id)}">
       <div class="it-head"><div><h3>${esc(t('it.title'))}</h3><p>${esc(t('it.overview'))}</p></div></div>
-      <div class="it-filters" role="group" aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
+      <div class="it-filters" role="group" aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS.filter(c => counts[c] || state.filter === c)].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
       ${timeline}
       <div class="it-selection" role="status"${state.selected.length ? '' : ' hidden'}><span data-intel-selection-label>${esc(fill(t('it.selectionCount'), { n: state.selected.length }))}</span><button type="button" class="linkish" data-iclear data-iorder="${esc(id)}">${esc(t('it.clearSelection'))}</button></div>
       <div class="it-groups${cats.length < 2 ? ' single' : ''}">${(() => {
