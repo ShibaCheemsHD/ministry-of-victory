@@ -6,6 +6,13 @@
   // were 1,400 px down and a key took the call off screen)
   // the command log lives under the objectives (7 Nov 2026): what changed is read beside what it changes
   const TABS = ['races', 'strategy', 'history', 'map'];
+  const tabSvg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">${d}</svg>`;
+  const TAB_ICON = {
+    races: tabSvg('<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>'),
+    strategy: tabSvg('<path d="M4 20l5-7 4 3 6-9"/><path d="M14.5 6.5H19V11"/><circle cx="4" cy="20" r="1.6" fill="currentColor" stroke="none"/>'),
+    history: tabSvg('<path d="M3 21h18"/><path d="M6 17v-4M11 17V9M16 17v-6M21 17V4" stroke-width="3"/>'),
+    map: tabSvg('<path d="M2.5 5.5l6-2.5 7 3 6-2.5v15l-6 2.5-7-3-6 2.5z"/><path d="M8.5 3v15M15.5 6v15"/>'),
+  };
   // the tab names in the address (#order=…&tab=plan), so a call can be linked to straight
   const TAB_SLUG = { races: 'races', strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
   function curTab(id) {
@@ -19,7 +26,9 @@
     const tab = curTab(a.id);
     const panel = tab === 'races' ? racesHTML(res, a) + `<div class="cmd-wrap" id="cmd-${esc(a.id)}">${intelTabHTML(entry)}</div>` : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { races: t('tRaces') + (ic.n ? ` <span class="tab-badge ${ic.level}" title="${esc(fill(t('it.badgeT'), { n: ic.n }))}">${ic.n}</span>` : ''), strategy: t('tStrat'), history: t('tHist'), map: t('tMap') };
+    const name = { races: t('tRaces') + (ic.n ? ` <span class="tab-badge ${ic.level}" title="${esc(fill(t('it.badgeT'), { n: ic.n }))}">${ic.n}</span>` : ''), strategy: t('tStrat'), history: t('tHist'), map: t('tMap') };
+    // each tab with its icon and a line on what is inside (7 Nov 2026: four small boxes read as an afterthought)
+    const label = Object.fromEntries(TABS.map(k => [k, `<span class="tab-ico" aria-hidden="true">${TAB_ICON[k]}</span><span class="tab-txt"><span class="tab-name">${name[k]}</span><span class="tab-sub">${esc(t('tabSub.' + k))}</span></span>`]));
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
       <section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">

@@ -275,7 +275,7 @@
         aria-label="${esc(fill(t('rd.hourAria'), { time, lib: pct(h.lib), need: h.libNeed != null ? pct(h.libNeed) : '—', n: people(h.exp) }) + (evs ? '. ' + evs : ''))}"
         data-time="${esc(time)}" data-lib="${esc(pct(h.lib))}" data-need="${esc(h.libNeed != null ? pct(h.libNeed) : '—')}" data-n="${esc(N ? people(h.exp) : '—')}" data-tag="${esc(tag)}" data-low="${behind ? 1 : 0}" data-ev="${esc(evs)}"
         data-x="${f1(pt(rb + 12, mid)[0] / S * 100)}" data-y="${f1(pt(rb + 12, mid)[1] / S * 100)}">
-        <path class="rd-fill" d="${sector(ra, re, a1, a2)}"/>${pm ? `<path class="rd-pm" d="${sector(ra, rb, a1, a2)}" fill="url(#${gid}-pm)"/>` : ''}${rn != null ? `<path class="rd-need" d="M${f1(pt(rn, a1)[0])} ${f1(pt(rn, a1)[1])}A${rn} ${rn} 0 0 1 ${f1(pt(rn, a2)[0])} ${f1(pt(rn, a2)[1])}"/>` : ''}<path class="rd-hit" d="${sector(ra, rb + 4, a1, a2)}"/></g>`);
+        <path class="rd-fill" d="${sector(ra, re, a1, a2)}"/>${rn != null ? `<path class="rd-need" d="M${f1(pt(rn, a1)[0])} ${f1(pt(rn, a1)[1])}A${rn} ${rn} 0 0 1 ${f1(pt(rn, a2)[0])} ${f1(pt(rn, a2)[1])}"/>` : ''}<path class="rd-hit" d="${sector(ra, rb + 4, a1, a2)}"/></g>`);
     });
     // the forecast's range, outside the rings: the part past the deadline in red
     const band = proj.band, RB = 165;
@@ -300,7 +300,7 @@
     const dial = `<div class="cradar" style="--fc:${fc}">
       <div class="rd-box">
         <svg viewBox="0 0 ${S} ${S}" role="group" aria-label="${esc(t('rd.aria'))}">
-          <defs><pattern id="${gid}-pm" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect class="rd-pm-line" width="1.6" height="5"/></pattern><radialGradient id="${gid}" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient></defs>
+          <defs><radialGradient id="${gid}" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient></defs>
           <circle class="rd-dial" cx="${C}" cy="${C}" r="${RB + 10}"/>
           ${tracks.join('')}
           <g class="rd-sweep" aria-hidden="true"><path d="${sector(RING[0][0], RING[1][1], ang(0), ang(0) + 0.45)}"/></g>

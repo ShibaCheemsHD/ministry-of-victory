@@ -1921,12 +1921,45 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .mvg-now.short { background: linear-gradient(90deg, #a51d28, var(--f-automaton)); box-shadow: 0 0 16px rgba(254, 52, 65, .5); }
 .cradar > .rd-legend { justify-content: center; text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .order.anim :is(.call-gauge, .call-main .rd-text) { animation: rise .5s var(--ease-out) both; animation-delay: calc(.66s + var(--skip, 0ms)); } }
-/* PM hours striped (the morning plain), on the empty track and over the fill alike */
-.rd-track.pm { fill: rgba(160, 190, 220, .1); }
-.rd-pm { pointer-events: none; }
-.rd-pm-line { fill: rgba(232, 241, 250, .2); }
-.rd-legend .lg-am { background: rgba(160, 190, 220, .3); }
-.rd-legend .lg-pm { background: repeating-linear-gradient(45deg, rgba(232, 241, 250, .55) 0 1.6px, rgba(160, 190, 220, .18) 1.6px 3.6px); }
+/* AM hours lighter, PM hours darker: the empty track and the fill alike */
+.rd-track { fill: rgba(160, 190, 220, .13); } .rd-track.pm { fill: rgba(160, 190, 220, .045); }
+.rd-w:not(.pm) .rd-fill { fill: rgba(30, 190, 255, .68); }
+.rd-w.pm .rd-fill { fill: rgba(0, 86, 140, .8); stroke: rgba(0, 176, 255, .75); }
+.rd-w.low:not(.pm) .rd-fill { fill: rgba(255, 80, 92, .66); }
+.rd-w.low.pm .rd-fill { fill: rgba(128, 18, 28, .85); stroke: rgba(254, 52, 65, .8); }
+.rd-w.fell.pm .rd-fill { fill: rgba(30, 120, 140, .5); }
+.rd-legend .lg-am { background: rgba(30, 190, 255, .8); } .rd-legend .lg-pm { background: rgba(0, 86, 140, 1); box-shadow: inset 0 0 0 1px rgba(0, 176, 255, .75); }
 /* the lifted wedge's hit area stays where the wedge was, so the pointer can't slip off it and set it bouncing */
 .rd-hit { transform-box: view-box; transform-origin: 50% 50%; transition: transform .26s var(--ease-out); }
 .rd-w.on .rd-hit, .rd-w:focus-visible .rd-hit { transform: scale(.97087) translate(calc(var(--dx) * -1), calc(var(--dy) * -1)); }
+
+/* the four tabs as a command bar: each a panel with its icon, its name and what is inside (7 Nov 2026) */
+.area-tabs > .tabbar { margin-top: 30px; }
+.tabbar .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; overflow: visible; }
+.tabbar .tab { position: relative; min-height: 78px; padding: 14px 18px; display: flex; align-items: center; justify-content: flex-start; gap: 14px; text-align: left; white-space: normal; line-height: 1.1;
+  border: 1px solid var(--edge); background: linear-gradient(180deg, rgba(22, 30, 42, .94), rgba(9, 12, 18, .96)); color: #c9d6e3;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
+.tabbar .tab::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: var(--se); transform: scaleX(0); transform-origin: left; transition: transform .2s var(--ease-out); }
+.tabbar .tab:hover::before { transform: scaleX(1); }
+.tab-ico { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid rgba(254, 231, 0, .45); background: rgba(254, 231, 0, .06); color: var(--se); transition: background-color .15s, color .15s, border-color .15s; }
+.tab-ico svg { width: 24px; height: 24px; }
+.tab-txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tab-name { display: inline-flex; align-items: center; gap: 8px; font: 800 19px/1 var(--display); font-stretch: 115%; letter-spacing: .05em; text-transform: uppercase; }
+.tab-sub { font: 500 13px/1.25 var(--ui); font-stretch: 100%; letter-spacing: 0; text-transform: none; color: var(--dim); }
+.tabbar .tab:hover { border-color: rgba(254, 231, 0, .6); color: var(--fg); }
+.tabbar .tab:hover .tab-ico { background: rgba(254, 231, 0, .16); }
+.tabbar .tab[aria-selected="true"] { background: var(--se); border-color: var(--se); color: var(--se-ink); }
+.tabbar .tab[aria-selected="true"]::before { display: none; }
+.tabbar .tab[aria-selected="true"] .tab-ico { background: var(--se-ink); border-color: var(--se-ink); color: var(--se); }
+.tabbar .tab[aria-selected="true"] .tab-sub { color: rgba(10, 10, 7, .75); }
+@media (max-width: 1100px) { .tabbar .tab { padding: 12px 12px; gap: 10px; } .tab-ico { width: 40px; height: 40px; } .tab-name { font-size: 16px; } .tab-sub { font-size: 12px; } }
+@media (max-width: 820px) {
+  .tabbar .tabs { gap: 6px; }
+  .tabbar .tab { flex-direction: column; justify-content: center; text-align: center; gap: 8px; min-height: 84px; padding: 10px 4px 12px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); }
+  .tab-ico { width: 38px; height: 38px; } .tab-ico svg { width: 21px; height: 21px; }
+  .tab-txt { align-items: center; }
+  .tab-name { font-size: 12px; font-stretch: 100%; letter-spacing: .02em; gap: 5px; }
+  .tab-sub { display: none; }
+}
+@media (max-width: 380px) { .tab-name { font-size: 11px; letter-spacing: 0; } .tab-ico { width: 34px; height: 34px; } }
+@media (prefers-reduced-motion: reduce) { .tabbar .tab::before { transition: none; } }
