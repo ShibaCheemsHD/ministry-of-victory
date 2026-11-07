@@ -235,6 +235,10 @@
      arc of the forecast's range (8 times in 10 the fall lands inside it), and what is coming at its hour: Heavy
      Ordnance ending, a defense ending, Helldivers usually arriving from another objective. Hover or focus a wedge
      for its numbers (10-share-image.js); the hour's counts follow the daily cycle of players online. */
+  const DN_ICON = {
+    day: '<svg class="dn-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15M3 3l1.6 1.6M11.4 11.4L13 13M3 13l1.6-1.6M11.4 4.6L13 3" stroke="currentColor" stroke-width="1.5"/></svg>',
+    night: '<svg class="dn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 1.8a6.3 6.3 0 1 0 3.7 10.4A5.2 5.2 0 0 1 10.5 1.8z" fill="currentColor"/></svg>',
+  };
   function radarHTML(res, r, proj) {
     const S = 380, C = S / 2, RING = [[92, 122], [127, 157]], gap = 0.012, H = res.hoursLeft;
     const at = (t) => new Date(last.now + t * 3.6e6);
@@ -252,7 +256,8 @@
     // so no hour straddles the two rings (7 Nov 2026: 10–11 AM sat under "now – 11 PM" and both flickered)
     const b = proj.hours.reduce((m, h) => h.t1 <= 12 + 1e-6 ? Math.max(m, h.t1) : m, 0) || 12, L = b + 12;
     const ringOf = (tm) => tm < b - 1e-6 ? 0 : 1;
-    const isPm = (tm) => at(tm + 1e-4).getHours() >= 12;
+    // day (6 AM – 6 PM) or night, by the local hour: shown on the wedge's ground, never on its fill (the fill is the forecast)
+    const isNight = (tm) => { const hr = at(tm + 1e-4).getHours(); return hr < 6 || hr >= 18; };
     const pl = r.planet, N = res.model.N || 0, gid = 'rd' + String(res.id).replace(/[^\w-]/g, '');
     // what is coming, at its hour
     const ev = [];
@@ -263,15 +268,15 @@
     ev.sort((a, b) => a.t - b.t);
     const tracks = [], wedges = [];
     proj.hours.filter(h => h.t0 < L - 1e-6).forEach((h, i) => {
-      const k = ringOf(h.t0), [ra, rb] = RING[k], pm = isPm(h.t0);
+      const k = ringOf(h.t0), [ra, rb] = RING[k], night = isNight(h.t0);
       const a1 = ang(h.t0) + gap, a2 = unwrap(a1, ang(h.t1) - gap), mid = (a1 + a2) / 2;
       const fell = h.lib >= 0.999, behind = h.libNeed != null && h.lib < h.libNeed - 0.002;
       const re = ra + (rb - ra) * Math.max(0.04, h.lib), rn = h.libNeed != null ? ra + (rb - ra) * h.libNeed : null;
       const time = `${i === 0 ? t('fcb.now') : hm(at(h.t0))} – ${hm(at(h.t1))}`;
       const evs = ev.filter(x => x.t >= h.t0 && x.t < h.t1).map(x => `${hm(at(x.t))} · ${plain(x.text)}`).join(' | ');
       const tag = fell ? t('rd.tagFell') : h.libNeed == null ? t('rd.all') : behind ? fill(t('rd.behind'), { n: fmt((h.libNeed - h.lib) * 100, 1) }) : fill(t('rd.ahead'), { n: fmt((h.lib - h.libNeed) * 100, 1) });
-      tracks.push(`<path class="rd-track${pm ? ' pm' : ''}" d="${sector(ra, rb, a1, a2)}"/>`);
-      wedges.push(`<g class="rd-w${behind ? ' low' : ''}${fell ? ' fell' : ''}${pm ? ' pm' : ''}" style="--i:${i};--dx:${f1(Math.cos(mid) * 8)}px;--dy:${f1(Math.sin(mid) * 8)}px" data-rw="${i}" tabindex="0" role="img"
+      tracks.push(`<path class="rd-track ${night ? 'night' : 'day'}" d="${sector(ra, rb, a1, a2)}"/>`);
+      wedges.push(`<g class="rd-w${behind ? ' low' : ''}${fell ? ' fell' : ''}" data-dn="${night ? 'night' : 'day'}" style="--i:${i};--dx:${f1(Math.cos(mid) * 8)}px;--dy:${f1(Math.sin(mid) * 8)}px" data-rw="${i}" tabindex="0" role="img"
         aria-label="${esc(fill(t('rd.hourAria'), { time, lib: pct(h.lib), need: h.libNeed != null ? pct(h.libNeed) : '—', n: people(h.exp) }) + (evs ? '. ' + evs : ''))}"
         data-time="${esc(time)}" data-lib="${esc(pct(h.lib))}" data-need="${esc(h.libNeed != null ? pct(h.libNeed) : '—')}" data-n="${esc(N ? people(h.exp) : '—')}" data-tag="${esc(tag)}" data-low="${behind ? 1 : 0}" data-ev="${esc(evs)}"
         data-x="${f1(pt(rb + 12, mid)[0] / S * 100)}" data-y="${f1(pt(rb + 12, mid)[1] / S * 100)}">
@@ -314,7 +319,8 @@
         </svg>
         <div class="rd-tip" hidden></div>
       </div>
-      <p class="rd-legend" aria-hidden="true"><span><i class="lg-w"></i>${esc(t('rd.lgExp'))}</span><span><i class="lg-n"></i>${esc(t('rd.lgNeed'))}</span><span><i class="lg-b"></i>${esc(t('rd.lgBand'))}</span><span><i class="lg-h"></i>${esc(t('rd.lgNow'))}</span><span><i class="lg-am"></i>${esc(t('rd.lgAm'))}</span><span><i class="lg-pm"></i>${esc(t('rd.lgPm'))}</span></p>
+      <p class="rd-legend" aria-hidden="true"><span><i class="lg-w"></i>${esc(t('rd.lgExp'))}</span><span><i class="lg-n"></i>${esc(t('rd.lgNeed'))}</span><span><i class="lg-b"></i>${esc(t('rd.lgBand'))}</span><span><i class="lg-h"></i>${esc(t('rd.lgNow'))}</span></p>
+      <p class="rd-legend rd-dn" aria-hidden="true"><span class="dn-day">${DN_ICON.day}${esc(t('rd.lgDay'))}</span><span class="dn-night">${DN_ICON.night}${esc(t('rd.lgNight'))}</span></p>
     </div>`;
     const text = `<div class="rd-text">
         <span class="rd-k">${esc(t(proj.span < H ? 'rd.k24' : 'rd.k'))}</span>

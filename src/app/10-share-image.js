@@ -291,7 +291,7 @@
     w.classList.add('on'); box.classList.add('hot');
     const d = w.dataset, low = d.low === '1';
     tip.className = 'rd-tip' + (low ? ' low' : '');
-    tip.innerHTML = `<p class="rt-h"><b>${esc(d.time)}</b><span>${esc(d.tag)}</span></p><dl><dt>${esc(t('rd.tipLib'))}</dt><dd class="b">${esc(d.lib)}</dd><dt>${esc(t('rd.tipNeed'))}</dt><dd class="y">${esc(d.need)}</dd><dt>${esc(t('rd.tipN'))}</dt><dd>${esc(d.n)}</dd></dl>${d.ev ? `<p class="rt-ev">${d.ev.split(' | ').map(esc).join('<br>')}</p>` : ''}<p class="rt-note">${esc(t(low ? 'rd.noteLow' : d.tag === t('rd.tagFell') ? 'rd.noteFell' : 'rd.noteOk'))}</p>`;
+    tip.innerHTML = `<p class="rt-h"><b><span class="rt-dn ${d.dn === 'night' ? 'night' : 'day'}">${DN_ICON[d.dn === 'night' ? 'night' : 'day']}</span>${esc(d.time)}</b><span>${esc(d.tag)}</span></p><dl><dt>${esc(t('rd.tipLib'))}</dt><dd class="b">${esc(d.lib)}</dd><dt>${esc(t('rd.tipNeed'))}</dt><dd class="y">${esc(d.need)}</dd><dt>${esc(t('rd.tipN'))}</dt><dd>${esc(d.n)}</dd></dl>${d.ev ? `<p class="rt-ev">${d.ev.split(' | ').map(esc).join('<br>')}</p>` : ''}<p class="rt-note">${esc(t(low ? 'rd.noteLow' : d.tag === t('rd.tagFell') ? 'rd.noteFell' : 'rd.noteOk'))}</p>`;
     tip.hidden = false;
     const x = Number(d.x), y = Number(d.y), bw = box.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
     const bh = box.clientHeight;

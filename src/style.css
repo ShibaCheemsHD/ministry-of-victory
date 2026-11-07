@@ -1837,7 +1837,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 /* the radar: the hours until the deadline as a clock face around the call's planet */
 .cradar { width: 100%; display: grid; gap: 14px; justify-items: center; }
 .rd-box { position: relative; width: min(100%, 320px); }
-.rd-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+.rd-box > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .rd-dial { fill: rgba(4, 8, 14, .55); stroke: rgba(0, 176, 255, .22); stroke-dasharray: 2 6; }
 .rd-track { fill: rgba(160, 190, 220, .06); }
 .rd-w { cursor: pointer; outline: none; transform-box: view-box; transform-origin: 50% 50%; transition: transform .26s var(--ease-out), opacity .2s ease, filter .2s ease; }
@@ -1921,14 +1921,20 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .mvg-now.short { background: linear-gradient(90deg, #a51d28, var(--f-automaton)); box-shadow: 0 0 16px rgba(254, 52, 65, .5); }
 .cradar > .rd-legend { justify-content: center; text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .order.anim :is(.call-gauge, .call-main .rd-text) { animation: rise .5s var(--ease-out) both; animation-delay: calc(.66s + var(--skip, 0ms)); } }
-/* AM hours lighter, PM hours darker: the empty track and the fill alike */
-.rd-track { fill: rgba(160, 190, 220, .13); } .rd-track.pm { fill: rgba(160, 190, 220, .045); }
-.rd-w:not(.pm) .rd-fill { fill: rgba(30, 190, 255, .68); }
-.rd-w.pm .rd-fill { fill: rgba(0, 86, 140, .8); stroke: rgba(0, 176, 255, .75); }
-.rd-w.low:not(.pm) .rd-fill { fill: rgba(255, 80, 92, .66); }
-.rd-w.low.pm .rd-fill { fill: rgba(128, 18, 28, .85); stroke: rgba(254, 52, 65, .8); }
-.rd-w.fell.pm .rd-fill { fill: rgba(30, 120, 140, .5); }
-.rd-legend .lg-am { background: rgba(30, 190, 255, .8); } .rd-legend .lg-pm { background: rgba(0, 86, 140, 1); box-shadow: inset 0 0 0 1px rgba(0, 176, 255, .75); }
+/* day and night on the wedge's ground only, light and dark; the fill stays one blue (red when behind) so the forecast reads the same all round */
+.rd-track.day { fill: rgba(214, 226, 242, .24); }
+.rd-track.night { fill: rgba(0, 0, 0, .55); stroke: rgba(160, 190, 220, .1); stroke-width: .8; }
+.rd-fill { fill: rgba(0, 176, 255, .78); }
+.rd-w.low .rd-fill { fill: rgba(254, 52, 65, .78); }
+.rd-w.fell .rd-fill { fill: rgba(87, 252, 255, .45); }
+.rd-legend .lg-w { background: rgba(0, 176, 255, .85); }
+.rd-dn { margin-top: -4px; }
+.rd-dn span { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; }
+.rd-dn .dn-day { background: rgba(214, 226, 242, .24); color: var(--fg); } .rd-dn .dn-day .dn-ico { color: #ffd27a; }
+.rd-dn .dn-night { background: rgba(0, 0, 0, .55); box-shadow: inset 0 0 0 1px rgba(160, 190, 220, .18); color: var(--muted); } .rd-dn .dn-night .dn-ico { color: #b9c6ff; }
+.dn-ico { width: 14px; height: 14px; flex: none; }
+.rt-dn { display: inline-grid; place-items: center; margin-right: 7px; vertical-align: -2px; }
+.rd-tip .rt-h .rt-dn { letter-spacing: 0; } .rd-tip .rt-h .rt-dn.day { color: #ffd27a; } .rd-tip .rt-h .rt-dn.night { color: #b9c6ff; }
 /* the lifted wedge's hit area stays where the wedge was, so the pointer can't slip off it and set it bouncing */
 .rd-hit { transform-box: view-box; transform-origin: 50% 50%; transition: transform .26s var(--ease-out); }
 .rd-w.on .rd-hit, .rd-w:focus-visible .rd-hit { transform: scale(.97087) translate(calc(var(--dx) * -1), calc(var(--dy) * -1)); }
