@@ -84,7 +84,8 @@
   // "Terminid kills"
   const facWhat = (f, type) => fill(t('facWhat'), { f: f && f !== 'Humans' ? facName(f) : '', what: t('what')[type] || t('what')[0] }).replace(/\s+/g, ' ').trim();
   const facPlural = (f) => esc(t('facPl')[f] || t('fac')[f] || f || '');
-  const planetName = (p) => p ? esc(txt(p.name) || ('#' + p.index)) : '—';
+  // the API writes some names in capitals: "Achernar Secundus" inside a sentence, never "ACHERNAR SECUNDUS"
+  const planetName = (p) => p ? esc(titleCase(txt(p.name)) || ('#' + p.index)) : '—';
   const factionOfPlanet = (p) => p ? (p.event ? p.event.faction : p.currentOwner) : null;
   let clockUTC = false;   // set while the share image is drawn
   const clock = (hoursFromNow) => {

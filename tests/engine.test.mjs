@@ -186,11 +186,15 @@ test('a planet that falls in time but whose range runs past the deadline is a cl
   const order = (hours) => ({ id: 9, expiration: new Date(now + hours * H).toISOString(), tasks: [{ type: 11, values: [1, 1, 130], valueTypes: [3, 11, 12] }], progress: [0] });
   const run = (hours) => E.analyzeAssignment(order(hours), { planets: { 130: planet }, N: 40000, now, C: 1e5, dssIdx: null, hod: null, settings: E.DEFAULTS, samples: [], startMs: now - 24 * H });
   const eta = run(500).tasks[0].eta, band = E.fallBand(eta);
-  assert.ok(eta > 0 && isFinite(eta) && band.hi > eta * 1.2);
-  const tight = run(eta * 1.1);
+  assert.ok(eta > 0 && isFinite(eta) && band.hi > eta * 1.4);
+  const tight = run(eta * 1.3);
   assert.equal(tight.tasks[0].verdict, 'focus');
   assert.equal(tight.liberation.close, true);
-  assert.ok(tight.recs.some(x => x.kind === 'libFocus' && x.variant === 'close'), 'the call says it is a close call');
+  const rec = tight.recs.find(x => x.kind === 'libFocus' && x.variant === 'close');
+  assert.ok(rec, 'the call says it is a close call');
+  // its bar aims at the Helldivers it takes to be safe, more than there are now
+  assert.ok(rec.safe && rec.share > tight.tasks[0].share && rec.share < 1);
+  assert.ok(E.fallBand(E.forecastFall(planet, tight.tasks[0].pw, rec.share * 1.001, 1e5, 1, [], now).eta).hi <= eta * 1.3 + 1e-6);
   const safe = run(band.hi * 1.05);
   assert.equal(safe.tasks[0].verdict, 'ontrack');
   assert.equal(safe.liberation.close, false);

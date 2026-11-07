@@ -38,7 +38,7 @@
     const desc = txt(a.description) && txt(a.description) !== txt(a.briefing) ? clean(txt(a.description)) : '';
     const open = !!ui.briefOpen[id];
     return `<section class="races" aria-labelledby="races-${esc(id)}">
-      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2>${res.ended ? `<p class="sec-note">${esc(t('races.noteEnded'))}</p>` : ''}</div>
+      <div class="sec-bar"><h2 id="races-${esc(id)}">${esc(t(res.ended ? 'races.titleEnded' : 'races.title'))}</h2>${res.ended ? `<p class="sec-note">${esc(t('races.noteEnded'))}</p>` : `<p class="race-key" aria-label="${esc(t('races.note'))}"><span><i class="k-done"></i>${esc(t('lgDone'))}</span><span><i class="k-pace"></i>${esc(t('lgPace'))}</span><span><i class="k-goal"></i>${esc(t('lgGoal'))}</span></p>`}</div>
       <div class="race-list">${objectivesHTML(res)}</div>
       ${brief || desc ? `<details class="brief" data-brief="${esc(id)}" ${open ? 'open' : ''}><summary>${ICON.chev}<span>${esc(t('brief'))}</span></summary><div class="brief-text"><p>${brief}</p>${desc ? `<p>${desc}</p>` : ''}</div></details>` : ''}
     </section>`;
@@ -340,7 +340,6 @@
     const detailKey = [res.id, m.kind, m.planet?.index ?? m.task?.idx ?? m.to ?? position].join(':');
     const expanded = planDetailsOpen[detailKey] ?? featured;
     return `<li class="move${featured ? ' move-featured' : ''} lvl-${res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip'}">
-      ${featured ? `<div class="mv-priority">${ICON.target}<span>${esc(t('planVisual.first'))}</span></div>` : ''}
       <div class="mv-top"><span class="lvl">${esc(t('lv.' + (res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip')))}</span><h4>${fill(m.kind === 'cntMove' && m.short ? t('mv.cntMoveShortHead') : MV.head, p)}</h4></div>
       <details class="mv-explain" data-plan-detail="${esc(detailKey)}"${expanded ? ' open' : ''}><summary id="plan-detail-${esc(detailKey)}"><span>${esc(t('planVisual.why'))}</span>${ICON.chev}</summary><div class="mv-explain-body"><p class="mv-why">${fill(why, p)}</p></div></details>
       ${m.weapon && (m.kind === 'cntMove' || m.kind === 'cntShort') ? `<p class="mv-req"><span class="label">${esc(t('mvReq'))}</span><b>${esc(itemName(m.weapon))}</b><span>${esc(t('mvReqS'))}</span></p>` : ''}

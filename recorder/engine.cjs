@@ -809,6 +809,17 @@ const ENGINE = (() => {
 
   /* ---------- Action plan: best community moves right now ----------
      Each rec = {kind, prio, ...params}. Lower prio = do it first. */
+  // the share of everyone online at which even the slow end of a planet's forecast range lands in time
+  function safeShare(r, H, C, samples, now) {
+    if (!r || !r.pw || !(r.share > 0)) return null;
+    const ok = s => { const f = forecastFall(r.planet, r.pw, s, C, r.mult || 1, samples, now); return f.band ? f.band.hi <= H : f.eta <= H; };
+    if (ok(r.share)) return null;
+    if (!ok(1)) return null;
+    let lo = r.share, hi = 1;
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; }
+    return hi;
+  }
+
   function recommend(res, ctx) {
     const { planets, N, dssIdx, hod, settings, C } = ctx;
     const recs = [];
@@ -843,11 +854,15 @@ const ENGINE = (() => {
         // the words follow the forecast the verdict uses, so the call never says the opposite of the verdict
         const variant = focus.close ? 'close' : focus.eta <= H || lib.winnableNow ? 'win' : fullPossible ? 'more' : 'partial';
         const inTime = variant === 'win' || variant === 'close';
-        const focusShare = inTime || !fullPossible ? lib.currentShare : lib.seqNeed;
+        // a close call shows how many it takes to be safe (the slow end of the range in time), so the bar never
+        // looks full while the verdict says one bad night loses it (critique 7 Nov 2026)
+        const safe = variant === 'close' ? safeShare(focus, H, C, ctx.samples || [], ctx.now) : null;
+        const focusShare = safe || (inTime || !fullPossible ? lib.currentShare : lib.seqNeed);
         const planSegs = fullPossible ? lib.plan.segs : (lib.partial.plan ? lib.partial.plan.segs : []);
         recs.push({ kind: 'libFocus', prio: 2, variant, planet: focus.planet, share: focusShare, players: players(focusShare),
           // the last planet left, everyone on the order already on it: the planet's own forecast says when
-          hours: planSegs.length <= 1 && (lib.winnableNow || inTime) && isFinite(focus.eta) ? focus.eta : first ? first.end - first.start : null, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
+          // in time at today's pace: the planet's own forecast, the same time its race row shows
+          hours: inTime && isFinite(focus.eta) ? focus.eta : planSegs.length <= 1 && lib.winnableNow && isFinite(focus.eta) ? focus.eta : first ? first.end - first.start : null, safe: !!safe, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
           remaining: planSegs.length });
         if (planSegs.length > 1) {
           recs.push({ kind: 'libOrder', prio: 3, partial: !fullPossible, segs: planSegs.map(s => ({ planet: s.target.planet, start: s.start, end: s.end })), H });

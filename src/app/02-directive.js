@@ -195,7 +195,10 @@
     $('ot-nav').hidden = rs.length < 2;
     const cx = crossNow(), bestId = cx && cx.verdict === 'pick' ? String(cx.pick) : null;
     if (!rs.some(x => String(x.a.id) === String(ui.order))) ui.orderManual = false;
-    if (!ui.orderManual) ui.order = bestId || String(rs[0].a.id);
+    // otherwise the first order still running: a won or ended order never opens the page while another needs
+    // players (critique 7 Nov 2026); its celebration is one tap away on its tab
+    const running = rs.find(x => !x.res.ended && x.res.verdict !== 'done');
+    if (!ui.orderManual) ui.order = bestId || String((running || rs[0]).a.id);
     fresh.delete(String(ui.order));
     // forget the tabs of orders that are gone
     for (const k of Object.keys(ui.tab)) if (!rs.some(x => String(x.a.id) === k)) delete ui.tab[k];
@@ -256,7 +259,7 @@
         if (v === 'n') v = d.verdict === 'impossible' ? 'nImp' : d.left === 1 ? 'n1' : 'n';
         why = fill(D.liberate.why[v] || D.liberate.why.more, { when: d.hours != null ? clock(d.hours) : '', crowd: crowdText(d.need, d.now), planet: planetName(d.planet), left: fmt(d.left) })
           + (d.region ? fill(D.liberate.region, { region: esc(d.region) }) : '');
-        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : d.variant === 'more' && d.remaining > 1 ? 'meterNeedAll' : null, d.variant === 'close' ? 'close' : d.variant === 'more' ? 'more' : null); ring = libRing(d.planet);
+        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : d.variant === 'close' && d.safe ? 'meterSafe' : d.variant === 'more' && d.remaining > 1 ? 'meterNeedAll' : null, d.variant === 'close' ? 'close' : d.variant === 'more' ? 'more' : null); ring = libRing(d.planet);
         break;
       }
       case 'defend': {
