@@ -27,6 +27,9 @@
     const lines = c.series.filter(sr => sr.pts.length > 1).map(sr => `<path class="ln ${sr.cls}${hidden[sr.key] ? ' off' : ''}"${sr.sty ? ` style="${sr.sty}"` : ''} data-s="${sr.key}" d="${path(sr.pts)}" vector-effect="non-scaling-stroke"/>`
       + (sr.area ? `<path class="area ${sr.cls}${hidden[sr.key] ? ' off' : ''}" data-s="${sr.key}" d="${path(sr.pts)}L${X(sr.pts[sr.pts.length - 1][0]).toFixed(1)},${CH}L${X(sr.pts[0][0]).toFixed(1)},${CH}Z"/>` : '')).join('');
     const bars = (c.bars || []).map(b => `<rect class="bar-r ${b.cls || ''}" x="${X(b.x0).toFixed(1)}" width="${Math.max(1, X(b.x1) - X(b.x0) - 3).toFixed(1)}" y="${Y(b.y).toFixed(1)}" height="${(CH - Y(b.y)).toFixed(1)}"/>`).join('');
+    const fills = (c.fills || []).map(g => `<path class="gapfill ${g.cls}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" d="${path(g.pts)}Z"/>`).join('');
+    const zones = (c.zones || []).map(z => `<div class="ch-zone ${z.cls}" style="left:${pctX(z.x0)}%;width:${pctX(z.x1) - pctX(z.x0)}%"><span>${esc(z.label)}</span></div>`).join('');
+    const dots = (c.dots || []).map(d => `<i class="ch-pt ${d.cls}" style="left:${pctX(d.x)}%;bottom:${pctY(d.y)}%"></i>`).join('');
     const gaps = (c.gaps || []).map(g => `<div class="ch-gap" style="left:${pctX(g[0])}%;width:${pctX(g[1]) - pctX(g[0])}%"><span>${esc(t('h.unrecorded'))}</span></div>`).join('');
     const yt = c.yTicks.map(v => `<span class="yt" style="bottom:${pctY(v)}%">${c.fmtY(v)}</span><i class="grid" style="bottom:${pctY(v)}%"></i>`).join('');
     const xt = c.xTicks.map(v => `<span class="xt" style="left:${pctX(v)}%">${esc(v.label || new Date(v).toLocaleDateString(locale(), { weekday: 'short' }))}</span>`).join('');
@@ -36,7 +39,7 @@
     const tags = (c.tags || []).map(g => `<span class="ch-tag ${g.cls}${edge(g) ? ' edge' : ''}${hidden[g.key] ? ' off' : ''}" data-s="${g.key}" style="${g.sty ? g.sty + ';' : ''}${edge(g) ? '' : `left:${pctX(g.x)}%;`}bottom:${pctY(g.y)}%">${esc(g.text)}</span>`).join('');
     charts[c.id] = c;
     return `<div class="chart${(c.tags || []).some(edge) ? ' has-edge' : ''}" data-chart="${esc(c.id)}" role="img" aria-label="${esc(c.aria || '')}">
-      <div class="plot">${yt}${gaps}<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none" aria-hidden="true">${bars}${lines}</svg>${hl}${marks}${tags}
+      <div class="plot">${yt}${zones}${gaps}<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none" aria-hidden="true">${fills}${bars}${lines}</svg>${hl}${marks}${dots}${tags}
         <div class="ch-cross"></div><div class="ch-dot"></div><div class="ch-tip" aria-live="polite"></div></div>
       <div class="xaxis">${xt}</div></div>`;
   }
@@ -120,7 +123,7 @@
       const top = Math.max(f.needed || 0, ...f.hours.map(h => h.rate)) * 1.12;
       const c = { id, x0: hx0, x1: hx1, y0: 0, y1: top, series: [], fmtY: big, yTicks: niceTicks(top),
         xTicks: f.hours.filter((h, i) => i % Math.ceil(f.hours.length / 6) === 0).map(h => Object.assign(Number(h.x0), { label: new Date(h.x0).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) })),
-        bars: f.hours.map(h => ({ x0: h.x0, x1: h.x1, y: h.rate, cls: f.needed && h.rate >= f.needed ? 'ok ' + fac : fac })),
+        bars: f.hours.map(h => ({ x0: h.x0, x1: h.x1, y: h.rate, cls: f.needed && r.verdict !== 'done' ? (h.rate >= f.needed ? 'ok ' + fac : 'lo') : 'ok ' + fac })),
         hlines: [f.needed && r.verdict !== 'done' ? { y: f.needed, cls: 'need', label: fill(t('h.needLine'), { v: big(f.needed) }) } : null, f.avg ? { y: f.avg, cls: 'avg', label: fill(t('h.avgLine'), { v: big(f.avg) }) } : null].filter(Boolean),
         kind: 'hour', hours: f.hours, aria: t('h.hourAria') };
       return chartHTML(c);
@@ -144,7 +147,16 @@
     const tagsArr = [];
     if (!done && !ended && projEnd != null) tagsArr.push({ key: 'avg', cls: 'proj', x: projLine(projEnd)[1][0], y: Math.min(projEnd, cap), text: projPct(projEnd / tk.goal) });
     if (series.some(sr => sr.key === 'rec')) tagsArr.push({ key: 'rec', cls: 'proj2', x: projLine(recEnd)[1][0], y: Math.min(recEnd, cap), text: projPct(recEnd / tk.goal) });
+    // between "needed from now" and "at our pace": the shortfall in red, the margin in green (7 Nov 2026)
+    const fillsArr = [];
+    if (!done && !ended && projEnd != null && tk.goal && f.end > now) {
+      const pe = projLine(projEnd)[1], over = projEnd >= tk.goal;
+      fillsArr.push({ key: 'avg', cls: over ? 'over' : 'short', pts: pe[0] < f.end - 1 ? [[now, tk.progress], [f.end, tk.goal], [f.end, pe[1]], pe] : [[now, tk.progress], [f.end, tk.goal], pe] });
+      const xm = now + (f.end - now) * 0.64, ym = (tk.progress + (tk.goal - tk.progress) * 0.64 + Math.min(seriesAt([[now, tk.progress], pe], Math.min(xm, pe[0])) ?? pe[1], cap)) / 2;
+      tagsArr.push({ key: 'avg', cls: 'gapl ' + (over ? 'over' : 'short'), x: xm, y: ym, text: fill(t(over ? 'h.gapOver' : 'h.gapShort'), { v: big(Math.abs(projEnd - tk.goal)) }) });
+    }
     const c = { id, x0, x1, y0: 0, y1: top, series, fmtY: big, yTicks: niceTicks(top), xTicks: dayTicks(x0, x1), gaps: gap ? [gap] : [],
+      fills: fillsArr, zones: f.end > now && !ended ? [{ x0: now, x1: f.end, cls: 'fc', label: t('h.zoneFc') }] : [], dots: [{ x: now, y: tk.progress, cls: 'now ' + fac }],
       hlines: tk.goal ? [{ y: tk.goal, cls: 'goal', label: fill(t('h.goal'), { v: big(tk.goal) }) }] : [],
       marks: [{ x: now, cls: 'now', label: t('h.now'), tip: hhmm(now) },
         f.ponr ? { x: f.ponr, cls: 'ponr', label: t('h.ponr'), tip: fill(t('h.ponrTip'), { best: big(f.best) }) } : null,
@@ -173,20 +185,21 @@
     // the legend shows them again, and a choice made there is kept
     if (!ui.chartOff[id] && !entry.res.ended && all.some(x => x.r.verdict !== 'done')) ui.chartOff[id] = Object.fromEntries(all.filter(x => x.r.verdict === 'done').map(x => ['p' + x.r.planet.index, true]));
     const x0 = Math.min(entry.start || now, ...all.map(x => x.pts[0][0])), x1 = Math.max(end, now);
-    const series = [], tags = [];
+    const series = [], tags = [], falls = [];
     all.forEach(({ r, k, pts }) => {
       const key = 'p' + r.planet.index, cls = 'pl', sty = `--sc:${planetTone(entry.res, r.planet)}`;
-      series.push({ key, cls, sty, pts, name: plain(planetName(r.planet)), tip: t('h.lnPlanet') });
+      series.push({ key, cls, sty, pts, area: true, name: plain(planetName(r.planet)), tip: t('h.lnPlanet') });
       if (r.pw && isFinite(r.eta) && r.eta > 0 && !entry.res.ended) {
         const tEnd = now + Math.min(r.eta, H * 1.6) * 3.6e6, frac = pts[pts.length - 1][1];
         const reach = r.eta <= H * 1.6 ? 1 : frac + (1 - frac) * (H * 1.6 / r.eta);
         series.push({ key, cls: cls + ' proj', sty, pts: [[now, frac], [tEnd, reach]], name: plain(planetName(r.planet)), tip: r.eta <= H ? fill(t('h.lnFalls'), { when: clock(r.eta) }) : t('h.lnLate') });
-        if (r.eta <= H) tags.push({ key, cls: 'pl', sty, x: tEnd, y: 1, text: clock(r.eta) });
+        if (r.eta <= H) { tags.push({ key, cls: 'pl', sty, x: tEnd, y: 1, text: clock(r.eta) }); falls.push({ x: tEnd, y: 1, cls: 'fall' }); }
       }
     });
     const c = { id, x0, x1: Math.max(x1, ...series.map(sr => sr.pts[sr.pts.length - 1][0])), y0: 0, y1: 1.06, series, tags,
       fmtY: (v) => pct(v), yTicks: [0, 0.25, 0.5, 0.75, 1], xTicks: dayTicks(x0, x1),
       hlines: [], marks: [{ x: now, cls: 'now', label: t('h.now'), tip: hhmm(now) }, { x: end, cls: 'end', label: t('h.deadline'), tip: fill(t('h.endTip'), { when: hhmm(end) }) }],
+      zones: end > now && !entry.res.ended ? [{ x0: now, x1: end, cls: 'fc', label: t('h.zoneFc') }] : [], dots: falls,
       kind: 'lib', now, planets: all.map(({ r, pts }) => ({ key: 'p' + r.planet.index, name: plain(planetName(r.planet)), pts, proj: (series.find(sr => sr.key === 'p' + r.planet.index && sr.cls.includes('proj')) || {}).pts || null })), aria: t('h.libAria') };
     return chartHTML(c) + legendHTML(id, all.map(({ r }) => ({ key: 'p' + r.planet.index, cls: 'pl', sty: `--sc:${planetTone(entry.res, r.planet)}`, label: plain(planetName(r.planet)) })));
   }
@@ -205,7 +218,7 @@
       const f = counterFacts(entry, r);
       const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1), basis: t('why.basis.' + (r.primary?.kind || 'start')) }) : '';
       const key = `${entry.a.id}:${r.idx}`, cid = `c:${entry.a.id}:${r.idx}:prog`;
-      push(rank(r), `<section class="hist-card panel br">
+      push(rank(r), `<section class="hist-card panel br ${r.task.faction ? 'f-' + r.task.faction : 'f-none'}">
         <div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}
           <div class="seg" role="group" aria-label="${esc(t('h.view'))}">
             <button type="button" data-hmode="${esc(key)}" data-v="prog" aria-pressed="${mode === 'prog'}">${esc(t('h.prog'))}</button>

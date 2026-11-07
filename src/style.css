@@ -1979,3 +1979,58 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 /* a deadline well before the fall puts its day and time on a second line, clear of "now" */
 .ftl-lab.two { height: 36px; } .ftl-lab.two .ftl-l-end { top: 18px; }
 @media (max-width: 420px) { .ftl-lab { letter-spacing: .06em; font-size: 11px; } }
+/* ---- Progress, war-table (7 Nov 2026): the same charts, read at a glance ----
+   past in the faction's colour with a glow, the future a striped "forecast" zone, the needed pace in yellow
+   as everywhere on the page, and the gap between it and our pace filled: red when short, green when over */
+.history { gap: 14px; }
+.hist-card { position: relative; padding: 20px 24px 18px; border: 1px solid var(--edge); background: linear-gradient(180deg, rgba(22, 30, 42, .94), rgba(9, 12, 18, .96));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%); }
+.hist-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--fc, var(--se)); box-shadow: 0 0 14px color-mix(in srgb, var(--fc, var(--se)) 60%, transparent); }
+.hist-card.f-none::before { background: var(--se); }
+.hc-head h4 { font-stretch: 125%; font-weight: 800; font-size: 21px; letter-spacing: .03em; }
+.hc-stat { padding: 8px 12px; border-left: 2px solid rgba(0, 176, 255, .5); background: linear-gradient(90deg, rgba(0, 176, 255, .08), transparent 70%); color: #c9d6e3; }
+.hc-stat b { font-family: var(--display); font-stretch: 112%; font-weight: 800; }
+.hist-card .seg { border-color: var(--edge); background: rgba(4, 8, 14, .5); }
+.hist-card .seg button[aria-pressed="true"] { background: var(--se); color: var(--se-ink); }
+.chart .plot { height: 260px; border-left: 0; border-bottom: 1px solid rgba(160, 190, 220, .3); background: rgba(4, 8, 14, .35); }
+.chart .grid { border-top: 1px solid rgba(160, 190, 220, .07); }
+.chart .yt, .chart .xt { font-weight: 600; letter-spacing: .04em; color: #8a9bb0; }
+.ln.act { stroke-width: 3.4; filter: drop-shadow(0 0 4px var(--fc, var(--fg))); }
+.area { opacity: .16; }
+.area.pl { fill: var(--sc); opacity: .1; }
+.ln.need { stroke: var(--se); stroke-width: 2.2; stroke-dasharray: 9 6; }
+.ln.proj { stroke: rgba(232, 241, 250, .85); stroke-width: 2.2; stroke-dasharray: 2 5; }
+.ln.proj2 { stroke: var(--se-cyan); stroke-width: 2; stroke-dasharray: 2 5; }
+.ln.pl { stroke-width: 3; filter: drop-shadow(0 0 4px var(--sc)); }
+.ln.pl.proj { filter: none; }
+.gapfill { stroke: none; transition: opacity .2s; }
+.gapfill.short { fill: rgba(254, 52, 65, .2); } .gapfill.over { fill: rgba(47, 198, 184, .14); }
+.gapfill.off { opacity: 0; }
+.ch-zone { position: absolute; top: 0; bottom: 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgba(160, 190, 220, .045) 0 6px, transparent 6px 12px); border-left: 1px solid rgba(160, 190, 220, .15); }
+.ch-zone span { position: absolute; bottom: 8px; right: 10px; font: 800 11px var(--ui); letter-spacing: .2em; text-transform: uppercase; color: rgba(160, 190, 220, .55); }
+.ch-pt { position: absolute; width: 12px; height: 12px; margin: 0 0 -6px -6px; pointer-events: none; }
+.ch-pt.now { border-radius: 50%; background: var(--fc, var(--fg)); box-shadow: 0 0 0 3px rgba(4, 8, 14, .9), 0 0 14px var(--fc, var(--fg)); }
+.ch-pt.fall { background: var(--se-blue); transform: rotate(45deg); box-shadow: 0 0 12px var(--se-blue); }
+.ch-h.goal { border-top: 1px solid rgba(232, 241, 250, .75); }
+.ch-h.goal span, .ch-h.need span, .ch-h.avg span { background: rgba(9, 12, 18, .92); border: 1px solid currentColor; font-family: var(--display); font-stretch: 112%; letter-spacing: .04em; color: var(--fg); }
+.ch-h.need { border-top: 2px dashed var(--se); } .ch-h.need span { color: var(--se); }
+.ch-h.avg { border-top: 1px dashed rgba(232, 241, 250, .7); }
+.ch-mark.now { border-left: 1px solid rgba(232, 241, 250, .7); }
+.ch-mark.end { border-left: 2px solid var(--se); }
+.ch-mark span { font-family: var(--display); font-stretch: 112%; letter-spacing: .08em; text-transform: uppercase; }
+.ch-mark .hd { background: rgba(9, 12, 18, .95); }
+.ch-mark.end .hd { background: var(--se); }
+.ch-tag { font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: 13px; padding: 2px 8px; background: rgba(9, 12, 18, .95); }
+.ch-tag.proj { color: var(--fg); }
+.ch-tag.proj2 { color: var(--se-cyan); }
+.ch-tag.gapl { border: 0; background: none; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; transform: translate(-50%, 50%); margin-left: 0; text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+.ch-tag.gapl.short { color: #ff8a92; } .ch-tag.gapl.over { color: #5fe0d2; }
+.bar-r { opacity: .85; filter: drop-shadow(0 0 3px var(--fc, var(--v-ok))); }
+.bar-r.lo { fill: var(--f-automaton); opacity: .7; filter: none; }
+.ch-legend .lg { border-color: var(--edge); background: rgba(4, 8, 14, .45); font-size: 12px; }
+.ch-legend .lg:hover { border-color: rgba(254, 231, 0, .6); }
+.lg.need i { border-top: 2px dashed var(--se); } .lg.proj i { border-top: 2px dotted var(--fg); } .lg.proj2 i { border-top: 2px dotted var(--se-cyan); }
+.ch-tip { background: rgba(6, 10, 16, .97); border-color: rgba(87, 252, 255, .45); box-shadow: 0 10px 26px rgba(0, 0, 0, .55); }
+.ch-cross { border-left-color: rgba(254, 231, 0, .7); }
+.ch-empty { border-color: rgba(160, 190, 220, .25); background: rgba(4, 8, 14, .35); }
+@media (max-width: 640px) { .hist-card { padding: 16px 14px 14px; } .chart .plot { height: 220px; } .ch-zone span { font-size: 10px; } .ch-tag.gapl { font-size: 13px; } }

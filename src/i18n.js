@@ -237,7 +237,7 @@ const TEXT = {
   },
   h: { noHist: 'Not enough history yet: the recorder needs a few snapshots of this planet (one every 10 minutes) to draw its line.',
     libTitle: 'Liberation over time', holdTitle: 'Planets to hold', prog: 'Progress', hour: 'Per hour', view: 'Chart view',
-    goal: 'Goal {v}', now: 'Now', deadline: 'Deadline', ponr: 'Past our best hour', unrecorded: 'not recorded',
+    goal: 'Goal {v}', now: 'Now', deadline: 'Deadline', zoneFc: 'Forecast', gapShort: '{v} short', gapOver: '+{v} over', ponr: 'Past our best hour', unrecorded: 'not recorded',
     needLine: 'needed {v}/h', avgLine: 'average {v}/h',
     stat: 'Needs <b>{need}/h</b> from now on. We do <b>{avg}/h</b> {basis}: <b>{x}×</b> short.', statDone: 'Objective complete.', statOk: 'Needs <b>{need}/h</b> from now on. We do <b>{avg}/h</b> {basis}: on pace.',
     lgAct: 'Done so far', lgNeed: 'Needed from now', lgAvg: 'At our pace ({basis})', lgRec: 'At the last hour\'s pace',
