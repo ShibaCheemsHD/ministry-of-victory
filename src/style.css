@@ -1969,3 +1969,10 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 }
 @media (max-width: 380px) { .tab-name { font-size: 11px; letter-spacing: 0; } .tab-ico { width: 34px; height: 34px; } }
 @media (prefers-reduced-motion: reduce) { .tabbar .tab::before { transition: none; } }
+/* the 24-hour dial's sky: a lit half over the horizon, a dark one with a few stars under it */
+.rd-sky.day { fill: rgba(150, 190, 235, .1); }
+.rd-sky.night { fill: rgba(0, 0, 0, .42); }
+.rd-horizon { stroke: rgba(214, 226, 242, .45); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.rd-star { fill: rgba(220, 230, 255, .7); }
+.rd-sun { color: #ffd27a; } .rd-moon { color: #b9c6ff; }
+.rd-num { font-size: 11px; letter-spacing: .04em; }

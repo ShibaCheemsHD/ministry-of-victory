@@ -240,9 +240,12 @@
     night: '<svg class="dn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 1.8a6.3 6.3 0 1 0 3.7 10.4A5.2 5.2 0 0 1 10.5 1.8z" fill="currentColor"/></svg>',
   };
   function radarHTML(res, r, proj) {
-    const S = 380, C = S / 2, RING = [[92, 122], [127, 157]], gap = 0.012, H = res.hoursLeft;
+    // One 24-hour dial (7 Nov 2026, after two rings of 12 h read as "day ring / night ring"): noon at the top,
+    // midnight at the bottom, 6 AM left and 6 PM right, so the day is the half above the horizon line and the
+    // night the half below it, as in the sky. A day fits in one turn: no hour ever sits on another.
+    const S = 380, C = S / 2, RA = 80, RO = 136, gap = 0.008, H = res.hoursLeft;
     const at = (t) => new Date(last.now + t * 3.6e6);
-    const ang = (t) => { const d = at(t); return ((d.getHours() % 12) + d.getMinutes() / 60 + d.getSeconds() / 3600) / 12 * 2 * Math.PI - Math.PI / 2; };
+    const ang = (t) => { const d = at(t); return (d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600) / 24 * 2 * Math.PI + Math.PI / 2; };
     const pt = (rad, a) => [C + rad * Math.cos(a), C + rad * Math.sin(a)];
     const f1 = (x) => x.toFixed(1);
     const unwrap = (a1, a2) => a2 <= a1 ? a2 + 2 * Math.PI : a2;
@@ -252,11 +255,8 @@
     };
     const arc = (rad, t0, t1) => { const a1 = ang(t0), a2 = unwrap(a1, ang(t1)), big = a2 - a1 > Math.PI ? 1 : 0, [x1, y1] = pt(rad, a1), [x2, y2] = pt(rad, a2); return `M${f1(x1)} ${f1(y1)}A${rad} ${rad} 0 ${big} 1 ${f1(x2)} ${f1(y2)}`; };
     const hm = (d) => d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
-    // each ring holds twelve whole clock hours: the inner one ends on the last hour mark within 12 h of now,
-    // so no hour straddles the two rings (7 Nov 2026: 10–11 AM sat under "now – 11 PM" and both flickered)
-    const b = proj.hours.reduce((m, h) => h.t1 <= 12 + 1e-6 ? Math.max(m, h.t1) : m, 0) || 12, L = b + 12;
-    const ringOf = (tm) => tm < b - 1e-6 ? 0 : 1;
-    // day (6 AM – 6 PM) or night, by the local hour: shown on the wedge's ground, never on its fill (the fill is the forecast)
+    const L = 24 - 1e-3;
+    // day (6 AM – 6 PM) or night, by the local hour: for the tooltip's sun or moon and the wedge's ground
     const isNight = (tm) => { const hr = at(tm + 1e-4).getHours(); return hr < 6 || hr >= 18; };
     const pl = r.planet, N = res.model.N || 0, gid = 'rd' + String(res.id).replace(/[^\w-]/g, '');
     // what is coming, at its hour
@@ -268,7 +268,7 @@
     ev.sort((a, b) => a.t - b.t);
     const tracks = [], wedges = [];
     proj.hours.filter(h => h.t0 < L - 1e-6).forEach((h, i) => {
-      const k = ringOf(h.t0), [ra, rb] = RING[k], night = isNight(h.t0);
+      const ra = RA, rb = RO, night = isNight(h.t0);
       const a1 = ang(h.t0) + gap, a2 = unwrap(a1, ang(h.t1) - gap), mid = (a1 + a2) / 2;
       const fell = h.lib >= 0.999, behind = h.libNeed != null && h.lib < h.libNeed - 0.002;
       const re = ra + (rb - ra) * Math.max(0.04, h.lib), rn = h.libNeed != null ? ra + (rb - ra) * h.libNeed : null;
@@ -283,18 +283,23 @@
         <path class="rd-fill" d="${sector(ra, re, a1, a2)}"/>${rn != null ? `<path class="rd-need" d="M${f1(pt(rn, a1)[0])} ${f1(pt(rn, a1)[1])}A${rn} ${rn} 0 0 1 ${f1(pt(rn, a2)[0])} ${f1(pt(rn, a2)[1])}"/>` : ''}<path class="rd-hit" d="${sector(ra, rb + 4, a1, a2)}"/></g>`);
     });
     // the forecast's range, outside the rings: the part past the deadline in red
-    const band = proj.band, RB = 165;
+    const band = proj.band, RB = 146;
     let bandSvg = '';
     if (band && band.lo < proj.span) {
       const lo = Math.max(0.02, band.lo), hi = Math.min(band.hi, proj.span - 0.01, L - 0.01);
       if (hi > lo) bandSvg += `<path class="rd-band" d="${arc(RB, lo, Math.min(hi, H))}"/>`;
       if (band.hi > H && H < proj.span + 0.01 && H > lo) bandSvg += `<path class="rd-band late" d="${arc(RB, H, Math.min(band.hi, Math.max(H + 0.05, proj.span >= H ? Math.min(band.hi, L - 0.01) : proj.span)))}"/>`;
     }
-    const tick = (tm, cls) => { if (!(tm >= 0 && tm <= Math.min(L, proj.span) + 1e-6)) return ''; const k = ringOf(Math.min(tm, L - 0.01)), a = ang(tm), [x1, y1] = pt(RING[k][0] - 4, a), [x2, y2] = pt(RB + 6, a); return `<line class="${cls}" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`; };
+    const tick = (tm, cls) => { if (!(tm >= 0 && tm <= Math.min(L, proj.span) + 1e-6)) return ''; const a = ang(tm), [x1, y1] = pt(RA - 4, a), [x2, y2] = pt(RB + 6, a); return `<line class="${cls}" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`; };
     const dia = (tm, cls) => { if (!(tm >= 0 && tm < L)) return ''; const [x, y] = pt(RB, ang(tm)); return `<rect class="${cls}" x="${f1(x - 6)}" y="${f1(y - 6)}" width="12" height="12" transform="rotate(45 ${f1(x)} ${f1(y)})"/>`; };
-    const evMarks = ev.filter(x => x.t < L).map(x => { const [cx, cy] = pt(RING[ringOf(x.t)][0] - 9, ang(x.t)); return `<circle class="rd-ev" cx="${f1(cx)}" cy="${f1(cy)}" r="4"/>`; }).join('');
-    const nums = [[12, -90], [3, 0], [6, 90], [9, 180]].map(([n, deg]) => { const [x, y] = pt(181, deg * Math.PI / 180); return `<text class="rd-num" x="${f1(x)}" y="${f1(y + 4)}">${n}</text>`; }).join('');
-    const [hx, hy] = pt(RB + 4, ang(0)), [hx0, hy0] = pt(76, ang(0));
+    const evMarks = ev.filter(x => x.t < L).map(x => { const [cx, cy] = pt(RO + 4, ang(x.t)); return `<circle class="rd-ev" cx="${f1(cx)}" cy="${f1(cy)}" r="4"/>`; }).join('');
+    // the sky: the sun over noon, the moon under midnight, sunrise and sunset at the ends of the horizon
+    const hr = (n) => { const d = new Date(last.now); d.setHours(n, 0, 0, 0); return d.toLocaleTimeString(locale(), { hour: 'numeric' }); };
+    const RD = RB + 10, stars = [[100, 158], [118, 150], [135, 157], [62, 153], [80, 151], [45, 158]].map(([deg, rr]) => { const [x, y] = pt(rr, deg * Math.PI / 180); return `<circle class="rd-star" cx="${f1(x)}" cy="${f1(y)}" r="1.1"/>`; }).join('');
+    const sky = `<path class="rd-sky day" d="M${C - RD} ${C}A${RD} ${RD} 0 0 1 ${C + RD} ${C}Z"/><path class="rd-sky night" d="M${C + RD} ${C}A${RD} ${RD} 0 0 1 ${C - RD} ${C}Z"/>${stars}<line class="rd-horizon" x1="${C - RD - 4}" y1="${C}" x2="${C + RD + 4}" y2="${C}"/>`;
+    const nums = `<g class="rd-sun" transform="translate(${C - 10} ${C - RD - 22}) scale(1.25)">${DN_ICON.day.replace(/<\/?svg[^>]*>/g, '')}</g><g class="rd-moon" transform="translate(${C - 10} ${C + RD + 2}) scale(1.25)">${DN_ICON.night.replace(/<\/?svg[^>]*>/g, '')}</g>`
+      + `<text class="rd-num" x="${f1(C - RD - 2)}" y="${C - 7}" style="text-anchor:end">${esc(hr(6))}</text><text class="rd-num" x="${f1(C + RD + 2)}" y="${C - 7}" style="text-anchor:start">${esc(hr(18))}</text>`;
+    const [hx, hy] = pt(RB + 4, ang(0)), [hx0, hy0] = pt(70, ang(0));
     const frac = Math.max(0, Math.min(1, 1 - pl.health / pl.maxHealth)), fc = FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)';
     const hi = band && band.hi > H ? band.hi : null;
     const key = !isFinite(proj.need0) ? 'all' : r.eta > H ? 'late' : hi != null || r.close ? 'close' : 'ok';
@@ -306,14 +311,15 @@
       <div class="rd-box">
         <svg viewBox="0 0 ${S} ${S}" role="group" aria-label="${esc(t('rd.aria'))}">
           <defs><radialGradient id="${gid}" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient></defs>
-          <circle class="rd-dial" cx="${C}" cy="${C}" r="${RB + 10}"/>
+          <circle class="rd-dial" cx="${C}" cy="${C}" r="${RD}"/>
+          ${sky}
           ${tracks.join('')}
-          <g class="rd-sweep" aria-hidden="true"><path d="${sector(RING[0][0], RING[1][1], ang(0), ang(0) + 0.45)}"/></g>
+          <g class="rd-sweep" aria-hidden="true"><path d="${sector(RA, RO, ang(0), ang(0) + 0.26)}"/></g>
           ${wedges.join('')}
           ${bandSvg}${tick(H, 'rd-end')}${evMarks}${dia(r.eta, 'rd-fall')}${hi != null ? dia(hi, 'rd-slow') : ''}
           <line class="rd-hand" x1="${f1(hx0)}" y1="${f1(hy0)}" x2="${f1(hx)}" y2="${f1(hy)}"/><circle class="rd-hand-tip" cx="${f1(hx)}" cy="${f1(hy)}" r="3.5"/>
-          <circle cx="${C}" cy="${C}" r="74" class="rd-arc-track"/><circle cx="${C}" cy="${C}" r="74" class="rd-arc" pathLength="100" transform="rotate(-90 ${C} ${C})" style="stroke-dasharray:${f1(frac * 100)} 100"/>
-          <circle cx="${C}" cy="${C}" r="63" fill="url(#${gid})" class="rd-planet"/>
+          <circle cx="${C}" cy="${C}" r="68" class="rd-arc-track"/><circle cx="${C}" cy="${C}" r="68" class="rd-arc" pathLength="100" transform="rotate(-90 ${C} ${C})" style="stroke-dasharray:${f1(frac * 100)} 100"/>
+          <circle cx="${C}" cy="${C}" r="58" fill="url(#${gid})" class="rd-planet"/>
           <text class="rd-pct" x="${C}" y="${C + 5}">${pct(frac)}</text><text class="rd-lbl" x="${C}" y="${C + 24}">${esc(t('gLib'))}</text>
           ${nums}
         </svg>
