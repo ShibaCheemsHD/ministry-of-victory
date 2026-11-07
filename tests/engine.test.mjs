@@ -226,3 +226,19 @@ test('the chance a planet falls grows with the time left and shrinks with a late
   const a = E.fallChance(p, 0.3, [], 0, 20, 24, true, false), b = E.fallChance(p, 0.3, [], 0, 20, 72, true, false), c = E.fallChance(p, 0.3, [], 0, 60, 24, true, false);
   assert.ok(a > 0 && a < 1 && b >= a && c <= a, `${a} ${b} ${c}`);
 });
+
+test('a learned model is used only when it is well formed', () => {
+  const x = [Math.log(24), 0, 0, 0, -1, -1, 0, 0, 1, 0.01, 0.01, 0.01, 1, 0];
+  const before = E.chanceOf(x), original = E.chanceModel();
+  assert.equal(E.useChanceModel(null), false);
+  assert.equal(E.useChanceModel({ feat: ['a'], base: 0, trees: [] }), false);
+  const bad = { feat: ['lH', 'r_ours', 'r_line1', 'r_line6', 'l_left', 'l_share', 'd_share6', 'd_share24', 'l_regen', 'pace1', 'pace6', 'pace24', 'mo_f', 'dss'], base: 0, trees: Array(20).fill([[0, 1, 9, 2, 1], [0.1], [0.2]]) };
+  assert.equal(E.useChanceModel(bad), false);
+  assert.equal(E.chanceOf(x), before, 'a refused model changes nothing');
+  const ok = { ...bad, trees: Array(20).fill([[0, 1, 1, 2, 1], [0.1], [-0.1]]), meta: { trained: 1 } };
+  assert.equal(E.useChanceModel(ok), true);
+  near(E.chanceOf(x), 1 / (1 + Math.exp(-20 * -0.1)), 1e-9);   // lH = 3.18 > 1: right leaf every time
+  assert.deepEqual(E.chanceMeta(), { trained: 1 });
+  assert.equal(E.useChanceModel(original), true);   // put the shipped model back for later tests
+  assert.equal(E.chanceOf(x), before);
+});

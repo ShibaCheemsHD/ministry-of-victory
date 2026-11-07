@@ -1,12 +1,16 @@
 // One row per (planet under liberation, moment), every 3 hours, war log 2024-26: everything known at that
 // moment, and what happened after (hours to the fall, or censored when it never fell in the log).
-// Usage: node features.mjs WAR_DIR ARCHIVE_JSON HISTORY_JSON REPO OUT_CSV
+// Usage: node features.mjs WAR_DIR ARCHIVE_JSON HISTORY_JSON REPO OUT_CSV [LEARN_DIR]
+// With LEARN_DIR, our own hourly readings (learn/warlog, tools/chance/harvest.mjs) carry the log on past the
+// community log's last event.
 import fs from 'node:fs';
+import path from 'node:path';
 import { createRequire } from 'node:module';
-const [W, ARCH, HIST, REPO, OUT] = process.argv.slice(2);
+const [W, ARCH, HIST, REPO, OUT, LEARN] = process.argv.slice(2);
 const { replayContext } = await import(REPO + '/recorder/accuracy.mjs');
 const E = createRequire(import.meta.url)(REPO + '/src/engine.js');
 const hist = JSON.parse(fs.readFileSync(W + '/historydata.json')), resort = JSON.parse(fs.readFileSync(W + '/resort.json'));
+if (LEARN) mergeWarlog(hist, resort, LEARN);
 const H = 3.6e6, SPLIT = Date.parse('2026-01-01T00:00:00Z'), END = hist.events.at(-1).timestamp * 1000;
 const { P, playersAt, capacityAt } = replayContext(hist, resort);
 const T = hist.events.map(e => e.timestamp * 1000);
@@ -24,7 +28,9 @@ for (const o of JSON.parse(fs.readFileSync(ARCH)).orders) {
   for (const tk of o.tasks || []) { const i = tk.valueTypes.indexOf(12); if (i >= 0 && tk.values[i]) ps.add(String(tk.values[i])); }
   if (o.start && o.end && ps.size) orders.push({ start: o.start, end: o.end, ps });
 }
-for (const o of Object.values(JSON.parse(fs.readFileSync(HIST)).hs || {})) {
+const HJ = JSON.parse(fs.readFileSync(HIST));
+// the orders the recorder watched (the running ones too) and the past ones from helldiversstats.com
+for (const o of [...Object.values(HJ.orders || {}), ...Object.values(HJ.hs || {})]) {
   const ps = new Set();
   for (const tk of o.tasks || []) { const i = tk.valueTypes.indexOf(12); if (i >= 0 && tk.values[i]) ps.add(String(tk.values[i])); }
   if (o.start && o.exp && ps.size) orders.push({ start: o.start, end: o.exp, ps });
@@ -71,6 +77,33 @@ for (const [k, l] of Object.entries(P)) {
       y: fall ? (fall - at.t) / H : null, cens: fall ? null : (ended - at.t) / H,
     });
   }
+}
+// our readings written as the community log writes them: an event per reading (time, all players), and per
+// planet an entry with HP, players, regen, owner (code << 4), regions in enemy hands, the DSS flag
+function mergeWarlog(hist, resort, dir) {
+  const wd = path.join(dir, 'warlog');
+  if (!fs.existsSync(wd)) return;
+  const last = hist.events.at(-1).timestamp * 1000;
+  let dss = null, n = 0;
+  const pad = (x) => String(x).padStart(2, '0');
+  for (const f of fs.readdirSync(wd).filter(f => /^\d{4}-\d{2}\.json$/.test(f)).sort()) {
+    for (const r of JSON.parse(fs.readFileSync(path.join(wd, f), 'utf8'))) {
+      const ts = Math.floor(r.t / 60000) * 60;
+      if (ts * 1000 <= last || ts <= hist.events.at(-1).timestamp) continue;
+      const d = new Date(ts * 1000), eind = hist.events.length;
+      hist.events.push({ timestamp: ts, time: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`, all_players: r.N, eind, log: [], ours: 1 });
+      for (const [k, v] of Object.entries(r.pl || {})) {
+        const x = { eind, hp: v[0], pl: v[1], r: v[2], t: (v[4] || 0) << 4, regions: v[5] > 0 ? { w: { t: 2 << 4 } } : {} };
+        if (String(r.dss) === k && String(dss) !== k) x.dss = true;
+        (resort[k] ||= []).push(x);
+      }
+      const now = r.dss == null ? null : String(r.dss);
+      if (dss != null && dss !== now) (resort[dss] ||= []).push({ eind, dss: false });
+      if (now != null && now !== dss && !(r.pl || {})[now]) (resort[now] ||= []).push({ eind, dss: true });
+      dss = now; n++;
+    }
+  }
+  console.log('our war log: +' + n + ' readings after ' + new Date(last).toISOString());
 }
 const cols = Object.keys(rows[0]);
 fs.writeFileSync(OUT, cols.join(',') + '\n' + rows.map(r => cols.map(c => r[c] == null ? '' : r[c]).join(',')).join('\n'));

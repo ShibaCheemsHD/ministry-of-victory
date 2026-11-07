@@ -1,0 +1,93 @@
+# The self-learning loop of the chance model (tools/chance/).
+# Every day: one reading an hour of every enemy planet is copied from the recorder's history (which keeps only
+# the last days) into our own war log on the "learn" branch, so no hour of the war is lost.
+# Every Sunday (or by hand): the model is retrained on the community war log plus our own, checked on the last
+# 60 days it has not seen, and published on the "learn" branch only if it beats the forecast alone and is not
+# worse than the model in use. The page and the recorder read the published model at start; the model shipped
+# in src/engine.js stays as the fallback.
+# The "learn" branch is one commit, replaced every run (like "data"): warlog/YYYY-MM.json, chance-model.json,
+# chance-model.prev.json (the one before), chance-report.json (the last run), reports.json (the last 52).
+name: Learn
+
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      retrain:
+        description: Retrain the chance model now
+        type: boolean
+        default: true
+      force:
+        description: Retrain even with less than a week of new data
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: learn
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Harvest, and retrain on Sundays
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RETRAIN: ${{ github.event_name == 'workflow_dispatch' && inputs.retrain }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          set -euo pipefail
+          L="$RUNNER_TEMP/learn"; D="$RUNNER_TEMP/data"; W="$RUNNER_TEMP/war"; O="$RUNNER_TEMP/out"
+          mkdir -p "$L" "$D" "$W"
+          # our war log can't be rebuilt: if the branch exists but can't be read, stop without pushing
+          if git ls-remote --exit-code --heads origin learn > /dev/null; then
+            ok=; for i in 1 2 3 4 5; do git fetch -q --depth 1 origin learn && ok=1 && break; sleep 30; done
+            [ -n "$ok" ] || { echo "::error::the learn branch exists but could not be read"; exit 1; }
+            git archive origin/learn | tar -x -C "$L"
+          else echo "first run: no learn branch yet"; fi
+          ok=; for i in 1 2 3 4 5; do git fetch -q --depth 1 origin data && ok=1 && break; sleep 30; done
+          [ -n "$ok" ] || { echo "::error::the data branch could not be read"; exit 1; }
+          git show origin/data:history.json > "$D/history.json"
+          git show origin/data:archive.json > "$D/archive.json"
+          node tools/chance/harvest.mjs "$D/history.json" "$L"
+
+          if [ "$(date -u +%u)" = 7 ] || [ "$RETRAIN" = true ]; then
+            base=https://raw.githubusercontent.com/CrossWaveOmega/helldiversplanettable/master/src/data
+            curl -fsS --retry 3 -m 300 "$base/historydata.json" -o "$W/historydata.json"
+            curl -fsS --retry 3 -m 300 "$base/resort.json" -o "$W/resort.json"
+            python -m pip install -q scikit-learn==1.9.1 pandas==2.3.3 numpy==2.5.3
+            node tools/chance/features.mjs "$W" "$D/archive.json" "$D/history.json" "$PWD" "$RUNNER_TEMP/feat.csv" "$L"
+            CUR="$L/chance-model.json"
+            if ! node -e "const E=require('./src/engine.js');process.exit(E.useChanceModel(JSON.parse(require('fs').readFileSync('$CUR','utf8')))?0:1)" 2> /dev/null; then
+              CUR="$RUNNER_TEMP/current.json"; node tools/chance/verify.mjs "$PWD" --current "$CUR"
+            fi
+            python -I tools/chance/retrain.py "$RUNNER_TEMP/feat.csv" "$CUR" "$O" $([ "$FORCE" = true ] && echo --force)
+            if [ -f "$O/chance-model.json" ]; then
+              node tools/chance/verify.mjs "$PWD" "$O/chance-model.json" "$O/fixture.json"
+              [ ! -f "$L/chance-model.json" ] || cp "$L/chance-model.json" "$L/chance-model.prev.json"
+              cp "$O/chance-model.json" "$L/chance-model.json"
+            fi
+            cp "$O/report.json" "$L/chance-report.json"
+            node -e "const fs=require('fs'),f='$L/reports.json';const l=fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):[];l.push(JSON.parse(fs.readFileSync('$O/report.json')));fs.writeFileSync(f,JSON.stringify(l.slice(-52),null,1))"
+            echo "### Chance model" >> "$GITHUB_STEP_SUMMARY"; node -e "console.log(require('$O/report.json').reason)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # the token goes in a header, never in a URL that git could print
+          AUTH=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0); echo "::add-mask::$AUTH"
+          cd "$L" && rm -rf .git && git init -q -b learn && git config user.name "ministry-learner" \
+            && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
+            && git add -A && git commit -q -m "Learn $(date -u +%Y-%m-%dT%H:%MZ)" \
+            && git -c http.extraheader="AUTHORIZATION: basic $AUTH" push -q -f "https://github.com/${REPO}.git" learn:learn

@@ -52,7 +52,17 @@
     recordFlight = fetchRecord(now).finally(() => { recordFlight = null; });
     return recordFlight;
   }
+  // the chance model the weekly retraining published, when there is one (tools/chance): checked by the engine,
+  // ignored if missing or malformed (the shipped model stays)
+  const LEARN = 'https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/learn/';
+  let learnTried = false;
+  function loadLearned(now) {
+    if (learnTried) return; learnTried = true;
+    ghFetch(LEARN + 'chance-model.json?t=' + Math.floor(now / 3600e3), { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
+      .then(m => { if (m && ENGINE.useChanceModel(m) && last) refresh(); }).catch(() => {});
+  }
   async function fetchRecord(now) {
+    loadLearned(now);
     if (now - recordFetched < 5 * 60e3) return false;
     recordFetched = now;
     try {

@@ -34,6 +34,12 @@ const CLIENT = 'ministry-of-victory-recorder';
 const CONTACT = 'https://github.com/ShibaCheemsHD/ministry-of-victory';
 const H = 3.6e6;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// the chance model the retraining published on the "learn" branch (tools/chance/retrain.py), so the verdicts
+// recorded here are the ones the page shows; the model shipped in the engine stays when it is missing or refused
+try {
+  const r = await fetch('https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/learn/chance-model.json', { signal: AbortSignal.timeout(20000) });
+  if (r.ok && !E.useChanceModel(await r.json())) console.log('::warning::the learned chance model was refused, keeping the shipped one');
+} catch (e) { console.log('learned chance model not loaded: ' + String(e).slice(0, 120)); }
 
 // the API allows 5 requests per 10 s per address: one every 2.3 s, and wait out a refusal
 let lastReq = 0;

@@ -261,6 +261,7 @@
       throw new TypeError('Failed to fetch');
     } else if ((u.hostname === 'raw.githubusercontent.com' || u.hostname === 'cdn.jsdelivr.net') && u.pathname.includes('/ministry-of-victory')) {
       window.__mockLog.push({ rec: file, via: u.hostname });
+      if (file === 'chance-model.json' && window.__mockLearned) return new Response(JSON.stringify(window.__mockLearned), { status: 200, headers: { 'content-type': 'application/json' } });
       if (file === 'archive.json' && window.__mockArchive) return new Response(JSON.stringify(window.__mockArchive), { status: 200, headers: { 'content-type': 'application/json' } });
       if (file === 'bootstrap.json' && q.get('boot') === '1') {
         if (q.get('missinghistory') === '1') sc.record['recent.json'] = {samples:[],prog:[]};
