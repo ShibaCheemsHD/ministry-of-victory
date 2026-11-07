@@ -243,6 +243,17 @@ const impN24 = (() => {
   return w.length >= 6 && (w[w.length - 1].t - w[0].t) >= 12 * H ? w.reduce((a, sm) => a + sm.imp * sm.N, 0) / w.length : null;
 })();
 
+// The daily cycle of players online, mean by UTC hour relative to the mean, over the history kept (2-8 days):
+// what the call's radar uses to turn shares into Helldivers hour by hour (engine hourlyProjection)
+const nProfile = (() => {
+  const by = Array.from({ length: 24 }, () => []);
+  for (const sm of hist.samples) if (sm.N > 0) by[new Date(sm.t).getUTCHours()].push(sm.N);
+  const span = hist.samples.length ? (hist.samples.at(-1).t - hist.samples[0].t) / H : 0;
+  if (span < 72 || by.some(b => b.length < 6)) return null;
+  const m = by.map(b => b.reduce((a, x) => a + x, 0) / b.length), avg = m.reduce((a, x) => a + x, 0) / 24;
+  return m.map(x => Number((x / avg).toFixed(3)));
+})();
+
 // The Ministry's call on every order it watches: the forecast after the first 3 hours (the "day-one
 // call"), after 24 hours, the worst it ever looked, and the last one. Kept for good: this is the
 // record that says whether an order was winnable from the start.
@@ -536,7 +547,7 @@ fs.writeFileSync(path.join(outDir, 'history.json'), histJson);
 const inCamp = new Set((campaigns || []).map(c => c && c.planet && c.planet.index));
 fs.writeFileSync(path.join(outDir, 'live.json'), JSON.stringify({ v: 1, t: now, src, war, assignments, campaigns, stations: src === 'community' ? stations : [], raw,
   extra: Object.values(planets).filter(p => !inCamp.has(p.index)) }));
-fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, infMeasurement, impN24, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10), unknownFoes,
+fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated: now, since: hist.since, every: 10, K, inf, infMeasurement, impN24, nProfile, health: hist.health, measured: hist.measured || null, warlogUpTo: hist.arch?.upTo || null, official: !!status, alerts, effects, orders: hist.orders, so: hist.so, warnings: (hist.warnings || []).slice(-10), unknownFoes,
   // names the wiki gives for units our list doesn't have yet: the page uses them until the list does
   itemHints: hist.wikiCheck?.itemHints || {},
   foeHints: Object.fromEntries(Object.entries(hist.wikiCheck?.hints || {}).filter(([id]) => !foes[id]).map(([id, h]) => [id, { one: h.one, many: h.many }])),

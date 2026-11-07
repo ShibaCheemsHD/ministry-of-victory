@@ -242,3 +242,23 @@ test('a learned model is used only when it is well formed', () => {
   assert.equal(E.useChanceModel(original), true);   // put the shipped model back for later tests
   assert.equal(E.chanceOf(x), before);
 });
+
+test('the hour-by-hour projection: counts follow the players online, the needed share falls at the deadline', () => {
+  const now = Date.parse('2026-11-07T20:04:00Z'), max = 1e6;
+  const planet = { index: 9, maxHealth: max, health: 5.6e5, regenPerSecond: 0, currentOwner: 'Terminids', statistics: { playerCount: 39000 } };
+  const pw = E.planetWork ? E.planetWork(planet) : { work: 5.6e5, full: max, regen: 0, regionHP: 0, regionRegen: 0, activeRegen: 0, queue: [], hasRegions: false };
+  const C = 60000, share = 39000 / 61000;
+  const fc = E.forecastFall(planet, pw, share, C, 1, [], now);
+  const r = { planet, pw, share, mult: 1, eta: fc.eta, fc };
+  const H = 17.77, p = E.hourlyProjection(r, H, 61000, C, [], now);
+  assert.ok(p && p.hours.length >= 18 && p.hours.length <= 19);
+  assert.ok(Math.abs(p.hours.at(-1).t1 - H) < 1e-9, 'ends at the deadline');
+  const need = E.shareForDeadline(r, H, C, [], now);
+  assert.ok(Math.abs(E.forecastFall(planet, pw, need, C, 1, [], now).eta - H) < 0.05, 'the needed share falls at the deadline');
+  // the ratio expected / needed does not swing with the hour, the counts do
+  const ratios = p.hours.map(h => h.exp / h.need), counts = p.hours.map(h => h.exp);
+  const steps = ratios.slice(1).map((x, i) => x - ratios[i]);
+  assert.ok(steps.every(d => d <= 1e-9) || steps.every(d => d >= -1e-9), 'the ratio only moves with the arrivals, never with the hour');
+  assert.ok(Math.max(...counts) / Math.min(...counts) > 1.5);
+  assert.equal(fc.eta <= H, ratios[0] >= 1 - 1e-6);
+});

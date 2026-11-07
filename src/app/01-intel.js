@@ -36,7 +36,7 @@
     if (intel && Array.isArray(intel.alerts) && isNum(intel.updated)) {
       record = { t: intel.updated, since: isNum(intel.since) ? intel.since : null, every: isNum(intel.every) ? intel.every : 10, alerts: intel.alerts.filter(isObj), effects: arr(intel.effects).filter(isObj),
         inf: isNum(intel.inf) ? intel.inf : null, infMeasurement: isObj(intel.infMeasurement) ? intel.infMeasurement : null, official: !!intel.official, trust: isObj(intel.trust) && isNum(intel.trust.fall6) ? intel.trust : null, foeHints: foeHintsOf(intel.foeHints), itemHints: itemHintsOf(intel.itemHints),
-        K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
+        K: isNum(intel.K) ? intel.K : null, impN24: isNum(intel.impN24) ? intel.impN24 : null, nProfile: Array.isArray(intel.nProfile) && intel.nProfile.length === 24 && intel.nProfile.every(x => isNum(x) && x > 0 && x < 5) ? intel.nProfile : null, orders: isObj(intel.orders) ? intel.orders : {}, so: arr(intel.so).filter(isObj) };
       store.set('record', record);
     }
     if (prog && isObj(prog.orders)) { recordProgress = prog; saveRecap(); }

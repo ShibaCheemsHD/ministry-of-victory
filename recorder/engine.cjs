@@ -308,6 +308,8 @@ const ENGINE = (() => {
     }
     return span >= 1 && w > 0 && g > 0 ? { C: g / w, hours: span } : null;
   }
+  // the share expected at t hours from now (point 2 above), not the average
+  const shareAt = (s0, t) => Math.min(1, s0 * (1 + FC.a0 * Math.max(0, 1 - s0 / FC.smax) * Math.min(Math.max(t, 0), FC.cap) / 24));
   // average share over the next T hours, relative to now (point 2 above)
   function growth(s0, T) {
     const a = FC.a0 * Math.max(0, 1 - s0 / FC.smax);
@@ -329,6 +331,39 @@ const ENGINE = (() => {
   // 2024-26, by how far ahead the forecast looks; shorter forecasts tend to run early, longer ones late).
   const BAND = [[8, 0.71, 1.98], [16, 0.84, 1.83], [Infinity, 0.54, 1.52]];
   const fallBand = (T) => { if (!isFinite(T) || !(T > 0)) return null; const b = BAND.find(x => T < x[0]); return { lo: T * b[1], hi: T * b[2] }; };
+  /* ---------- hour by hour until the deadline (7 Nov 2026) ----------
+     What the call's radar shows: for each hour, the Helldivers expected on the planet and the Helldivers it needs.
+     On the war log a planet's share of everyone online does not depend on the hour (factor 0.97-1.02 by hour of
+     day, 2024-26, and no better forecasts with it), nor does the damage per share (0.99-1.05: the impact
+     multiplier makes up for the quiet hours). Players online do swing with the hour (0.57-1.26 of the day's mean
+     in 2026), so the counts follow that daily cycle while their ratio stays that of the shares: expected = the
+     forecast's share (with the arrivals of point 2) x the players online then; needed = the same for the share
+     at which the forecast falls exactly at the deadline. The daily cycle: the recorder's last 7 days when it has
+     them, else 2026's (war log, mean by UTC hour, relative to the day's mean); with it, players online 12 h ahead
+     were within 12% (median) instead of 50% assuming "as now". */
+  const ONLINE_BY_UTC_HOUR = [1.15, 1.15, 1.25, 1.26, 1.21, 1.18, 0.93, 0.88, 0.66, 0.58, 0.57, 0.58, 0.70, 0.75, 0.96, 1.04, 1.06, 1.07, 1.09, 1.11, 1.22, 1.24, 1.21, 1.18];
+  // the share at which the forecast falls exactly at the deadline (Infinity when even everyone online is not enough)
+  function shareForDeadline(r, H, C, samples, now) {
+    if (!r || !r.pw || !r.planet || !(H > 0)) return null;
+    const eta = (s) => forecastFall(r.planet, r.pw, s, C, r.mult || 1, samples, now).eta;
+    if (eta(1) > H) return Infinity;
+    let lo = 0.0005, hi = 1;
+    for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; if (eta(m) <= H) hi = m; else lo = m; }
+    return hi;
+  }
+  function hourlyProjection(r, H, N, C, samples, now, profile, maxH = 24) {
+    if (!r || !r.pw || !(r.share > 0) || !(H > 0) || !(N > 0)) return null;
+    const prof = Array.isArray(profile) && profile.length === 24 && profile.every(x => x > 0) ? profile : ONLINE_BY_UTC_HOUR;
+    const hourOf = (t) => new Date(t).getUTCHours(), g0 = prof[hourOf(now)];
+    const need0 = shareForDeadline(r, H, C, samples, now);
+    const span = Math.min(H, maxH), first = (3.6e6 - (now % 3.6e6)) / 3.6e6, hours = [];
+    for (let t = 0; t < span - 1e-6;) {
+      const t1 = Math.min(span, t === 0 ? first : t + 1), mid = (t + t1) / 2, on = N * prof[hourOf(now + mid * 3.6e6)] / g0;
+      hours.push({ t0: t, t1, online: on, exp: shareAt(r.share, mid) * on, need: isFinite(need0) ? shareAt(need0, mid) * on : Infinity });
+      t = t1;
+    }
+    return { hours, need0, span, H, eta: r.eta, band: r.fc ? r.fc.band : null };
+  }
   function forecastFall(p, pw, share, C, mult, samples, now) {
     const f = forecastCore(p, pw, share, C, mult, samples, now);
     return { ...f, band: fallBand(f.eta) };
@@ -1390,7 +1425,7 @@ const ENGINE = (() => {
     return diff;
   }
 
-  return { fallChance, chanceOf, useChanceModel, chanceMeta, chanceModel, dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { hourlyProjection, shareForDeadline, ONLINE_BY_UTC_HOUR, fallChance, chanceOf, useChanceModel, chanceMeta, chanceModel, dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, localC, growth, forecastFall, fallBand, FC, defenseInfo, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
