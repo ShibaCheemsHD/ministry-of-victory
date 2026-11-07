@@ -202,14 +202,18 @@ const ENGINE = (() => {
      1. The planet's own strength: HP it lost over the last 6 h per share of players on it, pulled 30%
         towards everyone's strength. It carries what the global figure can't: the DSS, Joel's multipliers,
         the planet's difficulty, the faction.
-     2. Players keep arriving: a planet with few of them gains more, s(t) = s0 (1 + a min(t, 48)/24) with
-        a = 1.5 max(0, 1 - s0/0.6); one already holding 60% of everyone stays as it is.
+     2. Players keep arriving: a planet with few of them gains more, s(t) = s0 (1 + a min(t, 12)/24) with
+        a = 1.5 max(0, 1 - s0/0.6); one already holding 60% of everyone stays as it is. Arrivals count for
+        12 h only (48 h until 7 Nov 2026): fitted on falls alone, the longer ramp promised reinforcements to
+        planets that never got them. On every planet under liberation every 12 h (2,074 snapshots, falls and
+        non-falls), "does it fall within 1 / 2 / 3 days?" was right 84% of the time in 2026 instead of 77%
+        (false wins 14% instead of 21%), with the fall-time backtest above unchanged (81% / 76% / 65%).
      3. Within 10 h the planet's own strength decides, past 36 h everyone's, in between a blend.
      Knowing the future player counts exactly would still leave it at about 80% / 74% / 78%: the rest is
      what nobody can know in advance (Joel, sudden surges, the war log's own 1-2 h resolution). */
   // Fixed empirical parameters; retrospective scores are not an independent prospective validation.
   // Frozen so no other code can change them by accident (audit ARCH-08).
-  const FC = Object.freeze({ shrink: 0.3, a0: 1.5, smax: 0.6, cap: 48, near: 10, far: 36, window: 6 });
+  const FC = Object.freeze({ shrink: 0.3, a0: 1.5, smax: 0.6, cap: 12, near: 10, far: 36, window: 6 });
   // HP/h the planet's fighters would deal with everyone online there (the planet's own C), from the samples
   // Samples may carry a player count without a health reading (h null): they still tell the share in between.
   function localC(samples, idx, now, regenH, maxH) {
@@ -526,6 +530,30 @@ const ENGINE = (() => {
       if ((RANK[v.verdict] ?? 1) < (RANK[r.verdict] ?? 1)) { r.verdict = v.verdict; r.needShare = v.needShare; }
     }
   }
+  /* When one planet is left in an order and another objective of it is about to free its crowd (a planet that
+     falls first, or a defense that ends), where will those Helldivers go? On the war log (2024-26), in 21 cases
+     like this the planet left got a median 78% of them within 2 h; in 3 cases out of 10 it got under a third.
+     Adding such moves to the forecast itself made it worse on the replay (players do not always come), so this
+     is a scenario shown beside the verdict, never part of it (7 Nov 2026). */
+  const MIGRATION_SHARE = 0.78;
+  function migrationScenario(tasks, H, N, C, samples, now) {
+    const open = tasks.filter(r => r.verdict !== 'done' && r.planet);
+    if (open.length !== 2 || tasks.some(r => r.verdict !== 'done' && !r.planet)) return null;
+    // the planet left is the one that would fall last; the other frees its crowd first
+    const libs = open.filter(r => r.pw && !r.defense).sort((x, y) => (y.eta ?? Infinity) - (x.eta ?? Infinity));
+    const B = libs[0], A = open.find(r => r !== B);
+    if (!B || !A || !(B.share > 0) || typeof B.eta !== 'number' || B.pw.hasRegions || B.verdict === 'ontrack') return null;
+    const end = A.defense ? Math.min(A.defense.hoursToEnd, isFinite(A.defense.eta) ? A.defense.eta : Infinity) : A.eta;
+    const crowd = A.defense ? A.defense.share : A.share;
+    if (!(end > 0 && end < H && end < B.eta) || !(crowd >= 0.03)) return null;
+    // the planet left: its own forecast up to the moment the crowd is freed, then with them on it
+    const done = isFinite(B.eta) ? end / B.eta : 0;
+    const pw = { ...B.pw, work: B.pw.work * Math.max(0, 1 - done), regionHP: (B.pw.regionHP || 0) * Math.max(0, 1 - done) };
+    const after = forecastFall(B.planet, pw, Math.min(0.95, B.share + crowd * MIGRATION_SHARE), C, B.mult || 1, samples, now).eta;
+    const eta = end + after;
+    return { from: A.planet, to: B.planet, at: end, players: Math.round(crowd * N), eta, inTime: eta <= H, defense: !!A.defense };
+  }
+
   function analyzeAssignment(a, ctx) {
     const { planets, N, now, C, dssIdx, hod, settings, samples, startMs } = ctx;
     const hLeft = (new Date(a.expiration).getTime() - now) / 3.6e6;
@@ -657,6 +685,7 @@ const ENGINE = (() => {
       res.liberation = { seqNeed, parNeed, currentShare, seqAtCurrent, verdict, close: allInTime && !allOnTrack, count: libTargets.length, hodHours,
         plan, planShare, winnableNow, partial, targets: libTargets };
     }
+    res.migration = migrationScenario(res.tasks, H, N, C, samples, now);
 
     const hodH = hod ? Math.max(0, Math.min(H, (hod.expire - now) / 3.6e6)) : 0;
     res.model = { C, H, N, dssBonus: settings.dssBonus, hod: hodH > 0 ? { hours: hodH, mult: settings.hodMult } : null, recordShare: settings.recordShare };

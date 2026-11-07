@@ -102,3 +102,23 @@ test('historical calibration is independent of the order in which forecast horiz
     assert.deepEqual(forward.v2[hz], reverse.v2[hz]);
   }
 });
+
+test('order verdicts are scored 1, 2 and 3 days before the end', async () => {
+  const { verdictScores, compactCalls } = await import('../recorder/accuracy.mjs');
+  const H = 3.6e6, exp = 100 * H;
+  const log = (vs) => vs.map(([h, v]) => [exp - h * H, v]);
+  const calls = {
+    a: { exp, result: 'won', vlog: log([[72, 'focus'], [48, 'ontrack'], [24, 'ontrack']]) },
+    b: { exp, result: 'lost', vlog: log([[72, 'ontrack'], [48, 'impossible'], [24.5, 'impossible']]) },
+    c: { exp, result: null, vlog: log([[24, 'ontrack']]) },   // still running: not scored
+  };
+  const s = verdictScores(calls);
+  assert.deepEqual(s[24], { n: 2, right: 2, win: 1, winRight: 1, loss: 1, lossRight: 1, open: 0, openWon: 0 });
+  assert.deepEqual(s[72], { n: 2, right: 0, win: 1, winRight: 0, loss: 0, lossRight: 0, open: 1, openWon: 1 });
+  // thinning a finished order keeps exactly what the score reads
+  const before = JSON.stringify(verdictScores(calls));
+  calls.a.track = { lib: {}, cnt: {} }; calls.a.vlog.push([exp - 30 * H, 'ontrack'], [exp - 60 * H, 'focus']);
+  compactCalls(calls, exp + 8 * 24 * H);
+  assert.equal(calls.a.vlog.length, 3);
+  assert.equal(JSON.stringify(verdictScores(calls)), before);
+});

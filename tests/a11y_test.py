@@ -11,7 +11,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
 AXE = open(os.path.join(ROOT, 'node_modules', 'axe-core', 'axe.min.js')).read()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-SCENARIOS = ['default', 'none', 'fail', 'measure', 'win', 'ended', 'regions', 'intel', 'sniper', 'anyof', 'newmo', 'type&t=9']
+SCENARIOS = ['default', 'none', 'fail', 'measure', 'win', 'ended', 'regions', 'intel', 'sniper', 'anyof', 'newmo', 'migr', 'type&t=9']
 TABS = ['races', 'strategy', 'history', 'intel', 'map']
 RUN = """async () => { const r = await axe.run(document, { resultTypes: ['violations'] });
   return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help,

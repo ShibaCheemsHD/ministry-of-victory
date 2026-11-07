@@ -174,7 +174,8 @@
       const cell = (m) => `<div role="cell">${m && m.n ? `<b>${pct(m.within25)}</b><small>${esc(fill(t('acc.miss'), { h: fmt(m.medErrH, 1) }))}</small>` : '—'}</div>`;
       const row = (hz, m, p) => `<div role="row"><div class="acc-l" role="rowheader">${esc(fill(t('acc.hz'), { h: hz }))}</div>${cell(m)}${cell(p)}</div>`;
       const D = A.defense && A.defense.n ? A.defense : null;
-      const liveN = (live ? Object.values(live.lib || {}).reduce((a, x) => a + (x.n || 0), 0) + (live.cnt?.n || 0) + (live.verdicts || []).length : 0) + (D ? 1 : 0);
+      const O = A.orders || {}, ordLine = [24, 48, 72].filter(h => O[h]?.n).map(h => `<li>${esc(fill(t('acc.liveO'), { d: t('acc.days')[h / 24 - 1], r: O[h].right, n: O[h].n }))}</li>`).join('');
+      const liveN = (live ? Object.values(live.lib || {}).reduce((a, x) => a + (x.n || 0), 0) + (live.cnt?.n || 0) + (live.verdicts || []).length : 0) + (D ? 1 : 0) + (ordLine ? 1 : 0);
       const defLine = D ? `<li>${esc(fill(t(D.n === 1 ? 'acc.liveDef1' : 'acc.liveDef'), { n: D.n, p: pct(D.calledRight) }))}${D.joel ? ' ' + esc(fill(t(D.joel === 1 ? 'acc.liveDefJ1' : 'acc.liveDefJ'), { k: D.joel })) : ''}${D.timed ? ' ' + esc(fill(t('acc.liveDefT'), { p: pct(D.within25) })) : ''}</li>` : '';
       const meas = (k, lbl, wiki) => {
         const x = M[k] || { n: 0 };
@@ -193,7 +194,7 @@
             <p class="acc-big"><b>${pct(C.calledRight)}</b> ${esc(fill(t('acc.cntRight'), { n: C.n }))}</p>
             <p class="ar-small">${esc(fill(t('acc.cntNote'), { w: C.missedWins, l: C.missedLosses, e: C.medErrPts }))}${C.old ? ' ' + esc(fill(t('acc.cntOld'), { p: pct(C.old.calledRight), e: C.old.medErrPts })) : ''}</p></div>` : ''}
           <div class="acc-card"><h4>${esc(t('acc.liveT'))}</h4>
-            ${liveN ? `<ul class="acc-live">${[6, 12, 24].filter(hz => live?.lib?.[hz]?.n).map(hz => `<li>${esc(fill(t('acc.liveLib'), { h: hz, n: live.lib[hz].n, p: pct(live.lib[hz].within25), m: fmt(live.lib[hz].medErrH, 1) }))}</li>`).join('')}
+            ${liveN ? `<ul class="acc-live">${ordLine}${[6, 12, 24].filter(hz => live?.lib?.[hz]?.n).map(hz => `<li>${esc(fill(t('acc.liveLib'), { h: hz, n: live.lib[hz].n, p: pct(live.lib[hz].within25), m: fmt(live.lib[hz].medErrH, 1) }))}</li>`).join('')}
               ${live?.cnt?.n ? `<li>${esc(fill(t('acc.liveCnt'), { n: live.cnt.n, p: pct(live.cnt.calledRight) }))}</li>` : ''}${defLine}
               ${(live?.verdicts || []).map(v => `<li>${esc(fill(t('acc.liveV'), { title: titleCase(v.title || 'Major Order'), v: t('ar.g.' + callGroup(v.v)), r: t('ar.r.' + v.result) }))}</li>`).join('')}</ul>`
               : `<p class="ar-small">${esc(t('acc.liveNone'))}</p>`}

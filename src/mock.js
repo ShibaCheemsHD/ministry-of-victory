@@ -76,6 +76,11 @@
       assignments=[{id:9104,title:'IRON CURTAIN',briefing:'Push back the Automaton line.',description:'',progress:[1,2],tasks:[{type:14,values:[3,3],valueTypes:[1,3]},{type:12,values:[3,5],valueTypes:[1,3]}],rewards:[{type:1,amount:50}],expiration:new Date(now+50*H).toISOString()}];
       campaigns=[a1,a2,a3,bug2]; stations=[{planet:a1,tacticalActions:[]}]; players=60000;
       raw=[{id32:9104,startTime:(now-20*H-warStart)/1000}];
+    } else if (S==='migr') {
+      // one planet nearly taken with a big crowd, the last one far behind: where will that crowd go?
+      const m1=pl(501,'Darius II','Terminids',1.4e6,1.2e5,2,30000), m2=pl(502,'Achernar Secundus','Terminids',2e6,1.9e6,2,3000);
+      assignments=[{...htf,id:9110,title:'STRATEGIC THREAT',progress:[0,0],tasks:[{type:13,values:[1,1,501],valueTypes:[3,11,12]},{type:13,values:[1,1,502],valueTypes:[3,11,12]}],expiration:new Date(now+30*H).toISOString()}];
+      campaigns=[m1,m2,bug2,bot2]; stations=[]; players=40000;
     } else if (S==='measure') {
       assignments=[{...sniper,id:9105,progress:[5e6,1e6],tasks:[sniper.tasks[0],sniper.tasks[2]]}];
       raw=[];

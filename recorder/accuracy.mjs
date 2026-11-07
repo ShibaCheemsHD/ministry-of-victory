@@ -143,6 +143,27 @@ export function countBacktest(hs, E, { at = 24 } = {}) {
 
 // The live record: the forecasts the recorder made hour by hour (hist.calls[].track), checked against what
 // happened. Grows with every order from 29 October 2026 on.
+// The order's verdict 1, 2 and 3 days before its end, against the result. "On track" (or done) is a call for a
+// win, "out of reach" or "exceptional turnout needed" a call for a loss; "needs a push / a record" is no call,
+// and how those orders ended is counted apart.
+const WIN_V = new Set(['ontrack', 'done']), LOSS_V = new Set(['impossible', 'nearly_impossible']);
+export function verdictScores(calls, { horizons = [24, 48, 72] } = {}) {
+  const out = Object.fromEntries(horizons.map(h => [h, { n: 0, right: 0, win: 0, winRight: 0, loss: 0, lossRight: 0, open: 0, openWon: 0 }]));
+  for (const c of Object.values(calls || {})) {
+    if (!c.exp || !Array.isArray(c.vlog) || !['won', 'lost'].includes(c.result)) continue;
+    const won = c.result === 'won';
+    for (const h of horizons) {
+      const want = c.exp - h * H, e = c.vlog.filter(x => Math.abs(x[0] - want) <= 1.5 * H).sort((a, b) => Math.abs(a[0] - want) - Math.abs(b[0] - want))[0];
+      if (!e) continue;
+      const s = out[h]; s.n++;
+      if (WIN_V.has(e[1])) { s.win++; if (won) { s.winRight++; s.right++; } }
+      else if (LOSS_V.has(e[1])) { s.loss++; if (!won) { s.lossRight++; s.right++; } }
+      else { s.open++; if (won) s.openWon++; }
+    }
+  }
+  return out;
+}
+
 export function liveAccuracy(calls, E, { horizons = [6, 12, 24] } = {}) {
   const lib = [], cnt = [], verdicts = [];
   for (const c of Object.values(calls || {})) {
@@ -191,6 +212,8 @@ export function compactCalls(calls, now, { horizons = [6, 12, 24], after = 7 * 2
       const p = c.prog ? nearest(T.cnt[k], c.start + 24 * H, 2 * H) : null;
       if (p) T.cnt[k] = [p]; else delete T.cnt[k];
     }
+    // the hourly verdicts: only the ones verdictScores reads
+    if (Array.isArray(c.vlog) && c.exp) c.vlog = [...new Set([24, 48, 72].map(h => nearest(c.vlog, c.exp - h * H, 1.5 * H)).filter(Boolean))].sort((a, b) => a[0] - b[0]);
     T.compact = 1; n++;
   }
   return n;

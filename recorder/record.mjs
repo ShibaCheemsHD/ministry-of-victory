@@ -18,7 +18,7 @@ import { loadHs } from './hs.mjs';
 import { buildFeed, notifyDiscord } from './feed.mjs';
 import { WIKI_URLS, parseWiki, checkOrders, wikiOutcomes, reconcileArchive } from './wikicheck.mjs';
 import { recordDeadlines, deadlineScores } from './deadlines.mjs';
-import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls } from './accuracy.mjs';
+import { liberationBacktest, countBacktest, liveAccuracy, defenseReplay, defenseAccuracy, compactCalls, verdictScores } from './accuracy.mjs';
 import { measure, logStation, measureMissionImpact } from './measure.mjs';
 // failures show up as annotations on the run page
 const fail = (e) => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, '%0A')); process.exit(1); };
@@ -268,6 +268,16 @@ const impN24 = (() => {
       if (!c.worst || (RANKV[snap.v] ?? 0) > (RANKV[c.worst.v] ?? 0)) c.worst = snap;
     }
     c.last = snap;
+    // the verdict hour by hour: how right it was 1, 2 and 3 days before the end is scored once the order is over
+    const vl = c.vlog ||= [];
+    if (!vl.length || now - vl[vl.length - 1][0] >= 55 * 60e3) vl.push([now, snap.v]);
+    // the migration scenario the page showed, the first time for each pair of planets: checked later against
+    // where the players really went (it is not part of the forecast until it proves itself live)
+    if (res.migration) {
+      const m = res.migration, key = m.from.index + '>' + m.to.index, S = c.scen ||= {};
+      if (!S[key]) S[key] = { t: now, at: now + m.at * H, eta: now + m.eta * H, players: m.players, inTime: m.inTime,
+        shareTo: res.tasks.find(r => r.planet?.index === m.to.index)?.share ?? null };
+    }
     c.prog = a.progress;
     if (N0 > 0) recordDeadlines(c, res.tasks, pageSamples, now);
     // the forecasts as they were made, once an hour, to be checked against what happened (accuracy)
@@ -443,7 +453,7 @@ if (!hist.arch || now - hist.arch.t > 12 * H || !hist.retro || hist.retroV !== 8
 }
 // how right the forecasts were: replayed on the war log, and checked live since the recorder started
 try { defenseReplay(hist, E, K, now); } catch (e) { console.log('::warning::defense replay failed: ' + String(e).slice(0, 200)); }
-const accuracy = { deadlines: deadlineScores(hist.calls, E), backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null,
+const accuracy = { deadlines: deadlineScores(hist.calls, E), orders: verdictScores(hist.calls), backtest: hist.backtest || null, live: (() => { try { return liveAccuracy(hist.calls, E); } catch { return null; } })(), measured: hist.measured || null,
   defense: (() => { try { return defenseAccuracy(hist.defRecord); } catch { return null; } })() };
 const archive = { v: 1, updated: now, source: 'CrossWaveOmega/helldiversplanettable', upTo: hist.arch?.upTo || null, accuracy,
   orders: (hist.arch?.orders || []).map(x => ({ ...x })), watched: Object.values(hist.calls || {}) };

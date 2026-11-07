@@ -104,8 +104,9 @@ test('more time or stronger players never raise the share needed', () => {
 // Forecast v2 (November 2026): fitted on the war log of 2024-25, checked on 2026 (recorder/accuracy.mjs).
 test('fall forecast: players keep arriving on a planet with few of them', () => {
   const pw = E.planetWork(P(5e5, 1e6, 10000));
-  // 20% of everyone, 100k HP/h at 100%: 50 h at a flat share, 24.7 h with arrivals (integrated by hand)
-  near(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.2, 1e5, 1, [], 0).eta, 24.67, 2e-3);
+  // 20% of everyone, 100k HP/h at 100%: 50 h at a flat share; with arrivals for the first 12 h (a = 1) the
+  // average share over T hours is s0 (1.5 - 3/T), so 20k (1.5 - 3/T) - 10k = 5e5 / T gives T = 28 h
+  near(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.2, 1e5, 1, [], 0).eta, 28, 2e-3);
   // 60% or more: nobody is left to arrive, the plain answer
   near(E.forecastFall({ index: 1, maxHealth: 1e6 }, pw, 0.6, 1e5, 1, [], 0).eta, 5e5 / (6e4 - 1e4));
   // stuck now and still stuck 6 hours from now: it doesn't fall
@@ -193,4 +194,19 @@ test('a planet that falls in time but whose range runs past the deadline is a cl
   const safe = run(band.hi * 1.05);
   assert.equal(safe.tasks[0].verdict, 'ontrack');
   assert.equal(safe.liberation.close, false);
+});
+
+test('one planet left: the crowd of the objective about to finish is a scenario, not part of the forecast', () => {
+  const H = 3.6e6, now = Date.UTC(2026, 10, 6, 12);
+  const planet = (index, health, players) => ({ index, name: 'P' + index, currentOwner: 'Terminids', health, maxHealth: 2e6, regenPerSecond: 0, statistics: { playerCount: players }, regions: [] });
+  const planets = { 128: planet(128, 2e5, 30000), 130: planet(130, 1.9e6, 3000) };
+  const a = { id: 9, expiration: new Date(now + 30 * H).toISOString(), progress: [0, 0],
+    tasks: [{ type: 13, values: [1, 1, 128], valueTypes: [3, 11, 12] }, { type: 13, values: [1, 1, 130], valueTypes: [3, 11, 12] }] };
+  const res = E.analyzeAssignment(a, { planets, N: 40000, now, C: 1e5, dssIdx: null, hod: null, settings: E.DEFAULTS, samples: [], startMs: now - 24 * H });
+  const s = res.migration, B = res.tasks[1];
+  assert.ok(s, 'a scenario when 128 falls first');
+  assert.equal(s.from.index, 128); assert.equal(s.to.index, 130);
+  assert.ok(s.at > 0 && s.at < B.eta && s.eta < B.eta, 'its crowd makes 130 fall sooner');
+  assert.ok(Math.abs(s.players - 30000) < 1);
+  assert.notEqual(B.verdict, 'ontrack', 'the verdict itself does not count on them');
 });

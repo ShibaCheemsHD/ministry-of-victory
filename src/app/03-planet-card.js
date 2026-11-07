@@ -192,6 +192,7 @@
         ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
         <p class="why">${m.why}</p>
         ${m.moveOn ? '' : p.meter}
+        ${!m.moveOn && (m.state === 'go' || m.state === 'wait') ? migrationHTML(res, m.planet) : ''}
         ${meanwhile}
         <div class="call-actions">${primary}</div>
         <div class="call-tools">

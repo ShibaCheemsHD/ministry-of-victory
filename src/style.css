@@ -199,6 +199,10 @@ code { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); }
 .why .lead { display: block; margin-bottom: 4px; color: var(--lv, var(--fg)); font-weight: 700; }
 .call.vl-ok .why .lead, .call.vl-done .why .lead { color: var(--fg); }
 .call .why b, .call .cap b { font-weight: 700; }
+/* the migration scenario: one quiet line under the turnout bar */
+.migr { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; max-width: 760px; font-size: 15px; color: var(--muted); }
+.migr .ico { flex: none; margin-top: 3px; color: var(--se); }
+.migr b { color: var(--fg); }
 
 /* turnout: Helldivers there against Helldivers needed */
 .turnout { display: grid; gap: 8px; max-width: 760px; }

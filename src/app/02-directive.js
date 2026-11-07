@@ -33,6 +33,18 @@
   const nice = (n) => { if (!isFinite(n)) return '—'; if (n < 1000) return fmt(Math.round(n)); const r = Number(n.toPrecision(2)); return r >= 1e6 ? fmt(r / 1e6, 1) + 'M' : r >= 1e4 ? fmt(r / 1e3) + 'k' : fmt(r); };
   const tinyPct = (f) => { const v = f * 100; return (v >= 0.01 ? v.toFixed(2) : v.toPrecision(2)) + '%'; };
 
+  // One planet left, and another objective is about to free its crowd: say where they will likely go.
+  // A scenario beside the verdict, never part of it (see migrationScenario in the engine).
+  function migrationHTML(res, callPlanet) {
+    const s = res.migration;
+    if (!s || !s.to) return '';
+    // the call already says when its own planet falls: no second, slightly different time beside it
+    const sameAsCall = callPlanet && String(callPlanet.index) === String(s.from.index);
+    return `<p class="migr" title="${esc(t('migr.tip'))}">${ICON.target}<span>${fill(t(s.inTime ? 'migr.yes' : 'migr.no'), {
+      from: planetName(s.from), to: planetName(s.to), when: sameAsCall ? '' : ` (~${esc(clock(s.at))})`, n: `<b>${people(Math.round(s.players / 100) * 100)}</b>`,
+      eta: esc(clock(s.eta)), how: esc(t(s.defense ? 'migr.defEnds' : 'migr.falls')) })}</span></p>`;
+  }
+
   /* ---------- small components ---------- */
   const ICON = {
     seaf: '<svg class="ico" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 5a4 4 0 0 1 8 0H2ZM3 5v2a3 3 0 0 0 6 0V5M2 11l1-2h6l1 2M6 1v3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
