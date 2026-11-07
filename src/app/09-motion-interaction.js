@@ -16,7 +16,14 @@
     const bars = [...view.querySelectorAll('[data-w]')].map(el => ({ el, g: motion ? glide(el.dataset.key, Number(el.dataset.w), 700) : { from: Number(el.dataset.w) } }));
     bars.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.width = g.from + '%'; });
     // orbit rings: same idea, on stroke-dashoffset (pathLength = 100)
-    const rings = [...view.querySelectorAll('[data-ring]')].map(el => ({ el, g: motion ? glide(el.dataset.ring, Number(el.dataset.frac), 1200) : { from: Number(el.dataset.frac) } }));
+    const rings = [...view.querySelectorAll('[data-ring]')].map(el => ({ el, had: prev.bars[el.dataset.ring] != null, g: motion ? glide(el.dataset.ring, Number(el.dataset.frac), 1200) : { from: Number(el.dataset.frac) } }));
+    // a refresh moved the planet on: its gain shows beside the ring for a moment (+0.42%), then fades
+    if (motion) rings.forEach(({ el, had, g }) => {
+      const gain = Number(el.dataset.frac) - g.from, holo = el.closest('.holo');
+      if (!had || g.cont || !(gain >= 0.01) || !holo || holo.querySelector('.g-delta')) return;
+      holo.insertAdjacentHTML('beforeend', `<span class="g-delta" aria-hidden="true">+${gain < 1 ? gain.toFixed(2) : gain.toFixed(1)}%</span>`);
+      setTimeout(() => holo.querySelector('.g-delta')?.remove(), 2800);
+    });
     rings.forEach(({ el, g }) => { el.style.transition = 'none'; el.style.strokeDashoffset = String(100 - g.from); });
     void view.offsetWidth;
     requestAnimationFrame(() => {

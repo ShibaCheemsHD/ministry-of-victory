@@ -88,7 +88,7 @@
       const tip = `${plain(planetName(p))}|${plain(facName(owner) || '')}|${people(p.statistics?.playerCount || 0)}|${p.event ? 'def' : 'lib'}|${(lib * 100).toFixed(1)}`;
       let ring = r;
       const parts = [];
-      if (p.event) { ring += 2.4; parts.push(`<circle class="evr" r="${f1(ring)}"/>`); }
+      if (p.event) { ring += 2.4; parts.push(`<circle class="ping" r="${f1(ring)}"/><circle class="evr" r="${f1(ring)}"/>`); }
       if (n.isR) { ring += 2.6; parts.push(`<circle class="ring" r="${f1(ring)}"/>`); }
       if (n.isF) { const b = ring + 3, c = 3.2; parts.push(`<path class="br" d="M${f1(-b)} ${f1(-b + c)}V${f1(-b)}H${f1(-b + c)}M${f1(b - c)} ${f1(-b)}H${f1(b)}V${f1(-b + c)}M${f1(b)} ${f1(b - c)}V${f1(b)}H${f1(b - c)}M${f1(-b + c)} ${f1(b)}H${f1(-b)}V${f1(b - c)}"/>`); }
       if (n.i === dssI) { const o = n.isF ? ring + 3 + 2.6 : (ring + 2.2) * 0.7071; parts.push(`<path class="mdss" d="M${f1(o)} ${f1(-o - 2.2)}l2.2 2.2-2.2 2.2-2.2-2.2z"/>`); }

@@ -230,6 +230,8 @@
     if (S==='apidown') record['live.json']={v:1,t:now-12*60e3,src:'official',
       war:{started:new Date(warStart - LAG).toISOString(),now:new Date(now - warStart).toISOString(),impactMultiplier:0.0191*56000/players,statistics:{playerCount:players}},
       assignments, campaigns:campaigns.map(p=>({planet:p})), stations:[], raw, extra:[]};
+    // ?left=N: every order ends in N hours (to see the last-hours states)
+    if (q.get('left')) assignments=assignments.map(x=>({...x,expiration:new Date(now+Number(q.get('left'))*H).toISOString()}));
     return { mode, campaigns, fury, record, data: {
       '/api/v1/war':{started:new Date(warStart - LAG).toISOString(),now:new Date(now - warStart).toISOString(),impactMultiplier:0.0191*56000/players,statistics:{playerCount:players}},
       '/api/v1/assignments':assignments,

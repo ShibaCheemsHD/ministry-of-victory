@@ -93,8 +93,21 @@
     next();
   })();
 
+  // 5. Opening the map with the pointer: the bracket around the call's planet locks on, once
+  const mapSeen = {};
+  function lockOn(view) {
+    view.querySelectorAll('.order').forEach(o => {
+      const id = o.dataset.order, onMap = !!o.querySelector('.tab[aria-selected="true"][data-tab="map"]');
+      const was = mapSeen[id]; mapSeen[id] = onMap;
+      if (!onMap || was || !fxOn() || viaKeys) return;
+      const m = o.querySelector('.war-map'); if (!m) return;
+      m.classList.add('lock'); setTimeout(() => m.classList.remove('lock'), 900);
+    });
+  }
+
   function fxAfterRender(view, entry) {
     if (glEl && !document.contains(glEl)) glEl = null;
     slideTabInk(view);
+    lockOn(view);
     revealCall(view, entry);
   }

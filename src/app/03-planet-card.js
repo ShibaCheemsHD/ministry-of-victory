@@ -181,7 +181,9 @@
       : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : p.d.kind === 'steady' ? `<button type="button" class="btn primary" data-goto="history">${esc(t('seeProg'))}${ICON.track}</button>`
       : endAction(res, alt);
-    return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
+    // under 6 hours and not safe: the hazard rail crawls, the one motion that means "hurry"
+    const urgent = (m.state === 'go' || m.state === 'wait') && isFinite(res.hoursLeft) && res.hoursLeft < 6 && !['done', 'ontrack'].includes(v);
+    return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}${urgent ? ' urgent' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
         <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}${isFinite(res.hoursLeft) && res.hoursLeft > 0 ? `<span class="call-left">${esc(fill(t('leftShort'), { d: dur(res.hoursLeft >= 1 ? Math.floor(res.hoursLeft) : res.hoursLeft) }))}</span>` : ''}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
