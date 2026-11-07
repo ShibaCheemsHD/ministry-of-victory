@@ -360,12 +360,13 @@
     const H = res.hoursLeft, late = eta > H, pl = r.planet;
     const head = `<div class="fcb vl-${L}">${chip}<div class="fcb-body"><span class="fcb-k">${esc(t(late ? 'fcb.late' : 'fcb.when'))}</span><b class="fcb-t">${esc(clock(eta))}</b><p class="fcb-mean">${meaning}</p></div></div>`;
     const span = Math.max(H, eta), fx = eta / span * 100, dx = H / span * 100;
-    const nowT = new Date(last.now).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const dayT = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const nowT = dayT(last.now), endT = dayT(last.now + H * 3.6e6);
     // labels that would collide are left out (the marks and the aria-label still say it all)
-    const near = Math.abs(fx - dx) < 16, early = fx < 30;
+    const near = Math.abs(fx - dx) < 16, early = fx < 30, two = dx < 72;
     const line = `<div class="ftl${late ? ' late' : ''}" role="img" aria-label="${esc(fill(t('fcb.lineAria'), { now: nowT, fall: clock(eta), end: clock(H) }))}">
       <div class="ftl-track"><i class="ftl-run" style="width:${fx.toFixed(1)}%"></i><i class="ftl-now"></i><i class="ftl-fall" style="left:${fx.toFixed(1)}%"></i><i class="ftl-end" style="left:${dx.toFixed(1)}%"></i></div>
-      <div class="ftl-lab" aria-hidden="true"><span class="ftl-l-now">${esc(t('fcb.now'))} · ${esc(nowT)}</span>${near || early ? '' : `<span class="ftl-l-fall" style="left:${fx.toFixed(1)}%">${esc(t(late ? 'fcb.fallLate' : 'fcb.fall'))}</span>`}<span class="ftl-l-end" style="left:${dx.toFixed(1)}%">${esc(t('fcb.end'))}</span></div></div>`;
+      <div class="ftl-lab${two ? ' two' : ''}" aria-hidden="true"><span class="ftl-l-now">${esc(t('fcb.now'))} · ${esc(nowT)}</span>${near || early ? '' : `<span class="ftl-l-fall" style="left:${fx.toFixed(1)}%">${esc(t(late ? 'fcb.fallLate' : 'fcb.fall'))}</span>`}<span class="ftl-l-end" style="left:${dx.toFixed(1)}%">${esc(t('fcb.end'))} · ${esc(endT)}</span></div></div>`;
     const left = Math.max(0, pl.health / pl.maxHealth);
     const pace = left / eta * 100, need = left / H * 100, N = res.model.N || 0;
     const pp = (x) => fmt(x, x < 10 ? 1 : 0) + '%';

@@ -1976,3 +1976,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .rd-star { fill: rgba(220, 230, 255, .7); }
 .rd-sun { color: #ffd27a; } .rd-moon { color: #b9c6ff; }
 .rd-num { font-size: 11px; letter-spacing: .04em; }
+/* a deadline well before the fall puts its day and time on a second line, clear of "now" */
+.ftl-lab.two { height: 36px; } .ftl-lab.two .ftl-l-end { top: 18px; }
+@media (max-width: 420px) { .ftl-lab { letter-spacing: .06em; font-size: 11px; } }
