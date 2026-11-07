@@ -34,7 +34,7 @@
       return `<svg class="rc-spark" viewBox="0 -2 ${W} ${Hh + 4}" preserveAspectRatio="none" aria-hidden="true">
         <line class="goal" x1="0" x2="${W}" y1="0" y2="0"/><line class="pace" x1="0" y1="${ys(f0)}" x2="${xs(R.exp)}" y2="0"/><path d="${d}"/></svg>`;
     };
-    const fmtDay = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const fmtDay = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     const durH = (R.exp - (R.start || t0)) / 3600e3;
     const objs = rows.map(x => `<li class="${x.done ? 'ok' : 'no'}" style="--c:${facC(x.p.faction)}">
         <span class="rc-mark">${x.done ? ICON.check : ICON.cross}</span>

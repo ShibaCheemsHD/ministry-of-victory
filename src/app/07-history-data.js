@@ -239,6 +239,12 @@
       if (shift) g.style.transform = `translateY(calc(50% + ${shift}px))`;
       prevBottom = r.bottom + shift;
     }
+    // a margin label that would run past the card (phones) moves inside the plot, against its right edge
+    const box = (el.closest('.hist-card') || el).getBoundingClientRect();
+    edge.forEach(g => { g.classList.remove('in'); if (g.getBoundingClientRect().right > box.right - 2) g.classList.add('in'); });
+    // the "Now" and "Deadline" marks can sit close together: the later one drops a line
+    const marks = [...el.querySelectorAll('.ch-mark span')]; const ms = [];
+    for (const sp of marks) { sp.classList.remove('low'); const r = sp.getBoundingClientRect(); if (ms.some(p => hit(p, r))) sp.classList.add('low'); ms.push(sp.getBoundingClientRect()); }
     const inner = [...el.querySelectorAll('.ch-tag:not(.edge)')]; const seen = [];
     for (const g of inner) { g.style.marginBottom = ''; let k = 0, r = g.getBoundingClientRect(); while (k < 4 && seen.some(p => hit(p, r))) { k++; g.style.marginBottom = (k * 20) + 'px'; r = g.getBoundingClientRect(); } seen.push(r); }
     const hl = [...el.querySelectorAll('.ch-h span')]; const hs = [];

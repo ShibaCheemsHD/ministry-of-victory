@@ -113,7 +113,7 @@
     const pick = cx.orders.find(o => o.id === cx.pick);
     const n = fmt(last.N);
     const msg = cx.verdict === 'all' ? fill(t('xAll'), { total: divers(cx.total), n })
-      : cx.verdict === 'pick' ? fill(t('xPick'), { total: divers(cx.total), n, title: esc(pick.title), need: divers(pick.need) })
+      : cx.verdict === 'pick' ? fill(t('xPick'), { total: divers(cx.total), n, rec: divers(settings.recordShare), title: esc(pick.title), need: divers(pick.need) })
       : fill(t(cx.orders.some(o => o.unknown) ? 'xNoneU' : 'xNone'), { total: divers(cx.total), n });
     const note = cx.orders.some(o => o.unknown) ? ` ${t('xUnknown')}` : '';
     return `<div class="situation across x-${cx.verdict}"><h4 class="sit-h">${esc(fill(t('xLabelN'), { n: cx.orders.length }))}</h4><p>${msg}${note}</p></div>`;
@@ -168,14 +168,14 @@
     const lost = res.ended || v === 'failed';
     const clockRow = m.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
       : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
-      : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd><dd class="deadline-date">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }) : "—")}</dd></div>`;
+      : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd><dd class="deadline-date">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : "—")}</dd></div>`;
     // the reward: on a won order the medals stand where the planet does; on a lost one they are not earned
     const reward = medals && m.state !== 'done' ? `<div><dt>${esc(t(lost ? 'rewardLost' : 'reward'))}</dt><dd class="reward${lost ? ' lost' : ''}">${medalSvg}<span>${fill(t('medals'), { n: fmt(medals) })}</span></dd></div>` : '';
     const meanwhile = m.state === 'done' && !m.next ? meanwhileHTML() : '';
     // the call's planet as the war table's hologram (also the planet a lost order suggests)
     const ringOf = (pl) => pl && pl.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (pl.event ? pl.event.health / pl.event.maxHealth : pl.health / pl.maxHealth))), label: t(pl.event ? 'gDef' : 'gLib'), tone: 'lib' } : null;
     const art = m.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>`
-      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res, t(m.mw.defend ? 'capDef' : 'capBusy')) : '') : holoPlanet(p, res, null, true);
+      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res, t(m.mw.defend ? 'capDef' : res.tasks.some(r => r.planet && String(r.planet.index) === String(m.mw.p.index)) ? 'capBusyIn' : 'capBusy')) : '') : holoPlanet(p, res, null, true);
     // actions: the move first, then one quieter line to pass the call on
     const primary = m.moveOn && m.next ? `<button type="button" class="btn primary" data-otab="${esc(m.next.a.id)}" data-pick>${esc(fill(t('endNextLost'), { title: m.target }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
@@ -183,7 +183,7 @@
       : endAction(res, alt);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}${isFinite(res.hoursLeft) && res.hoursLeft > 0 ? `<span class="call-left">${esc(fill(t('leftShort'), { d: dur(res.hoursLeft) }))}</span>` : ''}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}${isFinite(res.hoursLeft) && res.hoursLeft > 0 ? `<span class="call-left">${esc(fill(t('leftShort'), { d: dur(res.hoursLeft >= 1 ? Math.floor(res.hoursLeft) : res.hoursLeft) }))}</span>` : ''}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
         ${art}
         <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb">${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>

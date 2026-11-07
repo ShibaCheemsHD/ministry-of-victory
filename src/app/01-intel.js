@@ -381,7 +381,7 @@
     const counts = Object.fromEntries(INTEL_CATS.map(c => [c, all.filter(x => intelCategory(x) === c).length]));
     const selected = new Set(state.selected), slots = innerWidth <= 760 ? 4 : 12;
     const cats = INTEL_CATS.filter(c => counts[c] && (state.filter === 'all' || state.filter === c));
-    const time = tt => new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    const time = tt => new Date(tt).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
     const groups = intelBuckets(events, from, span, slots);
     // the hour-by-hour grid is for the curious: folded away, it remembers being opened
     const tlKey = 'timeline:' + id;
@@ -411,7 +411,7 @@
     };
     return `<div class="intel-tab" data-intel-order="${esc(id)}">
       <div class="it-head"><div><h3>${esc(t('it.title'))}</h3><p>${esc(t('it.overview'))}</p></div></div>
-      <div class="it-filters" role="group" aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS.filter(c => counts[c] || state.filter === c)].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
+      <div class="it-filters" role="group"${all.length ? '' : ' hidden'} aria-label="${esc(t('it.filterLabel'))}">${['all', ...INTEL_CATS.filter(c => counts[c] || state.filter === c)].map(c => `<button type="button" class="it-filter${c === 'all' ? '' : ' cat-' + c}" data-intelfilter="${c}" data-iorder="${esc(id)}" aria-pressed="${state.filter === c}">${c === 'all' ? ICON.dots : ICON[INTEL_ICONS[c]]}<span>${esc(t('it.cat.' + c))}</span><b>${c === 'all' ? all.length : counts[c]}</b></button>`).join('')}</div>
       ${timeline}
       <div class="it-selection" role="status"${state.selected.length ? '' : ' hidden'}><span data-intel-selection-label>${esc(fill(t('it.selectionCount'), { n: state.selected.length }))}</span><button type="button" class="linkish" data-iclear data-iorder="${esc(id)}">${esc(t('it.clearSelection'))}</button></div>
       <div class="it-groups${cats.length < 2 ? ' single' : ''}">${(() => {

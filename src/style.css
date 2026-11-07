@@ -983,7 +983,7 @@ footer > p { max-width: 60ch; }
 /* phones: everything a thumb presses is at least 44px tall */
 @media (max-width: 760px), (pointer: coarse) {
   .intel summary, .brief summary, .more-tips summary, .sim-box > summary, .it-more summary, .ar-how summary { min-height: 44px; }
-  .nk-filter button, .seg button, .lg, .ghost, .pc-tabs button, .fr-p, .foot-links a, .q, .meanwhile .linkish { min-height: 44px; }
+  .nk-filter button, .seg button, .lg, .ghost, .pc-tabs button, .fr-p, .foot-links a, .foot-links .linkish, .q, .meanwhile .linkish { min-height: 44px; }
   .fr-p { min-width: 44px; padding: 0 6px; }
   .meanwhile .linkish { display: inline-flex; align-items: center; }
   .q { min-width: 44px; }
@@ -1113,6 +1113,10 @@ dialog, .pcard, .btn, .mbtn, .ghost, .planet-btn, .pill, .ar-search, .field inpu
 .to-bar { height: 16px; background: rgba(255, 255, 255, .06); }
 .to-bar::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(5% - 3px), rgba(7, 8, 11, .9) calc(5% - 3px) 5%); }
 .to-bar .fill { background: var(--se); }
+/* the turnout bar counts Helldivers, not progress: thinner, framed, so it never reads like the race bars
+   beside it (critique 7 Nov 2026: a full turnout bar next to "27% liberated" read as done) */
+.turnout .to-bar { height: 10px; outline: 1px solid var(--rule-2); outline-offset: 3px; margin: 3px 3px 6px; }
+html.glance .call .turnout .to-bar { height: 14px; }
 .call.state-done .to-bar .fill, .turnout.ok .to-bar .fill { background: var(--v-done); }
 /* just enough, with no margin: the bar is full but in the push colour, like the verdict beside it */
 .turnout.ok.close .to-bar .fill { background: var(--v-push); }
@@ -1347,6 +1351,12 @@ html.glance .call-side .clock { grid-template-columns: minmax(0, 1fr); gap: 18px
 html.glance .call-side .meaning { font-size: 19px; }
 html.glance .call-side .clock dd { font-size: 40px; }
 html.glance .call-side .clock dd.reward, html.glance .call-side .clock dd.plain { font-size: 28px; }
+/* Glance strips, not only enlarges (critique 7 Nov 2026): the date is a footnote under the countdown, the
+   order cards shrink to one line each, and the verdict never breaks across two lines */
+html.glance .call-side .clock dd.deadline-date { font: 600 16px/1.3 var(--ui); color: var(--muted); }
+html.glance .call-side .stamp { white-space: nowrap; }
+html.glance .otab { padding: 6px 12px; gap: 2px; }
+html.glance .mast .mbtn .mb-l { display: none; }
 html.glance .call-side :is(.fwhy, .model-note, .log-note, .trust-link), html.glance .call-tools, html.glance #cross { display: none; }
 
 /* ---------- what a mission is worth; Managed Democracy for Dummies ---------- */
@@ -1555,3 +1565,8 @@ body.data-loading #view, body.data-loading #ot-nav { display: none; }
   .call-left { display: inline; font: 700 13px var(--ui); letter-spacing: .06em; text-transform: uppercase; color: inherit; }
   .otab { min-width: 0; padding: 8px 10px; gap: 4px; }
 }
+
+/* chart labels that would leave the card, and marks that would overlap (critique 7 Nov 2026) */
+.ch-tag.edge.in { left: auto; right: 10px; margin-bottom: -28px; background: color-mix(in srgb, var(--desk) 85%, transparent); padding: 0 4px; }
+.ch-mark span.low { transform: translate(-50%, 1.3em); }
+.foot-links .linkish { display: inline-flex; align-items: center; }

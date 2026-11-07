@@ -55,7 +55,7 @@
     if (!st) { box.innerHTML = ''; return; }
     const mins = Math.max(1, Math.round((Date.now() - st.t) / 60e3));
     const ago = mins < 90 ? fill(t('staleMin'), { n: mins }) : fill(t('staleH'), { n: fmt(mins / 60, 1) });
-    box.innerHTML = `<div class="stale-bar" role="status">${ICON.warn}<p>${fill(t('stale'), { when: esc(new Date(st.t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })), ago: esc(ago), src: esc(t(st.src === 'official' ? 'staleOff' : 'staleCom')) })}</p><button type="button" class="btn ghostly" data-retry>${esc(t('retry'))}</button></div>`;
+    box.innerHTML = `<div class="stale-bar" role="status">${ICON.warn}<p>${fill(t('stale'), { when: esc(new Date(st.t).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })), ago: esc(ago), src: esc(t(st.src === 'official' ? 'staleOff' : 'staleCom')) })}</p><button type="button" class="btn ghostly" data-retry>${esc(t('retry'))}</button></div>`;
   }
   /* ---------- archive: every Major Order, and whether it was winnable ---------- */
   let archive = null, archiveT = 0, archiveBusy = false, archiveFail = 0;
