@@ -192,7 +192,10 @@
     const block = go && !m.moveOn ? forecastBlock(res, r, eta, L, v) : '';
     // the hour-by-hour radar takes the hologram's place when the call is a liberation with a forecast
     const proj = go && r && eta != null ? ENGINE.hourlyProjection(r, res.hoursLeft, res.model.N, res.model.C, samples, last.now, record && record.nProfile) : null;
-    const radar = proj && proj.hours.length ? radarHTML(res, r, proj) : '';
+    // the radar's picture stands at the side; its words, and the turnout it asks for, under the forecast
+    // (7 Nov 2026: the side had grown twice as tall as the call, leaving a hole under the four numbers)
+    const rd = proj && proj.hours.length ? radarHTML(res, r, proj) : null, radar = rd ? rd.dial : '';
+    const turnout = rd ? turnoutHTML(res, r, proj) : '';
     // with the forecast's own time on screen the sentence and the turnout bar would say it twice
     const said = !!(block && eta != null);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}${urgent ? ' urgent' : ''}" aria-labelledby="dir-${esc(id)}">
@@ -203,6 +206,7 @@
         <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb"><span class="wings" aria-hidden="true"><i></i><i></i><i></i></span>${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
         ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
         ${block}
+        ${turnout}${rd ? rd.text : ''}
         ${said ? '' : `<p class="why">${m.why}</p>`}
         ${m.moveOn || said ? '' : p.meter}
         ${!m.moveOn && go ? migrationHTML(res, m.planet) : ''}
@@ -244,8 +248,12 @@
     };
     const arc = (rad, t0, t1) => { const a1 = ang(t0), a2 = unwrap(a1, ang(t1)), big = a2 - a1 > Math.PI ? 1 : 0, [x1, y1] = pt(rad, a1), [x2, y2] = pt(rad, a2); return `M${f1(x1)} ${f1(y1)}A${rad} ${rad} 0 ${big} 1 ${f1(x2)} ${f1(y2)}`; };
     const hm = (d) => d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
-    const ringOf = (tm) => Math.min(1, Math.floor(tm / 12 + 1e-9));
-    const pl = r.planet, N = res.model.N || 0;
+    // each ring holds twelve whole clock hours: the inner one ends on the last hour mark within 12 h of now,
+    // so no hour straddles the two rings (7 Nov 2026: 10–11 AM sat under "now – 11 PM" and both flickered)
+    const b = proj.hours.reduce((m, h) => h.t1 <= 12 + 1e-6 ? Math.max(m, h.t1) : m, 0) || 12, L = b + 12;
+    const ringOf = (tm) => tm < b - 1e-6 ? 0 : 1;
+    const isPm = (tm) => at(tm + 1e-4).getHours() >= 12;
+    const pl = r.planet, N = res.model.N || 0, gid = 'rd' + String(res.id).replace(/[^\w-]/g, '');
     // what is coming, at its hour
     const ev = [];
     if (r.onDss && last.hod && last.hod.expire) { const tm = (last.hod.expire - last.now) / 3.6e6; if (tm > 0 && tm < proj.span) ev.push({ t: tm, text: t('rd.evHod') }); }
@@ -254,50 +262,50 @@
     for (const x of res.tasks) if (x !== r && x.defense && x.verdict !== 'done' && x.defense.hoursToEnd > 0 && x.defense.hoursToEnd < proj.span && !(mg && mg.defense && mg.from === x.planet)) ev.push({ t: x.defense.hoursToEnd, text: fill(t('rd.evDef'), { planet: planetName(x.planet) }) });
     ev.sort((a, b) => a.t - b.t);
     const tracks = [], wedges = [];
-    proj.hours.forEach((h, i) => {
-      const k = ringOf(h.t0), [ra, rb] = RING[k];
+    proj.hours.filter(h => h.t0 < L - 1e-6).forEach((h, i) => {
+      const k = ringOf(h.t0), [ra, rb] = RING[k], pm = isPm(h.t0);
       const a1 = ang(h.t0) + gap, a2 = unwrap(a1, ang(h.t1) - gap), mid = (a1 + a2) / 2;
       const fell = h.lib >= 0.999, behind = h.libNeed != null && h.lib < h.libNeed - 0.002;
       const re = ra + (rb - ra) * Math.max(0.04, h.lib), rn = h.libNeed != null ? ra + (rb - ra) * h.libNeed : null;
       const time = `${i === 0 ? t('fcb.now') : hm(at(h.t0))} – ${hm(at(h.t1))}`;
       const evs = ev.filter(x => x.t >= h.t0 && x.t < h.t1).map(x => `${hm(at(x.t))} · ${plain(x.text)}`).join(' | ');
       const tag = fell ? t('rd.tagFell') : h.libNeed == null ? t('rd.all') : behind ? fill(t('rd.behind'), { n: fmt((h.libNeed - h.lib) * 100, 1) }) : fill(t('rd.ahead'), { n: fmt((h.lib - h.libNeed) * 100, 1) });
-      tracks.push(`<path class="rd-track" d="${sector(ra, rb, a1, a2)}"/>`);
-      wedges.push(`<g class="rd-w${behind ? ' low' : ''}${fell ? ' fell' : ''}" style="--i:${i};--dx:${f1(Math.cos(mid) * 8)}px;--dy:${f1(Math.sin(mid) * 8)}px" data-rw="${i}" tabindex="0" role="img"
+      tracks.push(`<path class="rd-track${pm ? ' pm' : ''}" d="${sector(ra, rb, a1, a2)}"/>`);
+      wedges.push(`<g class="rd-w${behind ? ' low' : ''}${fell ? ' fell' : ''}${pm ? ' pm' : ''}" style="--i:${i};--dx:${f1(Math.cos(mid) * 8)}px;--dy:${f1(Math.sin(mid) * 8)}px" data-rw="${i}" tabindex="0" role="img"
         aria-label="${esc(fill(t('rd.hourAria'), { time, lib: pct(h.lib), need: h.libNeed != null ? pct(h.libNeed) : '—', n: people(h.exp) }) + (evs ? '. ' + evs : ''))}"
         data-time="${esc(time)}" data-lib="${esc(pct(h.lib))}" data-need="${esc(h.libNeed != null ? pct(h.libNeed) : '—')}" data-n="${esc(N ? people(h.exp) : '—')}" data-tag="${esc(tag)}" data-low="${behind ? 1 : 0}" data-ev="${esc(evs)}"
         data-x="${f1(pt(rb + 12, mid)[0] / S * 100)}" data-y="${f1(pt(rb + 12, mid)[1] / S * 100)}">
-        <path class="rd-fill" d="${sector(ra, re, a1, a2)}"/>${rn != null ? `<path class="rd-need" d="M${f1(pt(rn, a1)[0])} ${f1(pt(rn, a1)[1])}A${rn} ${rn} 0 0 1 ${f1(pt(rn, a2)[0])} ${f1(pt(rn, a2)[1])}"/>` : ''}<path class="rd-hit" d="${sector(ra, rb + 4, a1, a2)}"/></g>`);
+        <path class="rd-fill" d="${sector(ra, re, a1, a2)}"/>${pm ? `<path class="rd-pm" d="${sector(ra, rb, a1, a2)}" fill="url(#${gid}-pm)"/>` : ''}${rn != null ? `<path class="rd-need" d="M${f1(pt(rn, a1)[0])} ${f1(pt(rn, a1)[1])}A${rn} ${rn} 0 0 1 ${f1(pt(rn, a2)[0])} ${f1(pt(rn, a2)[1])}"/>` : ''}<path class="rd-hit" d="${sector(ra, rb + 4, a1, a2)}"/></g>`);
     });
     // the forecast's range, outside the rings: the part past the deadline in red
     const band = proj.band, RB = 165;
     let bandSvg = '';
     if (band && band.lo < proj.span) {
-      const lo = Math.max(0.02, band.lo), hi = Math.min(band.hi, proj.span - 0.01);
+      const lo = Math.max(0.02, band.lo), hi = Math.min(band.hi, proj.span - 0.01, L - 0.01);
       if (hi > lo) bandSvg += `<path class="rd-band" d="${arc(RB, lo, Math.min(hi, H))}"/>`;
-      if (band.hi > H && H < proj.span + 0.01 && H > lo) bandSvg += `<path class="rd-band late" d="${arc(RB, H, Math.min(band.hi, Math.max(H + 0.05, proj.span >= H ? Math.min(band.hi, 24) : proj.span)))}"/>`;
+      if (band.hi > H && H < proj.span + 0.01 && H > lo) bandSvg += `<path class="rd-band late" d="${arc(RB, H, Math.min(band.hi, Math.max(H + 0.05, proj.span >= H ? Math.min(band.hi, L - 0.01) : proj.span)))}"/>`;
     }
-    const tick = (tm, cls) => { if (!(tm >= 0 && tm <= Math.min(24, proj.span) + 1e-6)) return ''; const k = ringOf(Math.min(tm, 23.99)), a = ang(tm), [x1, y1] = pt(RING[k][0] - 4, a), [x2, y2] = pt(RB + 6, a); return `<line class="${cls}" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`; };
-    const dia = (tm, cls) => { if (!(tm >= 0 && tm <= 24)) return ''; const [x, y] = pt(RB, ang(tm)); return `<rect class="${cls}" x="${f1(x - 6)}" y="${f1(y - 6)}" width="12" height="12" transform="rotate(45 ${f1(x)} ${f1(y)})"/>`; };
-    const evMarks = ev.map(x => { const [cx, cy] = pt(RING[ringOf(x.t)][0] - 9, ang(x.t)); return `<circle class="rd-ev" cx="${f1(cx)}" cy="${f1(cy)}" r="4"/>`; }).join('');
+    const tick = (tm, cls) => { if (!(tm >= 0 && tm <= Math.min(L, proj.span) + 1e-6)) return ''; const k = ringOf(Math.min(tm, L - 0.01)), a = ang(tm), [x1, y1] = pt(RING[k][0] - 4, a), [x2, y2] = pt(RB + 6, a); return `<line class="${cls}" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`; };
+    const dia = (tm, cls) => { if (!(tm >= 0 && tm < L)) return ''; const [x, y] = pt(RB, ang(tm)); return `<rect class="${cls}" x="${f1(x - 6)}" y="${f1(y - 6)}" width="12" height="12" transform="rotate(45 ${f1(x)} ${f1(y)})"/>`; };
+    const evMarks = ev.filter(x => x.t < L).map(x => { const [cx, cy] = pt(RING[ringOf(x.t)][0] - 9, ang(x.t)); return `<circle class="rd-ev" cx="${f1(cx)}" cy="${f1(cy)}" r="4"/>`; }).join('');
     const nums = [[12, -90], [3, 0], [6, 90], [9, 180]].map(([n, deg]) => { const [x, y] = pt(181, deg * Math.PI / 180); return `<text class="rd-num" x="${f1(x)}" y="${f1(y + 4)}">${n}</text>`; }).join('');
     const [hx, hy] = pt(RB + 4, ang(0)), [hx0, hy0] = pt(76, ang(0));
-    const frac = Math.max(0, Math.min(1, 1 - pl.health / pl.maxHealth)), fc = FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)', gid = 'rd' + String(res.id).replace(/[^\w-]/g, '');
+    const frac = Math.max(0, Math.min(1, 1 - pl.health / pl.maxHealth)), fc = FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)';
     const hi = band && band.hi > H ? band.hi : null;
     const key = !isFinite(proj.need0) ? 'all' : r.eta > H ? 'late' : hi != null || r.close ? 'close' : 'ok';
     const first = proj.hours[0];
     const P = { planet: planetName(pl), when: esc(clock(r.eta)), margin: esc(dur(Math.max(0, H - r.eta))), need: people(first.need), more: people(Math.max(0, first.need - first.exp)) };
     const warn = key === 'close' ? `<div class="rd-warn" tabindex="0"><p class="rd-warn-h"><i aria-hidden="true"></i><span>${esc(t('rd.warnT'))}</span><span class="rd-why" aria-hidden="true">${esc(t('rd.why'))} ▾</span></p><div class="rd-more"><div><p>${fill(t('rd.warnB'), { ...P, hi: esc(clock(hi != null ? hi : r.eta)) })}</p></div></div></div>` : '';
     const coming = ev.length ? `<ul class="rd-events">${ev.slice(0, 3).map(x => `<li><b>${esc(hm(at(x.t)))}</b><span>${x.text}</span></li>`).join('')}</ul>` : '';
-    return `<div class="cradar" style="--fc:${fc}">
+    const dial = `<div class="cradar" style="--fc:${fc}">
       <div class="rd-box">
         <svg viewBox="0 0 ${S} ${S}" role="group" aria-label="${esc(t('rd.aria'))}">
-          <defs><radialGradient id="${gid}" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient></defs>
+          <defs><pattern id="${gid}-pm" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect class="rd-pm-line" width="1.6" height="5"/></pattern><radialGradient id="${gid}" cx="34%" cy="30%" r="80%"><stop offset="0" class="g-s0"/><stop offset=".55" class="g-s1"/><stop offset="1" class="g-s2"/></radialGradient></defs>
           <circle class="rd-dial" cx="${C}" cy="${C}" r="${RB + 10}"/>
           ${tracks.join('')}
           <g class="rd-sweep" aria-hidden="true"><path d="${sector(RING[0][0], RING[1][1], ang(0), ang(0) + 0.45)}"/></g>
           ${wedges.join('')}
-          ${bandSvg}${tick(H, 'rd-end')}${evMarks}${dia(r.eta, 'rd-fall')}${hi != null && hi <= 24 ? dia(hi, 'rd-slow') : ''}
+          ${bandSvg}${tick(H, 'rd-end')}${evMarks}${dia(r.eta, 'rd-fall')}${hi != null ? dia(hi, 'rd-slow') : ''}
           <line class="rd-hand" x1="${f1(hx0)}" y1="${f1(hy0)}" x2="${f1(hx)}" y2="${f1(hy)}"/><circle class="rd-hand-tip" cx="${f1(hx)}" cy="${f1(hy)}" r="3.5"/>
           <circle cx="${C}" cy="${C}" r="74" class="rd-arc-track"/><circle cx="${C}" cy="${C}" r="74" class="rd-arc" pathLength="100" transform="rotate(-90 ${C} ${C})" style="stroke-dasharray:${f1(frac * 100)} 100"/>
           <circle cx="${C}" cy="${C}" r="63" fill="url(#${gid})" class="rd-planet"/>
@@ -306,14 +314,25 @@
         </svg>
         <div class="rd-tip" hidden></div>
       </div>
-      <div class="rd-text">
+      <p class="rd-legend" aria-hidden="true"><span><i class="lg-w"></i>${esc(t('rd.lgExp'))}</span><span><i class="lg-n"></i>${esc(t('rd.lgNeed'))}</span><span><i class="lg-b"></i>${esc(t('rd.lgBand'))}</span><span><i class="lg-h"></i>${esc(t('rd.lgNow'))}</span><span><i class="lg-am"></i>${esc(t('rd.lgAm'))}</span><span><i class="lg-pm"></i>${esc(t('rd.lgPm'))}</span></p>
+    </div>`;
+    const text = `<div class="rd-text">
         <span class="rd-k">${esc(t(proj.span < H ? 'rd.k24' : 'rd.k'))}</span>
         <h3 class="rd-h rd-${key}">${esc(t('rd.' + key + 'T'))}</h3>
         <p class="rd-s">${fill(t('rd.' + key + 'S'), P)}</p>
         ${warn}${coming}
-        <p class="rd-legend" aria-hidden="true"><span><i class="lg-w"></i>${esc(t('rd.lgExp'))}</span><span><i class="lg-n"></i>${esc(t('rd.lgNeed'))}</span><span><i class="lg-b"></i>${esc(t('rd.lgBand'))}</span><span><i class="lg-h"></i>${esc(t('rd.lgNow'))}</span></p>
-      </div>
-    </div>`;
+      </div>`;
+    return { dial, text };
+  }
+  // the Helldivers on the planet against the Helldivers it needs, as a gauge of everyone online (the Plan's)
+  function turnoutHTML(res, r, proj) {
+    const N = res.model.N || 0, need = proj.need0;
+    if (!N || !(r.share > 0) || !isFinite(need)) return '';
+    const now = Math.min(1, r.share), nd = Math.min(1, need), there = r.share * N;
+    return `<div class="mv-gauge call-gauge" role="img" aria-label="${esc(fill(t('planVisual.gaugeAria'), { now: people(there), need: people(need * N) }))}">
+      <div class="mvg-scale" aria-hidden="true"><span>${esc(t('planVisual.everyone'))}</span><span>100%</span></div>
+      <div class="mvg-bar" aria-hidden="true"><i class="mvg-now${now < nd ? ' short' : ''}" data-w="${(now * 100).toFixed(2)}" data-key="cg:${esc(res.id)}" style="width:${(now * 100).toFixed(2)}%"></i><i class="mvg-need" style="left:${(nd * 100).toFixed(2)}%"></i></div>
+      <div class="mvg-nums" aria-hidden="true"><span><b class="blue">${people(there)}</b> ${esc(fill(t('planVisual.thereNow'), { p: pct(r.share) }))}</span><span><b class="yellow">${people(need * N)}</b> ${esc(fill(t('planVisual.needed'), { p: pct(need) }))}</span></div></div>`;
   }
   // the liberation the call points at (its planet among the order's targets)
   function callTarget(res, p) {

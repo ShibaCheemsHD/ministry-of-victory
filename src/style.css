@@ -1904,7 +1904,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .rd-legend .lg-b { height: 4px; width: 14px; background: rgba(0, 176, 255, .6); border-radius: 2px; vertical-align: 2px; } .rd-legend .lg-h { width: 12px; height: 2px; background: var(--fg); vertical-align: 3px; }
 @media (prefers-reduced-motion: no-preference) {
   .rd-sweep { transform-box: view-box; transform-origin: 50% 50%; animation: rdSweep 8s cubic-bezier(.45, 0, .55, 1) 1.2s infinite; }
-  .order.anim .rd-w { animation: rdIn .6s var(--ease-out) both; animation-delay: calc(.3s + var(--i) * 35ms + var(--skip, 0ms)); }
+  .order.anim .rd-w { animation: rdIn .6s var(--ease-out) backwards; animation-delay: calc(.3s + var(--i) * 35ms + var(--skip, 0ms)); }
   .rd-fall { animation: rdPulse 2.2s ease-in-out infinite; }
 }
 @media (prefers-reduced-motion: reduce) { .rd-w, .rd-more, .rd-why, .rd-warn { transition: none; } }
@@ -1912,3 +1912,21 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 @keyframes rdIn { from { opacity: 0; transform: scale(.85); } }
 @keyframes rdPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 @media (max-width: 900px) { .rd-box { width: min(100%, 300px); } }
+/* the turnout and the projection's words under the forecast; the dial alone at the side */
+.call-main .rd-text { gap: 8px; padding: 16px 18px; border: 1px solid rgba(0, 176, 255, .28); background: linear-gradient(90deg, rgba(0, 176, 255, .08), transparent 70%); }
+.call-main .rd-h { font-size: 26px; }
+.call-main .rd-s { font-size: 15px; max-width: 62ch; }
+.call-main .rd-warn { max-width: 62ch; }
+.call-gauge { gap: 6px; }
+.mvg-now.short { background: linear-gradient(90deg, #a51d28, var(--f-automaton)); box-shadow: 0 0 16px rgba(254, 52, 65, .5); }
+.cradar > .rd-legend { justify-content: center; text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .order.anim :is(.call-gauge, .call-main .rd-text) { animation: rise .5s var(--ease-out) both; animation-delay: calc(.66s + var(--skip, 0ms)); } }
+/* PM hours striped (the morning plain), on the empty track and over the fill alike */
+.rd-track.pm { fill: rgba(160, 190, 220, .1); }
+.rd-pm { pointer-events: none; }
+.rd-pm-line { fill: rgba(232, 241, 250, .2); }
+.rd-legend .lg-am { background: rgba(160, 190, 220, .3); }
+.rd-legend .lg-pm { background: repeating-linear-gradient(45deg, rgba(232, 241, 250, .55) 0 1.6px, rgba(160, 190, 220, .18) 1.6px 3.6px); }
+/* the lifted wedge's hit area stays where the wedge was, so the pointer can't slip off it and set it bouncing */
+.rd-hit { transform-box: view-box; transform-origin: 50% 50%; transition: transform .26s var(--ease-out); }
+.rd-w.on .rd-hit, .rd-w:focus-visible .rd-hit { transform: scale(.97087) translate(calc(var(--dx) * -1), calc(var(--dy) * -1)); }
