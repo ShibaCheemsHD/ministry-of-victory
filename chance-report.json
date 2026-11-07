@@ -1,0 +1,64 @@
+{
+ "ran": "2026-11-07T17:03:35Z",
+ "adopted": true,
+ "rows": 9229,
+ "pairs": 82712,
+ "dataEnd": 1794038760000.0,
+ "planets": 131,
+ "current": {
+  "trained": "2026-11-07",
+  "dataEnd": 1793396160000.0
+ },
+ "holdout": {
+  "from": 1788854760000.0,
+  "to": 1794038760000.0,
+  "pairs": 3674,
+  "config": {
+   "max_depth": 4,
+   "learning_rate": 0.08,
+   "max_iter": 100,
+   "min_samples_leaf": 100
+  },
+  "cvLogloss": 0.2536,
+  "new": {
+   "all": 0.0603,
+   "24": 0.0318,
+   "48": 0.0744,
+   "72": 0.0989,
+   "right": 0.9178
+  },
+  "engine": {
+   "all": 0.0766,
+   "24": 0.0389,
+   "48": 0.0947,
+   "72": 0.1326,
+   "right": 0.9009
+  },
+  "fresh": {
+   "pairs": 722,
+   "new": {
+    "all": 0.0264,
+    "24": 0.0197,
+    "48": 0.0418,
+    "72": 0.0442,
+    "right": 0.964
+   },
+   "current": {
+    "all": 0.0337,
+    "24": 0.017,
+    "48": 0.0549,
+    "72": 0.0641,
+    "right": 0.9571
+   }
+  }
+ },
+ "config": {
+  "max_depth": 4,
+  "learning_rate": 0.08,
+  "max_iter": 100,
+  "min_samples_leaf": 100
+ },
+ "trees": 100,
+ "bytes": 74176,
+ "reason": "new model: 100 trees, depth 4, from 9229 cases up to 2026-11-07"
+}
