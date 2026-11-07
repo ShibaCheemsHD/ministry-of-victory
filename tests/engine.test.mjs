@@ -1,5 +1,6 @@
 // The forecast maths: hand-checked cases, measured constants, and random orders that must never
 // produce NaN, an unknown verdict or a crash.
+import fs from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -213,4 +214,15 @@ test('one planet left: the crowd of the objective about to finish is a scenario,
   assert.ok(s.at > 0 && s.at < B.eta && s.eta < B.eta, 'its crowd makes 130 fall sooner');
   assert.ok(Math.abs(s.players - 30000) < 1);
   assert.notEqual(B.verdict, 'ontrack', 'the verdict itself does not count on them');
+});
+
+test('the chance model in the page gives the same numbers as the trained one (tools/chance)', async () => {
+  const fx = JSON.parse(fs.readFileSync(new URL('./fixtures/chance-fixture.json', import.meta.url)));
+  for (const { x, p } of fx) near(E.chanceOf(x.map(v => v == null ? NaN : v)), p, 1e-5);
+});
+
+test('the chance a planet falls grows with the time left and shrinks with a later forecast', () => {
+  const p = { index: 1, health: 6e5, maxHealth: 1e6, regenPerSecond: 2 };
+  const a = E.fallChance(p, 0.3, [], 0, 20, 24, true, false), b = E.fallChance(p, 0.3, [], 0, 20, 72, true, false), c = E.fallChance(p, 0.3, [], 0, 60, 24, true, false);
+  assert.ok(a > 0 && a < 1 && b >= a && c <= a, `${a} ${b} ${c}`);
 });
