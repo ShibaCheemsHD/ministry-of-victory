@@ -4,27 +4,28 @@
   // races' briefing; "What did Joel do?" repeated the Command log and is gone)
   // the races are the first tab, so the tab bar sits right under the call (critique 1 Nov 2026: the tabs
   // were 1,400 px down and a key took the call off screen)
-  const TABS = ['races', 'strategy', 'history', 'intel', 'map'];
+  // the command log lives under the objectives (7 Nov 2026): what changed is read beside what it changes
+  const TABS = ['races', 'strategy', 'history', 'map'];
   // the tab names in the address (#order=…&tab=plan), so a call can be linked to straight
   const TAB_SLUG = { races: 'races', strategy: 'plan', history: 'progress', intel: 'log', map: 'map' };
   function curTab(id) {
     let tab = ui.tab[id] || 'races';
     if (tab === 'data') tab = 'history';
-    if (tab === 'objectives') tab = 'races';
+    if (tab === 'objectives' || tab === 'intel') tab = 'races';
     return TABS.includes(tab) ? tab : 'races';
   }
   function viewHTML(entry) {
     const { a, res } = entry;
     const tab = curTab(a.id);
-    const panel = tab === 'races' ? racesHTML(res, a) : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
+    const panel = tab === 'races' ? racesHTML(res, a) + `<div class="cmd-wrap" id="cmd-${esc(a.id)}">${intelTabHTML(entry)}</div>` : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { races: t('tRaces'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}" title="${esc(fill(t('it.badgeT'), { n: ic.n }))}">${ic.n}</span>` : ''), map: t('tMap') };
+    const label = { races: t('tRaces') + (ic.n ? ` <span class="tab-badge ${ic.level}" title="${esc(fill(t('it.badgeT'), { n: ic.n }))}">${ic.n}</span>` : ''), strategy: t('tStrat'), history: t('tHist'), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
-      ${settings.layout === 'glance' ? `<p class="glance-note"><span>${esc(t('glanceOn'))}</span><button type="button" class="btn ghostly" data-glance>${esc(t('glanceShow'))}<span class="kcap sm" aria-hidden="true">G</span></button></p>` : `<section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
-        <div class="tabbar"><span class="kcap" aria-hidden="true" title="${esc(t('keyPrev'))}">Q</span><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map((k, i) => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}"><span class="tab-n" aria-hidden="true">${i + 1}</span>${label[k]}</button>`).join('')}</div><span class="kcap" aria-hidden="true" title="${esc(t('keyNext'))}">E</span><button type="button" class="glance-btn" data-glance-on title="${esc(t('hLayout'))}">${esc(t('glanceBtn'))}<span class="kcap sm" aria-hidden="true">G</span></button></div>
+      <section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">
+        <div class="tabbar"><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${TABS.map(k => `<button type="button" role="tab" class="tab" id="tab-${esc(a.id)}-${k}" data-tab="${k}" aria-selected="${tab === k}" aria-controls="tp-${esc(a.id)}" tabindex="${tab === k ? 0 : -1}">${label[k]}</button>`).join('')}</div></div>
         <div class="tabpanel" id="tp-${esc(a.id)}" role="tabpanel" aria-labelledby="tab-${esc(a.id)}-${tab}" tabindex="0">${panel}</div>
-      </section>`}
+      </section>
     </div>`;
   }
   function mapTabHTML(res) {

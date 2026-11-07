@@ -168,6 +168,10 @@
     if (!all.length) return '';
     // a line needs two points: until the recorder has them, say so instead of an empty chart
     if (all.every(x => x.pts.length < 2)) return `<p class="ch-empty">${esc(t('h.noHist'))}</p>`;
+    // planets already held start hidden while others are still open (7 Nov 2026: a held planet's line jumps
+    // to 100% and back to 0 when it changes hands, and drew the eye away from the race still running);
+    // the legend shows them again, and a choice made there is kept
+    if (!ui.chartOff[id] && !entry.res.ended && all.some(x => x.r.verdict !== 'done')) ui.chartOff[id] = Object.fromEntries(all.filter(x => x.r.verdict === 'done').map(x => ['p' + x.r.planet.index, true]));
     const x0 = Math.min(entry.start || now, ...all.map(x => x.pts[0][0])), x1 = Math.max(end, now);
     const series = [], tags = [];
     all.forEach(({ r, k, pts }) => {

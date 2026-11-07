@@ -129,7 +129,8 @@
     if (res.verdict === 'done') return `<button type="button" class="btn primary" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('shareWin'))}</span></button>${nextBtn}`;
     if (lost) return `${nextBtn}<button type="button" class="btn ${next ? 'ghostly' : 'primary'}" data-goto="strategy">${esc(t(res.ended || res.verdict === 'failed' ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`;
     if (alt) return `<button type="button" class="btn primary" data-otab="${esc(alt.id)}" data-pick>${esc(fill(t('endNextLost'), { title: alt.title }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t('seePlan'))}${ICON.track}</button>`;
-    return `<button type="button" class="btn primary" data-goto="strategy">${esc(t('seePlan'))}${ICON.track}</button>`;
+    // an order still running: the plan is one tab away, not a second button under the call (7 Nov 2026)
+    return '';
   }
 
   /* ---------- the call: the desk's one move, with the order's forecast beside it ---------- */
@@ -175,7 +176,7 @@
     // the call's planet as the war table's hologram (also the planet a lost order suggests)
     const ringOf = (pl) => pl && pl.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (pl.event ? pl.event.health / pl.event.maxHealth : pl.health / pl.maxHealth))), label: t(pl.event ? 'gDef' : 'gLib'), tone: 'lib' } : null;
     const art = m.state === 'done' ? `<div class="holo won" aria-hidden="true">${medalSvg}${medals ? `<b>+${fmt(medals)}</b><span>${esc(t('cl.medals'))}</span>` : ''}</div>`
-      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res, t(m.mw.defend ? 'capDef' : res.tasks.some(r => r.planet && String(r.planet.index) === String(m.mw.p.index)) ? 'capBusyIn' : 'capBusy')) : '') : holoPlanet(p, res, null, true);
+      : m.moveOn ? (m.mw ? holoPlanet({ ring: ringOf(m.mw.p), planet: m.mw.p, fac: factionOfPlanet(m.mw.p) }, res, t(m.mw.defend ? 'capDef' : res.tasks.some(r => r.planet && String(r.planet.index) === String(m.mw.p.index)) ? 'capBusyIn' : 'capBusy')) : '') : holoPlanet(p, res, null, false);
     // actions: the move first, then one quieter line to pass the call on
     const primary = m.moveOn && m.next ? `<button type="button" class="btn primary" data-otab="${esc(m.next.a.id)}" data-pick>${esc(fill(t('endNextLost'), { title: m.target }))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
       : m.moveOn && m.mw ? `<button type="button" class="btn primary" data-open-planet="${m.mw.p.index}">${esc(t('gCta'))}${ICON.track}</button><button type="button" class="btn ghostly" data-goto="strategy">${esc(t(lost ? 'seeWhy' : 'seeWhyOut'))}${ICON.track}</button>`
@@ -183,36 +184,73 @@
       : endAction(res, alt);
     // under 6 hours and not safe: the hazard rail crawls, the one motion that means "hurry"
     const urgent = (m.state === 'go' || m.state === 'wait') && isFinite(res.hoursLeft) && res.hoursLeft < 6 && !['done', 'ontrack'].includes(v);
+    const go = m.state === 'go' || m.state === 'wait';
+    const r = !m.moveOn ? callTarget(res, p) : null, eta = r && isFinite(r.eta) && isFinite(res.hoursLeft) && res.hoursLeft > 0 ? r.eta : null;
+    const ends = isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    // the clock rides in the yellow band (7 Nov 2026): the side column is the planet's now
+    const barClock = go && isFinite(exp) && !res.ended ? `<span class="call-clock" title="${esc(fill(t('endsAt'), { when: ends }))}"><span class="count" data-exp="${exp}">—</span> ${esc(t('fcb.left'))} · ${esc(fill(t('fcb.ends'), { when: ends }))}</span>` : '';
+    const block = go && !m.moveOn ? forecastBlock(res, r, eta, L, v) : '';
+    // with the forecast's own time on screen the sentence and the turnout bar would say it twice
+    const said = !!(block && eta != null);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}${urgent ? ' urgent' : ''}" aria-labelledby="dir-${esc(id)}">
+      <i class="rails" aria-hidden="true"></i>
+      <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}${facOk ? ` · <span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</span>${barClock}</div>
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}${isFinite(res.hoursLeft) && res.hoursLeft > 0 ? `<span class="call-left">${esc(fill(t('leftShort'), { d: dur(res.hoursLeft >= 1 ? Math.floor(res.hoursLeft) : res.hoursLeft) }))}</span>` : ''}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
-        ${art}
-        <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb">${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
+        <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb"><span class="wings" aria-hidden="true"><i></i><i></i><i></i></span>${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
         ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
-        <p class="why">${m.why}</p>
-        ${m.moveOn ? '' : p.meter}
-        ${!m.moveOn && (m.state === 'go' || m.state === 'wait') ? migrationHTML(res, m.planet) : ''}
+        ${block}
+        ${said ? '' : `<p class="why">${m.why}</p>`}
+        ${m.moveOn || said ? '' : p.meter}
+        ${!m.moveOn && go ? migrationHTML(res, m.planet) : ''}
         ${meanwhile}
-        <div class="call-actions">${primary}</div>
-        <div class="call-tools">
+        <div class="call-actions">${primary}
           ${res.verdict === 'done' ? `<button type="button" class="btn quiet" data-copy="${esc(res.id)}">${ICON.copy}<span>${t('copy')}</span><span class="kcap sm" aria-hidden="true">C</span></button>`
             : `<details class="share-menu"><summary class="btn quiet">${ICON.image}<span>${esc(t('shareMenu'))}</span>${ICON.chev}</summary><div class="sm-list">
               <button type="button" class="sm-item" data-shareimg="${esc(res.id)}">${ICON.image}<span>${esc(t('sh.btn'))}</span><span class="kcap sm" aria-hidden="true">S</span></button>
               <button type="button" class="sm-item" data-copy="${esc(res.id)}">${ICON.copy}<span>${esc(t('copy'))}</span><span class="kcap sm" aria-hidden="true">C</span></button></div></details>`}
-          ${m.moveOn ? '' : planetBtn(res)}
         </div>
       </div>
-      <div class="call-side" role="group" aria-labelledby="fc-${esc(id)}">
-        <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || m.state === 'done' ? 'result' : 'forecast'))}</h3>
-        <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
-        <p class="meaning">${esc(t(v === 'focus' && res.liberation?.close ? 'm.close' : 'm.' + v))}</p>
-        ${res.ended || m.moveOn ? '' : whyHTML(res, p.d)}
-        <dl class="clock">${clockRow}${reward}</dl>
+      <div class="call-side">
+        ${art}
+        ${m.moveOn ? '' : planetBtn(res)}
+        ${go ? '' : `<p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p><p class="meaning">${esc(t(v === 'focus' && res.liberation?.close ? 'm.close' : 'm.' + v))}</p>`}
+        ${go && reward === '' ? '' : `<dl class="clock">${go ? '' : clockRow}${reward}</dl>`}
         ${customModel() ? `<p class="model-note">${ICON.edit}<span>${esc(t('modelNote'))}</span><button type="button" class="linkish" data-model-reset>${esc(t('modelReset'))}</button></p>` : ''}
         ${logNote(res, a)}
       </div>
     </section>`;
+  }
+  // the liberation the call points at (its planet among the order's targets)
+  function callTarget(res, p) {
+    const pl = p.d && p.d.kind === 'liberate' ? p.d.planet : null;
+    return pl ? res.tasks.find(x => x.pw && x.planet && x.planet.index === pl.index) || null : null;
+  }
+  // The forecast as the call reads it (7 Nov 2026): the verdict, then the time the planet falls in big type,
+  // a time line from now to the deadline, and four numbers players can act on.
+  function forecastBlock(res, r, eta, L, v) {
+    const meaning = esc(t(v === 'focus' && res.liberation?.close ? 'm.close' : 'm.' + v));
+    const chip = `<span class="fcb-v">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></span>`;
+    if (eta == null) return `<div class="fcb vl-${L}">${chip}<div class="fcb-body"><p class="fcb-mean">${meaning}</p></div></div>`;
+    const H = res.hoursLeft, late = eta > H, pl = r.planet;
+    const head = `<div class="fcb vl-${L}">${chip}<div class="fcb-body"><span class="fcb-k">${esc(t(late ? 'fcb.late' : 'fcb.when'))}</span><b class="fcb-t">${esc(clock(eta))}</b><p class="fcb-mean">${meaning}</p></div></div>`;
+    const span = Math.max(H, eta), fx = eta / span * 100, dx = H / span * 100;
+    const nowT = new Date(last.now).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    // labels that would collide are left out (the marks and the aria-label still say it all)
+    const near = Math.abs(fx - dx) < 16, early = fx < 30;
+    const line = `<div class="ftl${late ? ' late' : ''}" role="img" aria-label="${esc(fill(t('fcb.lineAria'), { now: nowT, fall: clock(eta), end: clock(H) }))}">
+      <div class="ftl-track"><i class="ftl-run" style="width:${fx.toFixed(1)}%"></i><i class="ftl-now"></i><i class="ftl-fall" style="left:${fx.toFixed(1)}%"></i><i class="ftl-end" style="left:${dx.toFixed(1)}%"></i></div>
+      <div class="ftl-lab" aria-hidden="true"><span class="ftl-l-now">${esc(t('fcb.now'))} · ${esc(nowT)}</span>${near || early ? '' : `<span class="ftl-l-fall" style="left:${fx.toFixed(1)}%">${esc(t(late ? 'fcb.fallLate' : 'fcb.fall'))}</span>`}<span class="ftl-l-end" style="left:${dx.toFixed(1)}%">${esc(t('fcb.end'))}</span></div></div>`;
+    const left = Math.max(0, pl.health / pl.maxHealth);
+    const pace = left / eta * 100, need = left / H * 100, N = res.model.N || 0;
+    const pp = (x) => fmt(x, x < 10 ? 1 : 0) + '%';
+    const tiles = [
+      [t('fcb.pace'), `+${pp(pace)}<small>/h</small>`, 'blue', t('fcb.paceTip')],
+      [t('fcb.need'), `${pp(need)}<small>/h</small>`, '', t('fcb.needTip')],
+      r.chance != null ? [t('fcb.chance'), r.chance >= 0.95 ? '95%+' : r.chance < 0.05 ? '&lt;5%' : Math.round(r.chance * 20) * 5 + '%', '', t('s.chanceTip')] : null,
+      N ? [t('fcb.there'), people(r.share * N), '', ''] : null,
+    ].filter(Boolean);
+    return head + line + `<div class="fcb-tiles">${tiles.map(([k, val, cls, tip]) => `<div class="fcb-tile ${cls}"${tip ? ` title="${esc(tip)}"` : ''}><span>${esc(k)}</span><b>${val}</b></div>`).join('')}</div>`;
   }
   // something new in the command log for this order: said beside the call, one click from the log
   // (critique 1 Nov 2026: a hand-made change only showed as a badge on a tab far below)
@@ -225,50 +263,3 @@
 
   const medalsOf = (a) => (a.rewards && a.rewards.length ? a.rewards : [a.reward]).filter(Boolean).reduce((s, x) => s + (x.type === 1 ? Number(x.amount) : 0), 0);
 
-  // the forecast's "why": what we do against what it takes, one meter per open objective, all in the same
-  // words: Helldivers there and needed, or the pace now and the pace needed
-  // Beside the call, only the one thing holding the order back that the call doesn't already show (critique
-  // 1 Nov 2026: the same Helldivers count twice in the first screen, and the races repeated below it)
-  function whyHTML(res, d = {}) {
-    if (res.verdict === 'done' || res.verdict === 'unknown') return '';
-    const skipIdx = d.task ? d.task.idx : null, skipPlanet = d.planet ? d.planet.index : null, skipLib = d.kind === 'liberate';
-    const meters = [];
-    const meter = (label, have, need, sub, mark, key, few = false, cond = false) => {
-      const ratio = need > 0 ? have / need : 1;
-      const ok = ratio >= 1;
-      const fillW = Math.max(2, Math.min(100, ratio * 100)), markW = mark != null && need > 0 ? Math.min(100, (mark / need) * 100) : null;
-      if (ok && !cond) return;
-      const short = cond ? t('why.ifSwitch') : few ? fill(t('why.fewBy'), { n: divers(need - have) }) : fill(t('why.slowBy'), { p: pct(1 - Math.max(0, ratio)) });
-      meters.push({ sev: cond ? 0.99 : ratio, html: `<div class="why-m ${cond ? 'warn' : ratio < 0.5 ? 'bad' : 'warn'}">
-        <div class="wm-top"><span class="wm-l">${label}</span><span class="wm-x">${esc(short)}</span></div>
-        <div class="wm-bar" role="img" aria-label="${esc(plain(sub))}"><div class="fill" data-key="why:${esc(key)}" data-w="${fillW}"></div>${markW != null ? `<i class="wm-mark" style="left:${markW}%"></i>` : ''}</div>
-        <div class="wm-sub">${sub}</div></div>` });
-    };
-    for (const r of res.anyOf ? [res.tasks[res.pick]] : res.tasks) {
-      if (r.verdict === 'done' || (skipIdx != null && r.idx === skipIdx) || (skipPlanet != null && r.planet && r.planet.index === skipPlanet)) continue;
-      if (r.counter && !r.simpleCount && r.needed > 0 && r.primary) {
-        const noun = taskText(r);
-        const rec0 = r.rates.recent ? r.rates.recent.rate : null;
-        // the last hour is worth showing only when it differs from the main pace
-        const rec = rec0 != null && r.primary.rate > 0 && Math.abs(rec0 / r.primary.rate - 1) > 0.1 ? rec0 : null;
-        // on track thanks to players switching over from finished objectives: the meter shows that pace, said so
-        const fr = r.verdict === 'ontrack' && r.freed && r.freed.rate > 0 ? r.freed.rate : null;
-        // on track only if players switch over: a condition, said as one (never a green "on pace")
-        if (fr != null) { meter(noun, r.primary.rate, r.needed, fill(t('why.paceFreed'), { have: big(r.primary.rate), eff: big(fr), need: big(r.needed) }), null, `${res.id}:${r.idx}`, false, true); continue; }
-        meter(noun, r.primary.rate, r.needed,
-          fill(t(rec != null && r.primary.kind !== 'recent' ? 'why.paceRec' : 'why.pace'), { have: big(r.primary.rate), rec: big(rec), need: big(r.needed), basis: t('why.basis.' + (r.primary.kind || 'start')) }), r.primary.kind !== 'recent' ? rec : null, `${res.id}:${r.idx}`);
-      } else if (r.defense && !r.defense.outlastsMO) {
-        meter(fill(t('why.def'), { planet: planetName(r.planet) }), r.defense.share, r.defense.need,
-          fill(t('why.players'), { have: divers(r.defense.share), need: divers(r.defense.need) }), null, `${res.id}:${r.idx}`, true);
-      }
-    }
-    const lib = res.liberation;
-    if (!skipLib && lib && isFinite(lib.currentShare) && lib.seqNeed > 0 && lib.verdict !== 'done' && lib.verdict !== 'ontrack')
-      meter(esc(t(lib.count > 1 ? 'why.libN' : 'why.lib1')), lib.currentShare, isFinite(lib.seqNeed) ? lib.seqNeed : 5,
-        fill(t('why.players'), { have: divers(lib.currentShare), need: divers(isFinite(lib.seqNeed) ? lib.seqNeed : 5) }), null, `${res.id}:lib`, true);
-    meters.sort((x, y) => x.sev - y.sev);
-    const doneN = res.tasks.filter(r => r.verdict === 'done').length;
-    if (!meters.length) return doneN ? `<div class="fwhy"><p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p></div>` : '';
-    return `<div class="fwhy"><p class="fwhy-h">${esc(t('why.also'))}</p>${meters.slice(0, 1).map(m => m.html).join('')}
-      ${doneN ? `<p class="why-done">${ICON.check}<span>${fill(t('why.done'), { k: doneN, n: res.tasks.length })}</span></p>` : ''}</div>`;
-  }

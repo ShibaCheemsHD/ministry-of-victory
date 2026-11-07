@@ -5,10 +5,10 @@
   const SH_LV = { done: '#3fc483', ok: '#2fc6b8', push: '#efc63a', record: '#ff8040', out: '#a0a9bb', wait: '#a0a9bb' };
   const SH_VC = Object.fromEntries(Object.keys(LVL).map(v => [v, SH_LV[lvl(v)]]));
   const SH_FAC = { Terminids: '#f5a83c', Automaton: '#ff6159', Illuminate: '#b48eff', Humans: '#67b7ee' };
-  const SH_D = 'Saira', SH_U = 'Chakra Petch';
+  const SH_D = 'Saira', SH_U = 'Saira';
   async function shareImage(entry) {
     const { a, res } = entry;
-    try { await Promise.all(['900 40px Saira', '800 40px Saira', '700 20px "Chakra Petch"', '500 20px "Chakra Petch"'].map(f => document.fonts.load(f))); } catch {}
+    try { await Promise.all(['900 40px Saira', '800 40px Saira', '700 20px Saira', '500 20px Saira'].map(f => document.fonts.load(f))); } catch {}
     // the page's own words, with times in UTC
     clockUTC = true;
     let p, mv, objs, joel;
@@ -192,7 +192,7 @@
   function openFaq(id) {
     const F = t('faq'), dlg = $('dlg-faq');
     $('faq-title').textContent = F.title;
-    $('faq-body').innerHTML = `<p class="faq-intro">${esc(F.intro)}</p><div class="faq-list">${F.items.map(it => `<details class="faq" id="faq-${it.id}"${it.id === id ? ' open' : ''}><summary>${esc(it.q)}</summary><div class="faq-a">${fill(it.a, { live: faqLive(), unsure: esc(F.unsure), dss: Math.round(settings.dssBonus * 100) + '%', hod: String(settings.hodMult), other: String(settings.hodOther ?? ENGINE.DEFAULTS.hodOther) })}</div></details>`).join('')}</div>
+    $('faq-body').innerHTML = `<p class="faq-intro">${esc(F.intro)}</p><div class="faq-guide"><button type="button" class="btn ghostly" data-open-guide>${ICON.track}<span>${esc(t('faqGuide'))}</span></button><p class="faq-keys">${t('keysHint')}</p></div><div class="faq-list">${F.items.map(it => `<details class="faq" id="faq-${it.id}"${it.id === id ? ' open' : ''}><summary>${esc(it.q)}</summary><div class="faq-a">${fill(it.a, { live: faqLive(), unsure: esc(F.unsure), dss: Math.round(settings.dssBonus * 100) + '%', hod: String(settings.hodMult), other: String(settings.hodOther ?? ENGINE.DEFAULTS.hodOther) })}</div></details>`).join('')}</div>
       <div class="faq-foot"><p>${esc(F.checked)}</p><ul>${FAQ_SRC.map(([n, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a></li>`).join('')}</ul><p><a href="https://github.com/ShibaCheemsHD/ministry-of-victory/issues/new" target="_blank" rel="noopener">${esc(F.sources)}</a></p></div>`;
     document.querySelectorAll('dialog[open]').forEach(d => { if (d !== dlg) d.close(); });
     if (!dlg.open) dlg.showModal();
@@ -291,6 +291,7 @@
     if (el && el.dataset && el.dataset.intel) ui.intelOpen[el.dataset.intel] = el.open;
     if (el && el.dataset && el.dataset.simbox) { ui.simOpen[el.dataset.simbox] = el.open; saveUi(); }
     if (el && el.dataset && el.dataset.brief) ui.briefOpen[el.dataset.brief] = el.open;
+    if (el && el.dataset && el.dataset.doneOpen) (ui.doneOpen ||= {})[el.dataset.doneOpen] = el.open;
     if (el && el.dataset && 'cross' in el.dataset) ui.crossOpen = el.open;
     if (el && el.dataset && 'intelstrip' in el.dataset) ui.intelStripOpen = el.open;
     if (el && el.dataset && el.dataset.year) (ui.arYears ||= {})[el.dataset.year] = el.open;
@@ -304,14 +305,13 @@
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     // a key switches the tab and brings it on screen (critique 1 Nov 2026: the tabs changed off-screen)
     if (k === 'q' || k === 'e') { e.preventDefault(); cycleTab(k === 'q' ? -1 : 1, true); }
-    else if (/^[1-5]$/.test(k)) { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
+    else if (/^[1-4]$/.test(k)) { e.preventDefault(); selectTab(TABS[Number(k) - 1], 'tabs'); }
     else if (k === 'a') { e.preventDefault(); setView(ui.view === 'archive' ? 'war' : 'archive'); }
     else if (k === 'p' && document.querySelector('[data-globe]')) { e.preventDefault(); if (ui.pcPinned) closeCard(true); else openCard(true); }
     else if (k === 'Escape' && document.querySelector('.share-menu[open]')) document.querySelectorAll('.share-menu[open]').forEach(d => { d.open = false; d.querySelector('summary').focus(); });
     else if (k === 'Escape' && $('view').querySelector('.pc-wrap.open')) closeCard(true);
     else if (k === 'c' && $('view').querySelector('[data-copy]')) { e.preventDefault(); $('view').querySelector('[data-copy]').click(); }
     else if (k === 's' && $('view').querySelector('[data-shareimg]')) { e.preventDefault(); $('view').querySelector('[data-shareimg]').click(); }
-    else if (k === 'g') { e.preventDefault(); setGlance(settings.layout !== 'glance'); }
     else if (k === '/') { e.preventDefault(); if (ui.view !== 'archive') setView('archive'); setTimeout(() => $('ar-q')?.focus(), 0); }
     else if (k === 'r') { e.preventDefault(); refresh(); }
     else if (k === '?') { e.preventDefault(); $('dlg-info').showModal(); }
@@ -437,4 +437,5 @@
   document.addEventListener('pointerout', (e) => { const c = e.target.closest && e.target.closest('.chart'); if (c && !(e.relatedTarget && c.contains(e.relatedTarget))) { c.classList.remove('hover'); c.querySelectorAll('.hl, .dim').forEach(n => n.classList.remove('hl', 'dim')); } });
   document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
   $('open-settings').addEventListener('click', () => $('dlg-settings').showModal());
-  $('open-info').addEventListener('click', () => $('dlg-info').showModal());
+  // the field guide opens from the FAQ (7 Nov 2026: Help and FAQ were two buttons for one question)
+  $('dlg-faq').addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-open-guide]')) { $('dlg-faq').close(); $('dlg-info').showModal(); } });

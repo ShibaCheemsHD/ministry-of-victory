@@ -61,9 +61,9 @@
     const S = (k, p = {}) => fill(t('s.' + k), p);
     const banner = res.anyOf ? `<p class="anyof">${ICON.target}<span>${fill(t('anyOf'), { k: res.pick + 1 })}</span></p>` : '';
     const ordered = raceOrder(res);
-    return banner + ordered.map((r, pos) => {
+    const card = (r, pos, list) => {
       const i = res.tasks.indexOf(r), done = r.verdict === 'done';
-      const group = pos === 0 || done !== (ordered[pos - 1].verdict === 'done') ? `<p class="race-group-label${done ? ' completed' : ''}"${done ? '' : ` title="${esc(t('races.priorityNote'))}"`}>${esc(t(done ? 'races.completed' : res.ended ? 'races.unfinished' : 'races.active'))}</p>` : '';
+      const group = pos === 0 || done !== (list[pos - 1].verdict === 'done') ? `<p class="race-group-label${done ? ' completed' : ''}"${done ? '' : ` title="${esc(t('races.priorityNote'))}"`}>${esc(t(done ? 'races.completed' : res.ended ? 'races.unfinished' : 'races.active'))}</p>` : '';
       const tk = r.task;
       const p = r.planet;
       const fac = p ? factionOfPlanet(p) : tk.faction;
@@ -118,7 +118,15 @@
           <span class="race-call">${pv}</span></div>
         <div class="meta">${bar}<p class="line">${line}</p>${chips.length ? `<div class="chipline">${chips.join('')}</div>` : ''}${r.verdict === 'done' ? '' : intelHTML(r, res, key)}</div>
       </article>`;
-    }).join('');
+    };
+    // objectives already done fold into one line while others are still open (7 Nov 2026: three full green
+    // bars took half the screen and said "done" three times)
+    const open = ordered.filter(r => r.verdict !== 'done'), done = ordered.filter(r => r.verdict === 'done');
+    if (!open.length || !done.length || res.ended) return banner + ordered.map((r, pos) => card(r, pos, ordered)).join('');
+    const names = done.map(r => r.planet ? planetName(r.planet) : taskText(r));
+    const id = String(res.id), shut = !ui.doneOpen?.[id];
+    return banner + open.map((r, pos) => card(r, pos, open)).join('')
+      + `<details class="race-done" data-done-open="${esc(id)}"${shut ? '' : ' open'}><summary><span class="rd-n">${ICON.check}${esc(fill(t('races.doneN'), { n: done.length }))}</span><span class="rd-l">${names.join(' · ')}</span>${ICON.chev}</summary><div class="race-list">${done.map((r, pos) => card(r, pos, done)).join('')}</div></details>`;
   }
 
   /* ---------- strategy tab ---------- */
@@ -333,6 +341,15 @@
       case 'cntStart': p = { task: taskText(m.task), needed: big(m.needed) }; break;
     }
     p.Helldivers = p.players;
+    // the featured move gets the turnout as a gauge of everyone online: there now, and the yellow mark needed
+    const N = res.model?.N || 0;
+    if (featured && N && m.players > 0 && m.nowPlayers != null && ['libFocus', 'defSend', 'libNFocus'].includes(m.kind)) {
+      const now = Math.min(1, m.nowPlayers / N), need = Math.min(1, m.players / N);
+      extra = `<div class="mv-gauge" role="img" aria-label="${esc(fill(t('planVisual.gaugeAria'), { now: fmt(m.nowPlayers), need: people(m.players) }))}">
+        <div class="mvg-scale" aria-hidden="true"><span>${esc(t('planVisual.everyone'))}</span><span>100%</span></div>
+        <div class="mvg-bar" aria-hidden="true"><i class="mvg-now" data-w="${(now * 100).toFixed(2)}" data-key="mvg:${esc(res.id)}" style="width:${(now * 100).toFixed(2)}%"></i><i class="mvg-need" style="left:${(need * 100).toFixed(2)}%"></i></div>
+        <div class="mvg-nums" aria-hidden="true"><span><b class="blue">${fmt(m.nowPlayers)}</b> ${esc(fill(t('planVisual.thereNow'), { p: pct(m.nowPlayers / N) }))}</span><span><b class="yellow">${people(m.players)}</b> ${esc(fill(t('planVisual.needed'), { p: pct(m.players / N) }))}</span></div></div>`;
+    }
     const subj = m.task && m.task.task ? taskNoun(m.task.task) : null;
     let fx = effectText(m.effect, subj);
     if (m.kind === 'cntMove' && m.short) { const g = effectText({ kind: 'gap', more: m.short, weaponUse: m.shortWeaponUse }); if (g) fx = fx ? fx + '. ' + g : g; }
@@ -340,7 +357,7 @@
     const detailKey = [res.id, m.kind, m.planet?.index ?? m.task?.idx ?? m.to ?? position].join(':');
     const expanded = planDetailsOpen[detailKey] ?? featured;
     return `<li class="move${featured ? ' move-featured' : ''} lvl-${res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip'}">
-      <div class="mv-top"><span class="lvl">${esc(t('lv.' + (res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip')))}</span><h4>${fill(m.kind === 'cntMove' && m.short ? t('mv.cntMoveShortHead') : MV.head, p)}</h4></div>
+      <div class="mv-top">${featured ? '<span class="mv-keys" aria-hidden="true"><i>▲</i><i>▶</i><i>▼</i><i>▼</i><i>▶</i></span>' : ''}<span class="lvl">${esc(t('lv.' + (res.verdict === 'nearly_impossible' && (m.level === 'critical' || m.level === 'high') ? 'long' : m.level || 'tip')))}</span><h4>${fill(m.kind === 'cntMove' && m.short ? t('mv.cntMoveShortHead') : MV.head, p)}</h4></div>
       <details class="mv-explain" data-plan-detail="${esc(detailKey)}"${expanded ? ' open' : ''}><summary id="plan-detail-${esc(detailKey)}"><span>${esc(t('planVisual.why'))}</span>${ICON.chev}</summary><div class="mv-explain-body"><p class="mv-why">${fill(why, p)}</p></div></details>
       ${m.weapon && (m.kind === 'cntMove' || m.kind === 'cntShort') ? `<p class="mv-req"><span class="label">${esc(t('mvReq'))}</span><b>${esc(itemName(m.weapon))}</b><span>${esc(t('mvReqS'))}</span></p>` : ''}
       ${fx ? `<div class="mv-impact"><span class="mv-impact-label">${esc(t('planVisual.effect'))}</span><p class="mv-fx">${ICON.target}<span>${fx}</span></p></div>` : ''}

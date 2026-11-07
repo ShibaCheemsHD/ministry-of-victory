@@ -49,7 +49,7 @@ def run(br, query, width):
     tabs = pg.locator('#order-tabs [data-otab]:visible')   # the order tabs only (other buttons also switch orders)
     for oi in range(max(1, tabs.count())):
         if tabs.count(): tabs.nth(oi).click(timeout=3000); pg.wait_for_timeout(120)
-        for tb in ('races', 'strategy', 'history', 'intel', 'map'):
+        for tb in ('races', 'strategy', 'history', 'map'):
             el = pg.locator(f'.tab[data-tab="{tb}"]:visible')
             if el.count():
                 el.first.click(timeout=3000); pg.wait_for_timeout(150); check(pg, f'{label} order {oi + 1} {tb}', errs)
@@ -108,10 +108,10 @@ with sync_playwright() as p:
     for w in (390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
         pg.goto(f'{PAGE}?s=intel&corrections=1&motion=reduced'); pg.wait_for_timeout(1800)
-        pg.locator('.tab[data-tab="intel"]').first.click(); pg.wait_for_timeout(250)
+        pg.locator('.tab[data-tab="races"]').first.click(); pg.wait_for_timeout(250)
         resistance = pg.locator('.it-card.cat-resistance').filter(has=pg.locator('h5').filter(has_text='Enemy resistance set by Command'))
         if resistance.count() != 1 or '1.75%/h' not in resistance.inner_text() or '0.50%/h' not in resistance.inner_text(): problems.append(f'values @{w}: missing historical resistance values')
-        if not pg.locator('.deadline-date').first.is_visible(): problems.append(f'values @{w}: missing visible deadline')
+        if not pg.locator('.call-clock').first.is_visible(): problems.append(f'values @{w}: missing visible deadline')
         seaf = pg.locator('.it-card.is-seaf').first
         if not seaf.count() or 'allied' not in seaf.inner_text().lower(): problems.append(f'corrections @{w}: missing allied SEAF')
         if not pg.locator('.it-card h5').filter(has_text='Caustic Strain').count(): problems.append(f'corrections @{w}: missing named Caustic Strain')
@@ -130,7 +130,7 @@ with sync_playwright() as p:
     for w in (390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
         pg.goto(f'{PAGE}?s=intel&dedup=1&motion=reduced'); pg.wait_for_timeout(1800)
-        pg.locator('.tab[data-tab="intel"]').first.click(); pg.wait_for_timeout(250)
+        pg.locator('.tab[data-tab="races"]').first.click(); pg.wait_for_timeout(250)
         change = pg.locator('.it-card.cat-resistance').filter(has=pg.locator('h5').filter(has_text='Enemy resistance decreased'))
         if change.count() != 1: problems.append(f'dedup @{w}: expected one resistance change')
         else:
@@ -145,7 +145,7 @@ with sync_playwright() as p:
     for w in (320, 390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
         pg.goto(f'{PAGE}?s=intel&dense=1&motion=reduced'); pg.wait_for_timeout(1800)
-        pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(300)
+        pg.locator('.tab[data-tab="races"]').click(); pg.wait_for_timeout(300)   # the log sits under the objectives
         # the timeline is folded away since 7 Nov 2026: open it, and it must stay open across re-renders
         pg.locator('.it-timeline > summary').first.click(); pg.wait_for_timeout(100)
         dense_key = pg.locator('[data-igroup]').evaluate_all("els => els.find(e => e.dataset.igroup.split(',').length >= 24)?.dataset.igroup || null")
@@ -157,8 +157,8 @@ with sync_playwright() as p:
             if selected.count() != len(dense_key.split(',')): problems.append(f'dense log @{w}: selection lost entries')
             if not pg.locator('.it-card.is-selected .it-selected-label').first.is_visible(): problems.append(f'dense log @{w}: no persistent selection label')
             if pg.evaluate('document.activeElement.dataset.ikey') is None: problems.append(f'dense log @{w}: focus did not reach the selected entry')
+            pg.locator('.tab[data-tab="map"]').click()
             pg.locator('.tab[data-tab="races"]').click()
-            pg.locator('.tab[data-tab="intel"]').click()
             if pg.locator('.it-card.is-selected').count() != len(dense_key.split(',')): problems.append(f'dense log @{w}: selection lost after rerender')
             pg.locator('[data-iclear]').click()
             if pg.locator('.it-card.is-selected').count(): problems.append(f'dense log @{w}: selection did not clear')

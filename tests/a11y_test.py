@@ -12,7 +12,7 @@ PAGE = 'file://' + os.path.join(ROOT, 'build', 'test.html')
 AXE = open(os.path.join(ROOT, 'node_modules', 'axe-core', 'axe.min.js')).read()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 SCENARIOS = ['default', 'none', 'fail', 'measure', 'win', 'ended', 'regions', 'intel', 'sniper', 'anyof', 'newmo', 'migr', 'type&t=9']
-TABS = ['races', 'strategy', 'history', 'intel', 'map']
+TABS = ['races', 'strategy', 'history', 'map']
 RUN = """async () => { const r = await axe.run(document, { resultTypes: ['violations'] });
   return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help,
     nodes: v.nodes.slice(0, 3).map(n => n.target.join(' ') + ' :: ' + (n.failureSummary || '').split('\\n').slice(1, 2).join(' ')) })); }"""
@@ -53,7 +53,7 @@ with sync_playwright() as p:
     pg.click('#open-archive'); pg.wait_for_timeout(900); check(pg, 'archive')
     pg.close()
     pg = open_page(br, 'default')
-    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-info', 'dlg-info'), ('#open-faq', 'dlg-faq')]:
+    for opener, dlg in [('#open-settings', 'dlg-settings'), ('#open-faq', 'dlg-faq')]:
         pg.focus(opener); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
         check(pg, dlg)
         inside = pg.evaluate(f"() => !!document.activeElement.closest('#{dlg}')")
@@ -65,7 +65,7 @@ with sync_playwright() as p:
     pg.locator('[data-shareimg]:visible').first.click(); pg.wait_for_selector('#share-body img'); check(pg, 'share')
     pg.close()
     pg = open_page(br, 'intel')
-    pg.locator('.tab[data-tab="intel"]').click(); pg.wait_for_timeout(250); check(pg, 'grouped command log')
+    pg.locator('.tab[data-tab="races"]').click(); pg.wait_for_timeout(250); check(pg, 'grouped command log')
     pg.locator('.it-timeline > summary').first.click(); pg.wait_for_timeout(100); check(pg, 'command log timeline open')
     clusters = pg.locator('[data-igroup]')
     if clusters.count(): clusters.first.click(); pg.wait_for_timeout(100); check(pg, 'selected command events')

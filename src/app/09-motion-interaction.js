@@ -161,10 +161,6 @@
     document.querySelectorAll('.call').forEach(el => el.classList.toggle('is-stale', stale));
     if (!lastRun) return;
     const left = Math.max(0, REFRESH_MS - (Date.now() - lastRun));
-    const btn = $('refresh');
-    btn.style.setProperty('--left', String(left / REFRESH_MS));
-    btn.title = (last ? fill(t('updatedAt'), { t: new Date(last.now).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' }) }) + ' · ' : '') + fill(t('nextIn'), { s: Math.ceil(left / 1000) });
-    btn.setAttribute('aria-label', busy ? t('loading') : t('refresh') + '. ' + btn.title);
     if (left === 0 && !document.hidden && !busy) refresh();
   }
 
@@ -191,11 +187,13 @@
   }
   function selectTab(tab, scrollTo) {
     if (!ui.order) return;
+    // the command log is a section of the objectives now: going there scrolls to it
+    if (tab === 'intel') { tab = 'races'; scrollTo = 'cmd'; }
     ui.tab[ui.order] = tab; saveUi();
     render({ tabEnter: true });
     if (scrollTo) {
       if (scrollTo === 'sim') { const box = document.querySelector(`[data-simbox="${CSS.escape(String(ui.order))}"]`); if (box) box.open = true; }
-      const target = scrollTo === 'sim' ? ($('sim-' + ui.order) || $('pace-' + ui.order) || $('tabs-' + ui.order)) : $('tabs-' + ui.order);
+      const target = scrollTo === 'sim' ? ($('sim-' + ui.order) || $('pace-' + ui.order) || $('tabs-' + ui.order)) : scrollTo === 'cmd' ? ($('cmd-' + ui.order) || $('tabs-' + ui.order)) : $('tabs-' + ui.order);
       if (target) target.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
     }
     const btn = document.querySelector(`.tab[data-tab="${tab}"]`);

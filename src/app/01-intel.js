@@ -468,7 +468,7 @@
     if (!seed) {
       if (busy) return;
       busy = true;
-      $('refresh').classList.add('busy');
+      $('refresh')?.classList.add('busy');
     }
     const errors = [];
     try {
@@ -650,7 +650,7 @@
         try { renderErrors(errors); } catch (e2) { console.error(e2); }
         lastRun = Date.now();
         busy = false;
-        $('refresh').classList.remove('busy');
+        $('refresh')?.classList.remove('busy');
         if (!firstDone) { firstDone = true; bootFinish(last ? 'ok' : 'fail'); }
         if (!last && errors.length) { $('view').innerHTML = ''; document.title = `${t('offline')} · Ministry of Victory`; }
         tick();
