@@ -18,7 +18,7 @@
     const tab = curTab(a.id);
     const panel = tab === 'races' ? racesHTML(res, a) : tab === 'strategy' ? strategyHTML(res, entry) : tab === 'history' ? historyHTML(entry) : tab === 'intel' ? intelTabHTML(entry) : mapTabHTML(res);
     const ic = intelCount(entry);
-    const label = { races: t('tRaces'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}">${ic.n}</span>` : ''), map: t('tMap') };
+    const label = { races: t('tRaces'), strategy: t('tStrat'), history: t('tHist'), intel: t('tIntel') + (ic.n ? ` <span class="tab-badge ${ic.level}" title="${esc(fill(t('it.badgeT'), { n: ic.n }))}">${ic.n}</span>` : ''), map: t('tMap') };
     return `<div class="order" data-order="${esc(a.id)}">
       ${callHTML(res, a)}
       ${settings.layout === 'glance' ? `<p class="glance-note"><span>${esc(t('glanceOn'))}</span><button type="button" class="btn ghostly" data-glance>${esc(t('glanceShow'))}<span class="kcap sm" aria-hidden="true">G</span></button></p>` : `<section class="area-tabs" id="tabs-${esc(a.id)}" aria-label="${esc(t('tabsAria'))}">

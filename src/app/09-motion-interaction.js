@@ -148,7 +148,8 @@
     });
     // the live dot turns amber when the data is getting old (failed refreshes, or the API is down and the
     // page shows the recorder's copy): the call says it is not live (critique 1 Nov 2026)
-    const stale = !lastOk || Date.now() - lastOk > 3 * REFRESH_MS || !!(last && last.stale);
+    // the first live answer can take a few seconds after the recorder's snapshot paints: no alarm meanwhile
+    const stale = (!lastOk && performance.now() > 20000) || (lastOk && Date.now() - lastOk > 3 * REFRESH_MS) || !!(last && last.stale);
     document.querySelectorAll('.mast .live, .call .live').forEach(el => el.classList.toggle('off', stale));
     document.querySelectorAll('.call').forEach(el => el.classList.toggle('is-stale', stale));
     if (!lastRun) return;

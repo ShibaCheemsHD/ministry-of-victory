@@ -188,17 +188,20 @@
   }
   function historyHTML(entry) {
     const { res } = entry;
-    const cards = [];
+    // the same order as the Races tab (critique 7 Nov 2026: Progress listed them differently)
+    const order = raceOrder(res), rank = r => order.indexOf(r);
+    const cards = [], at = [];
+    const push = (k, html) => { cards.push(html); at.push(k); };
     // planets being liberated (a defense has its own card below, under its own name)
     const libRows = res.tasks.filter(r => r.planet && !r.defense && (r.pw || r.task.type === 11 || r.task.type === 13));
-    if (libRows.length) cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${esc(t(libRows.every(r => r.task.type === 13) ? 'h.holdTitle' : 'h.libTitle'))}</h4></div>${libChart(entry, libRows)}</section>`);
+    if (libRows.length) push(Math.min(...libRows.map(rank)), `<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${esc(t(libRows.every(r => r.task.type === 13) ? 'h.holdTitle' : 'h.libTitle'))}</h4></div>${libChart(entry, libRows)}</section>`);
     const doneList = res.tasks.filter(x => x.counter && !x.simpleCount && x.task.goal && x.verdict === 'done');
     for (const r of res.tasks.filter(x => x.counter && !x.simpleCount && x.task.goal && x.verdict !== 'done')) {
       const mode = (ui.histMode[`${entry.a.id}:${r.idx}`]) || 'prog';
       const f = counterFacts(entry, r);
       const stat = r.verdict === 'done' ? t('h.statDone') : f.needed && f.avg ? fill(t(f.avg >= f.needed ? 'h.statOk' : 'h.stat'), { need: big(f.needed), avg: big(f.avg), x: fmt(f.needed / f.avg, 1, 1), basis: t('why.basis.' + (r.primary?.kind || 'start')) }) : '';
       const key = `${entry.a.id}:${r.idx}`, cid = `c:${entry.a.id}:${r.idx}:prog`;
-      cards.push(`<section class="hist-card panel br">
+      push(rank(r), `<section class="hist-card panel br">
         <div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}
           <div class="seg" role="group" aria-label="${esc(t('h.view'))}">
             <button type="button" data-hmode="${esc(key)}" data-v="prog" aria-pressed="${mode === 'prog'}">${esc(t('h.prog'))}</button>
@@ -210,10 +213,12 @@
           r.verdict !== 'done' && !res.ended && f.recent != null ? { key: 'rec', cls: 'proj2', label: t('h.lgRec') } : null].filter(Boolean)) : ''}
       </section>`);
     }
-    if (doneList.length) cards.push(`<section class="hist-card panel br done-card">${doneList.map(r => `<div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill('done')}</div>`).join('')}</section>`);
+    if (doneList.length) push(1e9, `<section class="hist-card panel br done-card">${doneList.map(r => `<div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill('done')}</div>`).join('')}</section>`);
     for (const r of res.tasks.filter(x => x.defense)) {
-      cards.push(`<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}</div>${libChart(entry, [r])}</section>`);
+      push(rank(r), `<section class="hist-card panel br"><div class="hc-head"><h4 aria-level="3">${taskText(r)}</h4>${pill(raceVerdict(r, entry.res))}</div>${libChart(entry, [r])}</section>`);
     }
+    const sorted = cards.map((c, i) => [at[i], i, c]).sort((x, y) => x[0] - y[0] || x[1] - y[1]).map(x => x[2]);
+    cards.length = 0; cards.push(...sorted);
     if (!cards.length) return `<p class="empty-moves unknown">${ICON.dots}<span>${esc(t('h.nothing'))}</span></p>`;
     const since = record && record.since ? fill(t('h.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('h.footLocal');
     // how much data the forecast stands on: for the curious, here rather than beside the verdict (owner, 7 Nov 2026)

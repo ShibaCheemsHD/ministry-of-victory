@@ -183,7 +183,7 @@
       : endAction(res, alt);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}${isFinite(res.hoursLeft) && res.hoursLeft > 0 ? `<span class="call-left">${esc(fill(t('leftShort'), { d: dur(res.hoursLeft) }))}</span>` : ''}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
         ${art}
         <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb">${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
