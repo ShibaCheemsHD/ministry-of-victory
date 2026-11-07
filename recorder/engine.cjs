@@ -356,13 +356,21 @@ const ENGINE = (() => {
     const prof = Array.isArray(profile) && profile.length === 24 && profile.every(x => x > 0) ? profile : ONLINE_BY_UTC_HOUR;
     const hourOf = (t) => new Date(t).getUTCHours(), g0 = prof[hourOf(now)];
     const need0 = shareForDeadline(r, H, C, samples, now);
+    // how far the planet should be at each hour: the work left shrinks with the share fighting it (arrivals
+    // included), so the forecast's fall time and the deadline pin both curves; the regen's share of the work is
+    // left out of the shape (it changes the timing, which the forecast already has, little the curve)
+    const pw = r.pw, done0 = pw.full > 0 ? Math.max(0, Math.min(1, 1 - pw.work / pw.full)) : 0;
+    const area = (s0, T) => { let a = 0; const n = Math.max(1, Math.ceil(T * 4)); for (let k = 0; k < n; k++) a += shareAt(s0, (k + 0.5) * T / n) * T / n; return a; };
+    const pathTo = (s0, T) => { const all = isFinite(T) && T > 0 ? area(s0, T) : 0; return (t) => all > 0 ? Math.min(1, done0 + (1 - done0) * area(s0, Math.min(t, T)) / all) : done0; };
+    const libExp = pathTo(r.share, r.eta), libNeed = isFinite(need0) ? pathTo(need0, H) : null;
     const span = Math.min(H, maxH), first = (3.6e6 - (now % 3.6e6)) / 3.6e6, hours = [];
     for (let t = 0; t < span - 1e-6;) {
       const t1 = Math.min(span, t === 0 ? first : t + 1), mid = (t + t1) / 2, on = N * prof[hourOf(now + mid * 3.6e6)] / g0;
-      hours.push({ t0: t, t1, online: on, exp: shareAt(r.share, mid) * on, need: isFinite(need0) ? shareAt(need0, mid) * on : Infinity });
+      hours.push({ t0: t, t1, online: on, exp: shareAt(r.share, mid) * on, need: isFinite(need0) ? shareAt(need0, mid) * on : Infinity,
+        lib: libExp(t1), libNeed: libNeed ? libNeed(t1) : null });
       t = t1;
     }
-    return { hours, need0, span, H, eta: r.eta, band: r.fc ? r.fc.band : null };
+    return { hours, need0, done0, span, H, eta: r.eta, band: r.fc ? r.fc.band : null };
   }
   function forecastFall(p, pw, share, C, mult, samples, now) {
     const f = forecastCore(p, pw, share, C, mult, samples, now);

@@ -262,3 +262,18 @@ test('the hour-by-hour projection: counts follow the players online, the needed 
   assert.ok(Math.max(...counts) / Math.min(...counts) > 1.5);
   assert.equal(fc.eta <= H, ratios[0] >= 1 - 1e-6);
 });
+
+test('the projected liberation reaches 100% at the forecast fall, the needed one at the deadline', () => {
+  const now = Date.parse('2026-11-07T20:04:00Z'), max = 1e6;
+  const planet = { index: 9, maxHealth: max, health: 5.6e5, regenPerSecond: 0, currentOwner: 'Terminids', statistics: { playerCount: 20000 } };
+  const pw = E.planetWork(planet), C = 60000, share = 20000 / 61000;
+  const fc = E.forecastFall(planet, pw, share, C, 1, [], now), r = { planet, pw, share, mult: 1, eta: fc.eta, fc };
+  const H = Math.ceil(fc.eta) + 3, p = E.hourlyProjection(r, H, 61000, C, [], now, null, 48);
+  const libs = p.hours.map(h => h.lib), needs = p.hours.map(h => h.libNeed);
+  assert.ok(libs.every((x, i) => i === 0 || x >= libs[i - 1] - 1e-12), 'never goes back');
+  assert.ok(Math.abs(p.done0 - 0.44) < 1e-9);
+  const fallHour = p.hours.find(h => h.t1 >= fc.eta);
+  assert.ok(fallHour.lib > 0.999 && p.hours.filter(h => h.t1 < fc.eta - 0.01).every(h => h.lib < 1));
+  assert.ok(Math.abs(needs.at(-1) - 1) < 1e-9, 'the needed path ends at 100% at the deadline');
+  assert.ok(p.hours.every(h => h.lib >= h.libNeed - 1e-9), 'falls before the deadline: always ahead of what is needed');
+});

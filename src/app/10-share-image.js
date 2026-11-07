@@ -283,6 +283,30 @@
     if (el.dataset && el.dataset.sim) { const v = Number(el.value), id = el.dataset.sim; el.style.setProperty('--p', ((v - 5) / 95) * 100 + '%'); cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(() => updateSim(id, v)); }
     if (el.dataset && el.dataset.pace) { const v = Number(el.value), id = el.dataset.pace; cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(() => updatePace(id, v)); }
   });
+  // the radar's hours: the wedge under the pointer (or the keyboard) lifts and says its numbers
+  function radarShow(w) {
+    const box = w.closest('.rd-box'), tip = box && box.querySelector('.rd-tip');
+    if (!tip) return;
+    box.querySelectorAll('.rd-w.on').forEach(x => { if (x !== w) x.classList.remove('on'); });
+    w.classList.add('on'); box.classList.add('hot');
+    const d = w.dataset, low = d.low === '1';
+    tip.className = 'rd-tip' + (low ? ' low' : '');
+    tip.innerHTML = `<p class="rt-h"><b>${esc(d.time)}</b><span>${esc(d.tag)}</span></p><dl><dt>${esc(t('rd.tipLib'))}</dt><dd class="b">${esc(d.lib)}</dd><dt>${esc(t('rd.tipNeed'))}</dt><dd class="y">${esc(d.need)}</dd><dt>${esc(t('rd.tipN'))}</dt><dd>${esc(d.n)}</dd></dl>${d.ev ? `<p class="rt-ev">${d.ev.split(' | ').map(esc).join('<br>')}</p>` : ''}<p class="rt-note">${esc(t(low ? 'rd.noteLow' : d.tag === t('rd.tagFell') ? 'rd.noteFell' : 'rd.noteOk'))}</p>`;
+    tip.hidden = false;
+    const x = Number(d.x), y = Number(d.y), bw = box.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+    const bh = box.clientHeight;
+    tip.style.left = (x < 50 ? Math.max(0, bw - tw) : 0) + 'px';
+    tip.style.top = (y < 50 ? Math.max(0, bh - th) : 0) + 'px';
+  }
+  function radarHide(w) {
+    const box = w.closest('.rd-box'); if (!box) return;
+    w.classList.remove('on'); box.classList.remove('hot');
+    const tip = box.querySelector('.rd-tip'); if (tip) tip.hidden = true;
+  }
+  document.addEventListener('pointerover', (e) => { const w = e.target.closest && e.target.closest('[data-rw]'); if (w) radarShow(w); });
+  document.addEventListener('pointerout', (e) => { const w = e.target.closest && e.target.closest('[data-rw]'); if (w && !(e.relatedTarget && w.contains(e.relatedTarget))) radarHide(w); });
+  document.addEventListener('focusin', (e) => { const w = e.target.closest && e.target.closest('[data-rw]'); if (w) radarShow(w); });
+  document.addEventListener('focusout', (e) => { const w = e.target.closest && e.target.closest('[data-rw]'); if (w) radarHide(w); });
   // remember which objective details are open across the 60 s re-renders ('toggle' doesn't bubble)
   document.addEventListener('toggle', (e) => {
     const el = e.target;
@@ -310,6 +334,7 @@
     else if (k === 'p' && document.querySelector('[data-globe]')) { e.preventDefault(); if (ui.pcPinned) closeCard(true); else openCard(true); }
     else if (k === 'Escape' && document.querySelector('.share-menu[open]')) document.querySelectorAll('.share-menu[open]').forEach(d => { d.open = false; d.querySelector('summary').focus(); });
     else if (k === 'Escape' && $('view').querySelector('.pc-wrap.open')) closeCard(true);
+    else if (k === 'Escape' && document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-rw]')) document.activeElement.blur();
     else if (k === 'c' && $('view').querySelector('[data-copy]')) { e.preventDefault(); $('view').querySelector('[data-copy]').click(); }
     else if (k === 's' && $('view').querySelector('[data-shareimg]')) { e.preventDefault(); $('view').querySelector('[data-shareimg]').click(); }
     else if (k === '/') { e.preventDefault(); if (ui.view !== 'archive') setView('archive'); setTimeout(() => $('ar-q')?.focus(), 0); }
