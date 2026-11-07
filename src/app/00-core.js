@@ -93,14 +93,6 @@
     if (clockUTC) return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
     return d.toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   };
-  // the same, without the day when it is the same day as `refHours` (for ranges next to a time)
-  const clockNear = (hoursFromNow, refHours) => {
-    const base = last ? last.now : Date.now(), d = new Date(base + hoursFromNow * 3.6e6), r = new Date(base + refHours * 3.6e6);
-    const opt = clockUTC ? { timeZone: 'UTC' } : {};
-    const same = d.toLocaleDateString('en-GB', opt) === r.toLocaleDateString('en-GB', opt);
-    if (!same) return clock(hoursFromNow);
-    return clockUTC ? d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : d.toLocaleString(locale(), { hour: 'numeric', minute: '2-digit' });
-  };
 
   /* ---------- settings ---------- */
   const settings = Object.assign({ capMode: 'auto', capacity: ENGINE.DEFAULTS.capacity, dssBonus: ENGINE.DEFAULTS.dssBonus,

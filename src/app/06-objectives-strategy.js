@@ -76,7 +76,7 @@
           bar = `<div class="bar lib ${r.net > 0 ? 'moving' : 'stuck'}" role="img" aria-label="${pct(frac)}">${barFill(key, frac)}</div>`;
           const L = res.liberation, seg = L && L.plan && isFinite(L.seqNeed) && L.seqNeed <= 1 ? L.plan.segs.findIndex(sg => sg.target === r) : -1;
           const planned = seg > 0 && !(r.eta <= H) ? fill(t('libPlan'), { prev: planetName(L.plan.segs[seg - 1].target.planet), a: clock(L.plan.segs[seg].start), b: clock(L.plan.segs[seg].end) }) : null;
-          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('fallsAt', { when: clock(r.eta) }) + ` · ${esc(fill(t('s.ahead'), { d: dur(H - r.eta) }))}` + (r.fc?.band ? ` <span class="band" title="${esc(S('fallsTip', { when: clock(r.eta), a: clock(r.fc.band.lo), b: clock(r.fc.band.hi) }))}">${S('range', { a: clockNear(r.fc.band.lo, r.eta), b: clockNear(r.fc.band.hi, r.eta) })}</span>` : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
+          line = `<b>${S('pct', { p: pct(frac) })}</b> · ${res.ended ? S('missed') : r.eta <= H ? S('fallsAt', { when: clock(r.eta) }) + ` · ${esc(fill(t('s.ahead'), { d: dur(H - r.eta) }))}` + (r.close ? ` · <span class="band" title="${esc(S('fallsTip', { when: clock(r.eta), a: clock(r.fc.band.lo), b: clock(r.fc.band.hi) }))}">${esc(S('noMargin'))}</span>` : '') : planned || (r.net <= 0 ? S('stuck') : S('slow'))}`;
           if (r.onDss) chips.push(`<span class="chip" style="color:var(--info)">${t('chipDss')}</span>`);
           if (r.onDss && last.hod) chips.push(`<span class="chip" style="color:var(--yellow)">${t('chipHod')}</span>`);
           if (r.holdLost) chips.push(`<span class="chip" style="color:var(--warn)">${t('chipRetake')}</span>`);

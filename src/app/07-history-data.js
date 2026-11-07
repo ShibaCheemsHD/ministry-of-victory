@@ -216,7 +216,8 @@
     }
     if (!cards.length) return `<p class="empty-moves unknown">${ICON.dots}<span>${esc(t('h.nothing'))}</span></p>`;
     const since = record && record.since ? fill(t('h.foot'), { when: new Date(record.since).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) }) : t('h.footLocal');
-    return `<div class="history">${cards.join('')}<p class="foot">${esc(since)}</p></div>`;
+    // how much data the forecast stands on: for the curious, here rather than beside the verdict (owner, 7 Nov 2026)
+    return `<div class="history">${cards.join('')}${forecastEvidenceHTML(res, entry.a)}<p class="foot">${esc(since)}</p></div>`;
   }
   // Labels never sit on top of each other, whatever the width: after layout, labels above the plot
   // stack into rows, labels in the right margin spread apart, and line labels that collide swap sides.

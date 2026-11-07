@@ -37,6 +37,7 @@ with sync_playwright() as p:
             pg = open_page(br, sc, w)
             check(pg, f'{sc}@{w}')
             if sc == 'default':
+                pg.locator('.tab[data-tab="history"]:visible').first.click(); pg.wait_for_timeout(150)
                 evidence = pg.locator('.forecast-evidence > summary').first
                 evidence.click(); pg.wait_for_timeout(100)
                 check(pg, f'{sc}/evidence-open@{w}')

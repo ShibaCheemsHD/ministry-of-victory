@@ -1107,6 +1107,8 @@ dialog, .pcard, .btn, .mbtn, .ghost, .planet-btn, .pill, .ar-search, .field inpu
 .to-bar::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(5% - 3px), rgba(7, 8, 11, .9) calc(5% - 3px) 5%); }
 .to-bar .fill { background: var(--se); }
 .call.state-done .to-bar .fill, .turnout.ok .to-bar .fill { background: var(--v-done); }
+/* just enough, with no margin: the bar is full but in the push colour, like the verdict beside it */
+.turnout.ok.close .to-bar .fill { background: var(--v-push); }
 
 /* tabs: the game's Q / E bumpers at the ends of the bar */
 .tabbar { display: flex; align-items: stretch; gap: 6px; }

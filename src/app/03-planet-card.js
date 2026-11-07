@@ -185,14 +185,13 @@
       : endAction(res, alt);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}" aria-labelledby="dir-${esc(id)}">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}</span>${m.state === 'go' || m.state === 'wait' ? `<span class="call-v">${pill(v)}</span>` : ''}${facOk ? `<span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</div>
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
         ${art}
         <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb">${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
         ${p.req && !m.moveOn ? `<p class="req-chip">${ICON.warn}<b>${esc(t('req'))}</b><span>${esc(p.req)}</span></p>` : ''}
         <p class="why">${m.why}</p>
         ${m.moveOn ? '' : p.meter}
-        ${!m.moveOn && m.planet && (m.state === 'go' || m.state === 'wait') ? missionLine(m.planet) : ''}
         ${meanwhile}
         <div class="call-actions">${primary}</div>
         <div class="call-tools">
@@ -206,8 +205,7 @@
       <div class="call-side" role="group" aria-labelledby="fc-${esc(id)}">
         <h3 class="side-h" id="fc-${esc(id)}">${esc(t(res.ended || m.state === 'done' ? 'result' : 'forecast'))}</h3>
         <p class="stamp vl-${L}">${ICON[VICON[v] || 'dots']}<span>${esc(t('v.' + v))}</span></p>
-        <p class="meaning">${esc(t('m.' + v))}</p>
-        ${forecastEvidenceHTML(res, a)}
+        <p class="meaning">${esc(t(v === 'focus' && res.liberation?.close ? 'm.close' : 'm.' + v))}</p>
         ${res.ended || m.moveOn ? '' : whyHTML(res, p.d)}
         <dl class="clock">${clockRow}${reward}</dl>
         ${customModel() ? `<p class="model-note">${ICON.edit}<span>${esc(t('modelNote'))}</span><button type="button" class="linkish" data-model-reset>${esc(t('modelReset'))}</button></p>` : ''}

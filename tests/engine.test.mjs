@@ -177,3 +177,20 @@ test('counter rates ignore future data, pre-order data and decreasing counters',
   assert.equal(E.counterRates(samples, 'A', 0, 20, 29.5 * H, now).recent, null);
   assert.equal(E.counterRates([{ t: 28 * H, prog: { A: [20] } }, { t: 29 * H, prog: { A: [10] } }], 'A', 0, 10, H, now).recent, null);
 });
+
+test('a planet that falls in time but whose range runs past the deadline is a close call, not "On track"', () => {
+  const H = 3.6e6, now = Date.UTC(2026, 10, 7);
+  const planet = { index: 130, name: 'Achernar', currentOwner: 'Terminids', health: 1.2e6, maxHealth: 2e6, regenPerSecond: 0,
+    statistics: { playerCount: 25000 }, regions: [] };
+  const order = (hours) => ({ id: 9, expiration: new Date(now + hours * H).toISOString(), tasks: [{ type: 11, values: [1, 1, 130], valueTypes: [3, 11, 12] }], progress: [0] });
+  const run = (hours) => E.analyzeAssignment(order(hours), { planets: { 130: planet }, N: 40000, now, C: 1e5, dssIdx: null, hod: null, settings: E.DEFAULTS, samples: [], startMs: now - 24 * H });
+  const eta = run(500).tasks[0].eta, band = E.fallBand(eta);
+  assert.ok(eta > 0 && isFinite(eta) && band.hi > eta * 1.2);
+  const tight = run(eta * 1.1);
+  assert.equal(tight.tasks[0].verdict, 'focus');
+  assert.equal(tight.liberation.close, true);
+  assert.ok(tight.recs.some(x => x.kind === 'libFocus' && x.variant === 'close'), 'the call says it is a close call');
+  const safe = run(band.hi * 1.05);
+  assert.equal(safe.tasks[0].verdict, 'ontrack');
+  assert.equal(safe.liberation.close, false);
+});

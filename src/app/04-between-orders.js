@@ -188,7 +188,7 @@
     const fac = factionOfPlanet(m.p);
     return `<section class="call vl-wait state-between" aria-labelledby="dir-between">
       <div class="call-main">
-        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.between'))}<span class="call-stale">· ${esc(t('callStale'))}</span></span>${fac && fac !== 'Humans' ? `<span class="call-front">${factionIcon(fac)}${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
+        <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.between'))}</span>${fac && fac !== 'Humans' ? `<span class="call-front">${factionIcon(fac)}${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
         ${holoPlanet({ ring: m.p.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (m.p.event ? m.p.event.health / m.p.event.maxHealth : m.p.health / m.p.maxHealth))), label: t(m.p.event ? 'gDef' : 'gLib'), tone: 'lib' } : null, planet: m.p, fac }, { id: 'between', tasks: [] })}
         <h2 class="call-head" id="dir-between"><span class="verb">${esc(t(m.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(m.p)}</span></h2>
         <p class="why">${capFirst(m.why)} ${esc(t('noOrders'))}</p>

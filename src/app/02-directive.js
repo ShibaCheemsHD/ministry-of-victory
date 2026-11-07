@@ -32,12 +32,6 @@
   // an estimate shown to two significant figures: 129,134 → 130k, 3,228 → 3,200
   const nice = (n) => { if (!isFinite(n)) return '—'; if (n < 1000) return fmt(Math.round(n)); const r = Number(n.toPrecision(2)); return r >= 1e6 ? fmt(r / 1e6, 1) + 'M' : r >= 1e4 ? fmt(r / 1e3) + 'k' : fmt(r); };
   const tinyPct = (f) => { const v = f * 100; return (v >= 0.01 ? v.toFixed(2) : v.toPrecision(2)) + '%'; };
-  function missionLine(p) {
-    const w = missionWorth(p);
-    if (!w) return '';
-    // one quiet line under the turnout: a detail for the curious, not a headline (owner, 2 Nov 2026)
-    return `<p class="mworth"${w.measured ? ' data-measured' : ''}>${esc(t(w.measured ? 'worth.measured' : 'worth.default'))} ${fill(t('worth.line'), { m: `<b>+${tinyPct(w.frac)}</b>`, op: `+${tinyPct(w.frac * 3)}`, n: nice(w.per1), left: nice(w.left), goal: esc(t(w.defend ? 'worth.hold' : 'worth.free')) })}${w.left != null ? ' ' + fill(t(w.defend ? 'worth.remainingDefense' : 'worth.remaining'), { n: nice(w.left) }) : ''} <button type="button" class="linkish" data-faq="worth">${esc(t('worth.how'))}</button></p>`;
-  }
 
   /* ---------- small components ---------- */
   const ICON = {
@@ -212,18 +206,20 @@
     let kicker = '', target = '', why = '', fac = null, meter = '', ring = null, planet = null, cap = '', req = '';
     const projTxt = d.proj != null ? projPct(d.proj) : '—';
     // players there now vs players needed; `where` says where ("on Fury", "on the Terminid front")
-    const meterPips = (now, need, where, weaponUse = false, needKey = null) => {
+    const meterPips = (now, need, where, weaponUse = false, needKey = null, okKey = null) => {
       if (need == null || !isFinite(need)) return '';
       const N = res.model.N || 0;
-      const ok = now >= need * 0.98, tooMany = N && need > N;
+      // 'more': the forecast says not in time, so the bar never reads "enough" beside it
+      const ok = okKey !== 'more' && now >= need * 0.98, tooMany = N && need > N;
       const frac = Math.max(0, Math.min(1, need > 0 ? now / need : 1));
       const left = (n) => fill(t('meterNow'), { n, where });
       const times = N ? fmt(need / N, need / N < 10 ? 1 : 0) : '';
-      const right = (n) => ok ? t('meterEnough')
+      const enough = okKey === 'close' ? t('meterClose') : t('meterEnough');
+      const right = (n) => ok ? enough : okKey === 'more' && now >= need * 0.98 ? t('meterMore')
         : fill(t(tooMany ? 'meterAll' : 'meterNeed'), { n, x: times }) + (weaponUse ? t('meterWeapon') : '');
       cap = plainCap(`${left(people(now))} · ${right(people(need))}`);
-      const rightNoW = (n) => ok ? t('meterEnough') : fill(t(needKey && !tooMany ? needKey : tooMany ? 'meterAll' : 'meterNeed'), { n, x: times });
-      return `<div class="dir-meter turnout ${ok ? 'ok' : ''}" ${weaponUse ? `title="${esc(t('meterWeaponTip'))}"` : ''}>
+      const rightNoW = (n) => ok ? enough : okKey === 'more' && now >= need * 0.98 ? t('meterMore') : fill(t(needKey && !tooMany ? needKey : tooMany ? 'meterAll' : 'meterNeed'), { n, x: times });
+      return `<div class="dir-meter turnout ${ok ? (okKey === 'close' ? 'ok close' : 'ok') : ''}" ${weaponUse ? `title="${esc(t('meterWeaponTip'))}"` : ''}>
         <div class="to-bar" role="img" aria-label="${esc(cap)}">${barFill(`to:${res.id}`, frac, 'fill')}<i class="to-goal" aria-hidden="true"></i></div>
         <div class="cap"><span>${left(`<b>${people(now)}</b>`)}</span><span>${rightNoW(`<b>${people(need)}</b>`)}${weaponUse && !ok ? ` <button type="button" class="q" data-tipq="${esc(t('meterWeaponTip'))}" aria-label="${esc(t('meterWeaponTip'))}">?</button>` : ''}</span></div></div>`;
     };
@@ -248,7 +244,7 @@
         if (v === 'n') v = d.verdict === 'impossible' ? 'nImp' : d.left === 1 ? 'n1' : 'n';
         why = fill(D.liberate.why[v] || D.liberate.why.more, { when: d.hours != null ? clock(d.hours) : '', crowd: crowdText(d.need, d.now), planet: planetName(d.planet), left: fmt(d.left) })
           + (d.region ? fill(D.liberate.region, { region: esc(d.region) }) : '');
-        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : d.variant === 'more' && d.remaining > 1 ? 'meterNeedAll' : null); ring = libRing(d.planet);
+        meter = meterPips(d.now, d.need, fill(t('onPlanet'), { p: planetName(d.planet) }), false, d.variant === 'win' ? 'meterFocus' : d.variant === 'more' && d.remaining > 1 ? 'meterNeedAll' : null, d.variant === 'close' ? 'close' : d.variant === 'more' ? 'more' : null); ring = libRing(d.planet);
         break;
       }
       case 'defend': {

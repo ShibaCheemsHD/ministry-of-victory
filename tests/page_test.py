@@ -80,6 +80,8 @@ with sync_playwright() as p:
     for w in (320, 390, 1366):
         pg = br.new_page(viewport={'width': w, 'height': 900}, reduced_motion='reduce')
         pg.goto(f'{PAGE}?s=default&motion=reduced'); pg.wait_for_timeout(1800)
+        # the evidence lives in the Progress tab since 7 Nov 2026, not beside the verdict
+        pg.locator('.tab[data-tab="history"]').first.click(); pg.wait_for_timeout(200)
         summary = pg.locator('.forecast-evidence > summary').first
         if not summary.count():
             problems.append(f'evidence @{w}: missing indicator')
@@ -93,7 +95,7 @@ with sync_playwright() as p:
             pg.locator('.tab[data-tab="history"]').first.click(); pg.wait_for_timeout(200)
             if pg.locator(f'#{key}').locator('..').get_attribute('open') is None: problems.append(f'evidence @{w}: lost open state after rerender')
             if pg.evaluate('document.documentElement.scrollWidth > window.innerWidth'): problems.append(f'evidence @{w}: horizontal overflow')
-            pg.locator('.call').first.screenshot(path=os.path.join(ROOT, 'build', f'evidence-{w}.png'))
+            pg.locator('.forecast-evidence').first.screenshot(path=os.path.join(ROOT, 'build', f'evidence-{w}.png'))
             pg.locator(f'#{key}').focus(); pg.locator(f'#{key}').press('Space'); pg.wait_for_timeout(100)
             if pg.locator(f'#{key}').locator('..').get_attribute('open') is not None: problems.append(f'evidence @{w}: keyboard did not close details')
             pg.evaluate("Object.defineProperty(document, 'hidden', {get: () => true})")
@@ -175,7 +177,8 @@ with sync_playwright() as p:
     pg = br.new_page(); pg.goto(f'{PAGE}?s=default&raw=down'); pg.wait_for_timeout(2500)
     via = pg.evaluate("window.__mockLog.filter(x => x.rec === 'intel.json').map(x => x.via)")
     if 'cdn.jsdelivr.net' not in via: problems.append('raw down: the recorder data did not come from the fallback')
-    if not pg.locator('.mworth').count(): problems.append('raw down: the page lost the recorder data')
+    pg.locator('.tab[data-tab="history"]').first.click(); pg.wait_for_timeout(300)
+    if not pg.locator('.history .foot').first.inner_text().strip(): problems.append('raw down: the page lost the recorder data')
     pg.close()
     # outside text never runs as code (1 Nov 2026: an order name with markup ran its onerror in the archive)
     pg = br.new_page()
