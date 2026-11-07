@@ -2034,3 +2034,4 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .ch-cross { border-left-color: rgba(254, 231, 0, .7); }
 .ch-empty { border-color: rgba(160, 190, 220, .25); background: rgba(4, 8, 14, .35); }
 @media (max-width: 640px) { .hist-card { padding: 16px 14px 14px; } .chart .plot { height: 220px; } .ch-zone span { font-size: 10px; } .ch-tag.gapl { font-size: 13px; } }
+.ch-mark.end span.low { transform: translate(-100%, 1.3em); }
