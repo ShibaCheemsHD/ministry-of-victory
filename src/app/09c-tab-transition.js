@@ -28,7 +28,14 @@
         .finished.catch(() => {}).then(() => { fill.remove(); edge.remove(); tab.classList.remove('tfx'); });
     }
     // 2. the frame: a fine line drops from the tab, runs across, the sides come down, the bottom closes; it fades
-    const pr = tp.getBoundingClientRect(), H = Math.min(tp.offsetHeight, Math.max(120, window.innerHeight - Math.max(0, pr.top))), tr = tab ? tab.getBoundingClientRect() : null;
+    // (not on the map: it runs edge to edge and has its own corners, a frame inside it is a box in the middle
+    // of nowhere; and not when the panel starts below the screen, where nobody would see it)
+    const pr = tp.getBoundingClientRect();
+    if (!tp.querySelector('.fr-table') && pr.top < window.innerHeight - 60) tfxFrame(tp, pr, tab, eIO);
+    tfxParts(tp);
+  }
+  function tfxFrame(tp, pr, tab, eIO) {
+    const H = Math.min(tp.offsetHeight, Math.max(120, window.innerHeight - Math.max(0, pr.top))), tr = tab ? tab.getBoundingClientRect() : null;
     const cx = Math.max(0, Math.min(pr.width, tr ? tr.left + tr.width / 2 - pr.left : pr.width / 2));
     const g = document.createElement('div');
     g.className = 'tfx-frame'; g.setAttribute('aria-hidden', 'true'); g.style.height = H + 'px';
@@ -41,10 +48,12 @@
     g.querySelector('.b').animate([{ transform: 'scaleX(0)', opacity: 0 }, { transform: 'scaleX(1)', opacity: 1 }], { ...o, duration: 110, delay: 250 });
     g.querySelectorAll('.cn').forEach(c => c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 80, delay: 260, fill: 'both' }));
     g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 330, easing: 'ease-in', fill: 'both' }).finished.catch(() => {}).then(() => g.remove());
+  }
+  function tfxParts(tp) {
     // 3. the parts fade up one after the other: the outermost ones on screen, five at most
     let parts = [...tp.querySelectorAll(TFX_PARTS)];
     if (!parts.length) parts = [...tp.children];
-    parts = parts.filter(p => p !== g && !parts.some(q => q !== p && q.contains(p))).filter(p => { const r = p.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; });
+    parts = parts.filter(p => !p.classList.contains('tfx-frame') && !parts.some(q => q !== p && q.contains(p))).filter(p => { const r = p.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; });
     const all = [];
     parts.slice(0, 8).forEach((p, j) => {
       const d = 100 + Math.min(j, 4) * 30;

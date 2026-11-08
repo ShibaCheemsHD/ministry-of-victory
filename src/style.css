@@ -2556,3 +2556,5 @@ html.calm .fr-table .dw.in > *,html.calm .fr-table .dw.in .fc-u,html.calm .fr-ta
 /* the decode: words of characters that keep their final width */
 .dcb { display: inline; } .dcw { white-space: nowrap; } .dc { display: inline-block; text-align: center; }
 .dc.scr { color: var(--se); opacity: .45; } .dlong .dc.scr { opacity: .22; }
+/* the tabs share the bar whatever their number: four in an order, two between orders, no empty space (8 Nov 2026) */
+.tabbar .tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
