@@ -2035,3 +2035,62 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .ch-empty { border-color: rgba(160, 190, 220, .25); background: rgba(4, 8, 14, .35); }
 @media (max-width: 640px) { .hist-card { padding: 16px 14px 14px; } .chart .plot { height: 220px; } .ch-zone span { font-size: 10px; } .ch-tag.gapl { font-size: 13px; } }
 .ch-mark.end span.low { transform: translate(-100%, 1.3em); }
+/* ---- Progress: the rack and the combat log (8 Nov 2026) ---- */
+.pr-card { position: relative; padding: 22px 24px 20px; border: 1px solid var(--edge); background: linear-gradient(180deg, rgba(22, 30, 42, .94), rgba(9, 12, 18, .96));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%); }
+.pr-sec { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; font: 800 12px var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--se-sky); }
+.pr-sec::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(162, 235, 255, .4), transparent); }
+.pk-rack { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 190px)); justify-content: space-around; gap: 18px 0; overflow: hidden; padding-top: 6px; }
+.pk-cell { margin: 0; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.pk { display: block; width: 100%; max-width: 190px; height: auto; overflow: visible; }
+.pk-goal { stroke: rgba(254, 231, 0, .7); stroke-width: 2; }
+.pk-goalt { font: 900 11px var(--ui); letter-spacing: .22em; fill: var(--se); }
+.pk-tick { stroke: rgba(162, 235, 255, .4); stroke-width: 1.2; } .pk-tick.big { stroke: rgba(162, 235, 255, .8); }
+.pk-edge { stroke: rgba(162, 235, 255, .6); stroke-width: 1.4; fill: none; }
+.pk-top { stroke: rgba(255, 255, 255, .55); stroke-width: 1; }
+.pk-bub { fill: #fff; opacity: .4; }
+.pk-ghost { fill: none; stroke-width: 1.6; stroke-dasharray: 5 4; stroke: currentColor; }
+.pk-ring { fill: none; stroke: #e8f1fa; stroke-width: 1.4; opacity: .85; }
+.pk-flag { fill: rgba(9, 12, 18, .92); stroke: rgba(232, 241, 250, .55); }
+.pk-day { font: 800 9px var(--ui); letter-spacing: .08em; text-transform: uppercase; fill: #c9d6e3; text-anchor: middle; }
+.pk-cap { stroke: rgba(160, 190, 220, .35); }
+.pk-bolt { fill: #5b6675; }
+.pk-lip { fill: none; stroke: rgba(162, 235, 255, .45); }
+.pk-glow { filter: drop-shadow(0 0 8px currentColor); }
+.pk-over { fill: rgba(9, 12, 18, .95); stroke-width: 1; }
+.pk-overt { font: 900 11px var(--ui); text-anchor: middle; }
+.pk-pct { font: 900 24px var(--display); font-stretch: 125%; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .6); stroke-width: 4px; }
+.pk-plate { margin-top: 6px; width: min(100%, 176px); min-height: 62px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 10px 7px; text-align: center;
+  background: linear-gradient(180deg, #232b37, #151b24); border: 1px solid rgba(160, 190, 220, .28); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.pk-plate b { font: 800 13px/1.15 var(--display); font-stretch: 112%; text-transform: uppercase; letter-spacing: .02em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pk-plate span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.pk-plate .ok, .pl-ev.ok .pl-what { color: #2fc6b8; } .pk-plate .bad, .pl-ev.bad .pl-what { color: #ff6b6b; } .pk-plate .b, .pl-ev.b .pl-what { color: var(--se-cyan); }
+.pr-key { margin-top: 14px; text-align: center; font-size: 13px; color: var(--dim); }
+/* the combat log */
+.pr-log { list-style: none; margin: 0 0 0 150px; padding: 0 0 0 34px; border-left: 2px solid rgba(160, 190, 220, .25); }
+.pl-ev { position: relative; padding: 8px 0 18px; --c: #9fb3c8; }
+.pl-ev.ok { --c: #2fc6b8; } .pl-ev.bad { --c: #ff6b6b; } .pl-ev.warn { --c: #ffb900; } .pl-ev.b { --c: var(--se-cyan); } .pl-ev.end { --c: var(--se); }
+.pl-when { position: absolute; left: -184px; width: 140px; top: 10px; text-align: right; font: 800 12px var(--ui); letter-spacing: .12em; text-transform: uppercase; color: #8a9bb0; }
+.pl-dot { position: absolute; left: -43px; top: 12px; width: 16px; height: 16px; transform: rotate(45deg); background: var(--ink); border: 2px solid var(--c); }
+.pl-ev.big .pl-dot { background: var(--c); box-shadow: 0 0 12px var(--c); }
+.pl-ev.fut .pl-dot { border-style: dashed; }
+.pl-what { font: 800 18px/1.25 var(--display); font-stretch: 112%; text-transform: uppercase; letter-spacing: .02em; color: var(--c); }
+.pl-ev.start .pl-what { color: #9fb3c8; } .pl-ev.end .pl-what { color: var(--se); }
+.pl-who { display: inline-block; width: 10px; height: 10px; margin-right: 9px; vertical-align: 2px; background: var(--t); box-shadow: 0 0 8px var(--t); }
+.pl-tag { display: inline-block; margin-left: 8px; padding: 1px 7px; font: 800 11px var(--ui); letter-spacing: .14em; border: 1px solid currentColor; vertical-align: 3px; }
+.pl-why { margin-top: 2px; font-size: 14px; color: #c9d6e3; }
+.pl-lvl { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.pl-lvl i { position: relative; display: inline-block; width: 120px; height: 6px; }
+.pl-lvl b { position: absolute; left: 0; top: 0; bottom: 0; }
+.pl-now { position: relative; margin: 2px 0 18px -36px; display: flex; align-items: center; gap: 10px; font: 900 12px var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--se); }
+.pl-now::before { content: ""; width: 22px; height: 2px; background: var(--se); }
+.pl-now::after { content: ""; flex: 1; border-top: 2px dashed rgba(254, 231, 0, .6); }
+@media (max-width: 640px) {
+  .pr-card { padding: 18px 14px 16px; }
+  .pk-rack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pr-log { margin-left: 8px; padding-left: 24px; }
+  .pl-when { position: static; display: block; width: auto; text-align: left; margin-bottom: 2px; }
+  .pl-dot { left: -33px; top: 10px; width: 14px; height: 14px; }
+  .pl-now { margin-left: -26px; }
+  .pl-what { font-size: 16px; }
+}
