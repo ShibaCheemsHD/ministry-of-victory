@@ -93,6 +93,7 @@
       } else archiveFail = Date.now();
     } catch { archiveFail = Date.now(); } finally { archiveBusy = false; }
     if (ui.view === 'archive') { render(); scrollToAcc(); }
+    else if (archive && last && !last.results.length && !dragging) render();   // the next-order forecast learns from it
   }
   const callGroup = (v) => v === 'impossible' ? 'impossible' : v === 'nearly_impossible' ? 'long' : v === 'hard' || v === 'record' ? 'hard' : v ? 'fair' : null;
   // an order's name for the record: the game's title, or (when that is just "MAJOR ORDER") what it asked
@@ -330,7 +331,7 @@
     $('intel').innerHTML = '';
     const view = $('view');
     if (!entry) {
-      view.innerHTML = `<div class="empty-wrap"><div class="empty-main">
+      view.innerHTML = `${emptySlotHTML()}<div class="empty-wrap"><div class="empty-main">
           ${betweenCallHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
       syncHash();

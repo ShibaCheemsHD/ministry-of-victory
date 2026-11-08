@@ -197,7 +197,7 @@
   let samples = store.get('samples', []);
   let last = null, busy = false, lastRun = 0, lastOk = 0, lastStack = '', firstDone = false;
   const ui = Object.assign({ order: null, tab: {}, sim: {}, pace: {}, showNums: false, briefOpen: {}, intelOpen: {}, simOpen: {}, crossOpen: false, histMode: {}, chartOff: {} }, store.get('ui', {}));
-  const saveUi = () => store.set('ui', { order: ui.order, orderManual: !!ui.orderManual, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {}, nf: ui.nf || null, histMode: ui.histMode, simOpen: ui.simOpen });
+  const saveUi = () => store.set('ui', { order: ui.order, orderManual: !!ui.orderManual, tab: ui.tab, showNums: ui.showNums, celebrated: ui.celebrated || {}, calls: ui.calls || {}, bands: ui.bands || {}, nf: ui.nf || null, histMode: ui.histMode, simOpen: ui.simOpen });
   const prev = { bars: {}, count: {}, dir: {}, verdict: {}, seen: {} };
   const $ = (id) => document.getElementById(id);
   // An order is identified by its id *and* its task list: if Super Earth edits an order in place,

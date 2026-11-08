@@ -167,7 +167,9 @@
     const v = res.verdict, L = lvl(v);
     const left = isFinite(exp) ? (exp - Date.now()) / 3.6e6 : null;
     const lost = res.ended || v === 'failed';
-    const clockRow = m.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(left != null && left > 0 ? fill(t('cl.spare'), { d: durDown(left) }) : t('cl.inTime'))}</dd></div>`
+    // won: the time it had to spare when it was won (the fall of its last planet), else the time left now
+    const won = m.state === 'done' ? wonBy(res, a) : null, spare = won && isFinite(exp) ? (exp - won.ft) / 3.6e6 : left;
+    const clockRow = m.state === 'done' ? `<div><dt>${esc(t('cl.won'))}</dt><dd class="plain">${esc(spare != null && spare > 0 ? fill(t('cl.spare'), { d: hmLeft(spare) }) : t('cl.inTime'))}</dd></div>`
       : res.ended ? `<div><dt>${esc(t('cl.ended'))}</dt><dd class="plain">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—')}</dd></div>`
       : `<div class="timer"><dt>${esc(t('timeLeft'))}</dt><dd class="count" data-exp="${exp}" title="${esc(fill(t('endsAt'), { when: isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : '—' }))}">—</dd><dd class="deadline-date">${esc(isFinite(exp) ? new Date(exp).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : "—")}</dd></div>`;
     // the reward: on a won order the medals stand where the planet does; on a lost one they are not earned
@@ -198,9 +200,11 @@
     const turnout = rd ? turnoutHTML(res, r, proj) : '';
     // with the forecast's own time on screen the sentence and the turnout bar would say it twice
     const said = !!(block && eta != null);
+    const band = dispatchBand(res, a, r);
     return `<section class="call vl-${L} state-${m.state}${alt ? ' not-pick' : ''}${m.suggest ? ' suggest' : ''}${party ? ' celebrate' : ''}${urgent ? ' urgent' : ''}" aria-labelledby="dir-${esc(id)}">
       <i class="rails" aria-hidden="true"></i>
       <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(m.tag)}${facOk ? ` · <span class="call-front">${factionIcon(facOk)}${fill(t('frontOf'), { f: facName(facOk) })}</span>` : ''}</span>${barClock}</div>
+      ${band}
       <div class="call-main">
         ${alt ? `<div class="call-alt" role="note">${ICON.target}<p>${fill(t('xNotPick'), { title: `<b>${esc(alt.title)}</b>` })}</p></div>` : ''}
         <h2 class="call-head${long && !m.moveOn ? ' long' : ''}" id="dir-${esc(id)}">${m.verb ? `<span class="verb"><span class="wings" aria-hidden="true"><i></i><i></i><i></i></span>${esc(m.verb)}</span> ` : ''}<span class="tgt">${esc(m.target)}</span></h2>
@@ -227,6 +231,78 @@
         ${logNote(res, a)}
       </div>
     </section>`;
+  }
+  /* The dispatch band (8 Nov 2026): what just happened to this order, in one line under the bar that stays until
+     the next thing happens: the planet whose fall won it (8 Nov: the planet "vanished" from the page when it fell),
+     the call that changed and what it was, the order that has just arrived. It rolls in once per browser; with
+     reduced motion it is simply there. */
+  function fallTime(idx, from) {
+    const s = planetSeries(idx), HR = 3.6e6;
+    for (let k = s.length - 1; k > 0; k--) {
+      if (s[k][1] < 1) return null;
+      if (s[k - 1][1] >= 1) continue;
+      if (s[k][0] < from) return null;
+      const [t0, v0] = s[k - 1];
+      // the pace just before, carried on to 100%: the fall happened between the two points
+      let rate = null;
+      for (let j = k - 2; j >= 0; j--) if (t0 - s[j][0] >= 1.5 * HR) { rate = (v0 - s[j][1]) / (t0 - s[j][0]); break; }
+      const est = rate > 0 ? t0 + (1 - v0) / rate : (t0 + s[k][0]) / 2;
+      return Math.min(s[k][0], Math.max(t0, est));
+    }
+    return null;
+  }
+  // the call's level as this browser last saw it: a change seen live (the page open, or seen in the last 3 hours)
+  // is kept with what it was for 12 hours; after a long absence the page does not know when it changed
+  function callChange(res, a) {
+    const id = String(a.id), L = lvl(res.verdict), calls = (ui.calls ||= {}), was = calls[id], now = last.now;
+    if (!last.seeded) {
+      if (!was || was.L !== L) {
+        calls[id] = was && now - (was.seen || was.t) < 3 * 3.6e6 ? { L, t: now, seen: now, was: was.L } : { L, t: now, seen: now };
+        const ids = Object.keys(calls); if (ids.length > 20) delete calls[ids[0]];
+        saveUi();
+      } else if (now - (was.seen || 0) > 5 * 60e3) { was.seen = now; saveUi(); }
+    }
+    const c = calls[id];
+    // "Too early to call" is not a call: moving to or from it is not a change worth a band
+    return c && c.was && c.was !== c.L && c.was !== 'wait' && c.L !== 'wait' && last.now - c.t < 12 * 3.6e6 ? c : null;
+  }
+  const BAND_ICON = {
+    good: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 15V1.5M3.5 2h9l-2 3 2 3h-9" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    warn: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 6.2v3.8M8 11.4v1.6" stroke="currentColor" stroke-width="1.8"/></svg>',
+    new: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2"/></svg>',
+  };
+  // the planet whose fall won the order, and when: only when the planets were the whole order (then the last
+  // to fall is the one that won it)
+  function wonBy(res, a) {
+    const entry = last.results.find(x => x.a === a), exp = Date.parse(a.expiration);
+    if (res.verdict !== 'done' || !res.tasks.length || !res.tasks.every(x => x.planet && x.planet.index != null)) return null;
+    let best = null;
+    for (const x of res.tasks) { const ft = fallTime(x.planet.index, entry?.start || exp - 30 * 24 * 3.6e6); if (ft && !(ft > exp) && (!best || ft > best.ft)) best = { ft, p: x.planet }; }
+    return best;
+  }
+  function dispatchBand(res, a, r) {
+    const entry = last.results.find(x => x.a === a), exp = Date.parse(a.expiration), id = String(a.id);
+    const hm = (ms) => new Date(ms).toLocaleString(locale(), new Date(ms).toDateString() === new Date(last.now).toDateString() ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    let b = null;
+    if (res.verdict === 'done') {
+      const best = wonBy(res, a);
+      if (best) b = { kind: 'good', key: `fell:${id}`, t: best.ft, title: fill(t('band.fell'), { planet: planetName(best.p) }), sub: esc(fill(t(isFinite(exp) ? 'band.fellS' : 'band.fellS0'), { when: hm(best.ft), margin: hmLeft(Math.max(0, exp - best.ft) / 3.6e6) })) };
+    } else if (!res.ended) {
+      const c = callChange(res, a);
+      if (c) {
+        const now = r && isFinite(r.eta) && r.planet && res.hoursLeft > 0 ? ' ' + fill(t('band.eta'), { planet: planetName(r.planet), eta: esc(clock(r.eta)) }) : '';
+        b = { kind: ['ok', 'done'].includes(c.L) ? 'good' : 'warn', key: `call:${id}:${c.t}`, t: c.t, title: esc(fill(t('band.changed'), { v: t('callLv.' + c.L) })), sub: esc(fill(t('band.was'), { was: t('callLv.' + c.was), when: hm(c.t) })) + now };
+      } else if (entry && entry.start && last.now - entry.start < 6 * 3.6e6 && last.now >= entry.start) {
+        b = { kind: 'new', key: `new:${id}`, t: entry.start, title: esc(t('band.newT')), sub: esc(fill(t('band.newS'), { when: hm(entry.start), left: durDown(res.hoursLeft) })) };
+      }
+    }
+    if (!b) return '';
+    // rolls in the first time this browser shows it (the page renders two or three times in its first second:
+    // the roll carries on through them instead of starting again)
+    const seen = (ui.bands ||= {});
+    if (!seen[b.key]) { seen[b.key] = Date.now(); const ks = Object.keys(seen); if (ks.length > 40) delete seen[ks[0]]; saveUi(); }
+    const age = Date.now() - seen[b.key], roll = age < 1400 && !reduced();
+    return `<div class="dispatch ${b.kind}${roll ? ' roll' : ''}" role="status"${roll ? ` style="--skip:-${age}ms"` : ''}><div><div class="dp"><span class="dp-ico">${BAND_ICON[b.kind]}</span><p class="dp-t"><b>${b.title}</b><span>${b.sub}</span></p><span class="dp-time">${esc(hm(b.t))}</span></div></div></div>`;
   }
   /* The radar (7 Nov 2026): the call's planet at the centre and the hours until the deadline (24 at most) around
      it as a clock face, 12 at the top and 6 at the bottom; the first 12 hours on the inner ring, the next 12 on the

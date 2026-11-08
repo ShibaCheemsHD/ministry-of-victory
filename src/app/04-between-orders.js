@@ -173,7 +173,10 @@
     const p = defs[0] || busy[0];
     if (!p) return null;
     const why = p.event ? fill(t('mw.def'), { when: clock((Date.parse(p.event.endTime) - now) / 3.6e6) }) : fill(t('mw.busy'), { n: people(p.statistics?.playerCount || 0) });
-    return { p, why, defend: !!p.event };
+    // the between-orders call says it in full: the Ministry's advice, and why this planet
+    const adv = p.event ? fill(t('bw.advDef'), { p: esc(pct(Math.max(0, Math.min(1, 1 - p.event.health / p.event.maxHealth)))), when: `<b>${esc(clock((Date.parse(p.event.endTime) - now) / 3.6e6))}</b>` })
+      : fill(t('bw.advBusy'), { n: `<b>${esc(people(p.statistics?.playerCount || 0))}</b>` });
+    return { p, why, adv, defend: !!p.event };
   }
   function meanwhileHTML() {
     const m = meanwhilePick();
@@ -182,16 +185,100 @@
       <button type="button" class="linkish" data-open-planet="${m.p.index}">${esc(t('mw.open'))} ›</button></p>`;
   }
   // Between orders the call still comes first: where to drop now; the last order's report sits below it
+  /* The next Major Order (8 Nov 2026): when Arrowhead tends to put one out, learned from the record. Every hour
+     after an order ends is a chance for the next; that chance depends on the day and the hour in Stockholm, where
+     the orders are set by hand (a workday between 8 AM and 6 PM nearly always, Tuesday most of all). An hour's
+     chance = the orders that arrived in that kind of hour / the hours waited in it, over the last 18 months. */
+  const STHLM = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Stockholm', weekday: 'short', hour: 'numeric', hourCycle: 'h23' });
+  function nmoCell(ms) {
+    const parts = STHLM.formatToParts(new Date(ms)), wd = parts.find(p => p.type === 'weekday').value, h = Number(parts.find(p => p.type === 'hour').value) % 24;
+    return (wd === 'Mon' ? 'mon' : wd === 'Tue' ? 'tue' : wd === 'Sat' || wd === 'Sun' ? 'we' : 'mid') + (h < 8 ? 0 : h < 13 ? 1 : h < 18 ? 2 : 3);
+  }
+  let nmoModel = null, nmoFrom = null;
+  function nmoLearn(orders) {
+    if (nmoFrom === orders && nmoModel) return nmoModel;
+    const HR = 3.6e6, since = Date.now() - 540 * 24 * HR;
+    const os = orders.filter(o => Number.isFinite(o.start)).sort((a, b) => a.start - b.start);
+    const ev = {}, ex = {};
+    let maxEnd = null, n = 0, first = null;
+    for (const o of os) {
+      if (maxEnd && o.start > maxEnd && o.start > since && o.start - maxEnd < 30 * 24 * HR) {
+        for (let tm = maxEnd; tm < o.start; tm += HR) { const c = nmoCell(tm); ex[c] = (ex[c] || 0) + Math.min(1, (o.start - tm) / HR); }
+        const c = nmoCell(o.start); ev[c] = (ev[c] || 0) + 1; n++;
+        if (first == null) first = maxEnd;
+      }
+      if (Number.isFinite(o.end)) maxEnd = Math.max(maxEnd || 0, o.end);
+    }
+    const haz = {};
+    for (const c of Object.keys(ex)) haz[c] = ((ev[c] || 0) + 0.05) / (ex[c] + 1);
+    nmoFrom = orders; nmoModel = n >= 20 ? { haz, n, first, lastEnd: maxEnd } : null;
+    return nmoModel;
+  }
+  // the chance of the next order in each part of the next 5 local days (night, morning, afternoon, evening),
+  // given none has come yet; and when the chance passes one half and nine in ten
+  const NMO_PARTS = [0, 8, 13, 18];
+  function nmoForecast(model, now) {
+    const HR = 3.6e6, d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 5 }, (_, i) => { const d = new Date(d0); d.setDate(d0.getDate() + i); return { d, parts: [0, 0, 0, 0] }; });
+    const endT = new Date(days[4].d); endT.setDate(endT.getDate() + 1);
+    let S = 1, q50 = null, q90 = null;
+    for (let tm = now; tm < endT.getTime(); tm += HR) {
+      const p = S * (1 - Math.exp(-(model.haz[nmoCell(tm)] || 0)));
+      S -= p;
+      const L = new Date(tm), di = Math.round((new Date(L).setHours(0, 0, 0, 0) - d0.getTime()) / 864e5), pi = L.getHours() < 8 ? 0 : L.getHours() < 13 ? 1 : L.getHours() < 18 ? 2 : 3;
+      if (days[di]) days[di].parts[pi] += p;
+      if (q50 == null && 1 - S >= 0.5) q50 = tm;
+      if (q90 == null && 1 - S >= 0.9) q90 = tm;
+    }
+    let best = null;
+    days.forEach((dy, di) => dy.parts.forEach((p, pi) => { if (!best || p > best.p) best = { di, pi, p }; }));
+    return { days, best, q50, q90 };
+  }
+  // the order slot, empty (8 Nov 2026): where the orders stand, a dashed frame says there is none, and when the
+  // next is likely; the advice below it is the Ministry's, not an order
+  function emptySlotHTML() {
+    if (!archive) loadArchive();
+    const model = archive ? nmoLearn(archive.orders) : null, now = last.now;
+    const R = store.get('recap', null);
+    const lastEnd = Math.max(model?.lastEnd || 0, R && R.exp < now ? R.exp : 0) || null;
+    const lastName = R && R.exp === lastEnd ? clean(R.title || 'Major Order') : null;
+    const when = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const silent = lastEnd && now > lastEnd ? `${fill(t('nmo.silent'), { d: `<b>${esc(hmLeft((now - lastEnd) / 3.6e6))}</b>` })} ${lastName ? fill(t('nmo.last'), { title: esc(titleCase(plain(lastName))), when: esc(when(lastEnd)) }) : ''}` : esc(t('nmo.quiet'));
+    let right = '';
+    const fc = model ? nmoForecast(model, now) : null;
+    if (fc) {
+      const top = fc.best.p, dayName = (di) => di === 0 ? t('nmo.today') : di === 1 ? t('nmo.tomorrow') : fc.days[di].d.toLocaleDateString(locale(), { weekday: 'long' });
+      const head = `${dayName(fc.best.di)} ${t('nmo.parts')[fc.best.pi]}`;
+      const nowL = new Date(now), nowX = (nowL.getHours() + nowL.getMinutes() / 60) / 24 * 100;
+      const strip = fc.days.map((dy, di) => {
+        const bars = dy.parts.map((p, pi) => {
+          const end = new Date(dy.d); end.setHours(pi < 3 ? NMO_PARTS[pi + 1] : 24, 0, 0, 0);
+          const past = end.getTime() <= now, isTop = di === fc.best.di && pi === fc.best.pi;
+          return `<i class="${pi === 0 ? 'night' : ''}${isTop ? ' top' : ''}${past ? ' past' : ''}" style="height:${past ? 3 : Math.max(3, p / top * 100).toFixed(0)}%">${isTop ? `<em>${Math.round(p * 100)}%</em>` : ''}</i>`;
+        }).join('');
+        return `<div class="nx-day${di === fc.best.di ? ' top' : ''}"><div class="nx-bars">${bars}${di === 0 ? `<span class="nx-now" style="left:${nowX.toFixed(1)}%"><b>${esc(t('fcb.now'))}</b></span>` : ''}</div><span class="nx-dl"><b>${esc(dy.d.toLocaleDateString(locale(), { weekday: 'short' }))}</b> ${dy.d.getDate()}</span></div>`;
+      }).join('');
+      const hr = (ms) => ms ? new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric' }) : '—';
+      const aria = fill(t('nmo.aria'), { when: head, a: hr(fc.q50), b: hr(fc.q90) });
+      right = `<div class="slot-r"><span class="slot-k2">${esc(t('nmo.next'))}</span><b class="slot-when">${esc(capFirst(head))}</b>
+        <div class="nx-strip" role="img" aria-label="${esc(aria)}">${strip}</div>
+        <span class="slot-q">${fill(t('nmo.even'), { a: `<b>${esc(hr(fc.q50))}</b>` })} · ${fill(t('nmo.nine'), { b: `<b>${esc(hr(fc.q90))}</b>` })}</span></div>
+        <p class="slot-note">${esc(fill(t('nmo.note'), { n: model.n, since: new Date(model.first).toLocaleDateString(locale(), { month: 'long', year: 'numeric' }) }))}</p>`;
+    }
+    return `<section class="slot${right ? '' : ' solo'}" aria-labelledby="slot-h">
+      <div class="slot-l"><span class="slot-k"><i aria-hidden="true"></i>${esc(t('nmo.k'))}</span><h2 class="slot-h" id="slot-h">${esc(t('nmo.h'))}</h2><p class="slot-s">${silent}</p></div>
+      ${right}</section>`;
+  }
   function betweenCallHTML() {
     const m = meanwhilePick();
-    if (!m) return `<p class="empty-line">${ICON.dots}<span>${esc(t('noOrders'))}</span></p>`;
+    if (!m) return '';
     const fac = factionOfPlanet(m.p);
     return `<section class="call vl-wait state-between" aria-labelledby="dir-between">
       <div class="call-main">
         <div class="call-bar"><span class="call-tag"><i class="live" aria-hidden="true"></i>${esc(t('callTag.between'))}</span>${fac && fac !== 'Humans' ? `<span class="call-front">${factionIcon(fac)}${fill(t('frontOf'), { f: facName(fac) })}</span>` : ''}</div>
         ${holoPlanet({ ring: m.p.maxHealth ? { frac: Math.max(0, Math.min(1, 1 - (m.p.event ? m.p.event.health / m.p.event.maxHealth : m.p.health / m.p.maxHealth))), label: t(m.p.event ? 'gDef' : 'gLib'), tone: 'lib' } : null, planet: m.p, fac }, { id: 'between', tasks: [] })}
-        <h2 class="call-head" id="dir-between"><span class="verb">${esc(t(m.defend ? 'bw.defend' : 'bw.drop'))}</span> <span class="tgt">${planetName(m.p)}</span></h2>
-        <p class="why">${capFirst(m.why)} ${esc(t('noOrders'))}</p>
+        <h2 class="call-head" id="dir-between"><span class="verb">${esc(t(m.defend ? 'bw.pickDef' : 'bw.pickDrop'))}</span> <span class="tgt">${planetName(m.p)}</span></h2>
+        <p class="why">${m.adv}</p>
         <div class="call-actions"><button type="button" class="btn primary" data-open-planet="${m.p.index}">${esc(t('gCta'))}${ICON.track}</button></div>
       </div>
     </section>`;
