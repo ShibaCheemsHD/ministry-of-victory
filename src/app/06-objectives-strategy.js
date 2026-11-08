@@ -344,11 +344,9 @@
     // the featured move gets the turnout as a gauge of everyone online: there now, and the yellow mark needed
     const N = res.model?.N || 0;
     if (featured && N && m.players > 0 && m.nowPlayers != null && ['libFocus', 'defSend', 'libNFocus'].includes(m.kind)) {
-      const now = Math.min(1, m.nowPlayers / N), need = Math.min(1, m.players / N);
-      extra = `<div class="mv-gauge" role="img" aria-label="${esc(fill(t('planVisual.gaugeAria'), { now: fmt(m.nowPlayers), need: people(m.players) }))}">
-        <div class="mvg-scale" aria-hidden="true"><span>${esc(t('planVisual.everyone'))}</span><span>100%</span></div>
-        <div class="mvg-bar" aria-hidden="true"><i class="mvg-now" data-w="${(now * 100).toFixed(2)}" data-key="mvg:${esc(res.id)}" style="width:${(now * 100).toFixed(2)}%"></i><i class="mvg-need" style="left:${(need * 100).toFixed(2)}%"></i></div>
-        <div class="mvg-nums" aria-hidden="true"><span><b class="blue">${fmt(m.nowPlayers)}</b> ${esc(fill(t('planVisual.thereNow'), { p: pct(m.nowPlayers / N) }))}</span><span><b class="yellow">${people(m.players)}</b> ${esc(fill(t('planVisual.needed'), { p: pct(m.players / N) }))}</span></div></div>`;
+      // the same gauge as the call: the fewest that make it, and on a close call the number that is safe
+      const minS = m.kind === 'libFocus' ? (m.minShare ?? (m.safe ? null : m.players / N)) : m.players / N;
+      extra = turnoutGauge('mvg:' + res.id, m.nowPlayers, N, minS, m.kind === 'libFocus' && m.safe ? m.players / N : null);
     }
     const subj = m.task && m.task.task ? taskNoun(m.task.task) : null;
     let fx = effectText(m.effect, subj);

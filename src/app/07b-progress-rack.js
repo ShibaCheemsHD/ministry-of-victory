@@ -89,7 +89,8 @@
         const ours = !r.pw && !r.defense;
         const pts = planetSeries(pl.index);
         const level = ours ? 1 : pts.length ? pts[pts.length - 1][1] : 0;
-        const rate = ours ? null : recentRate(pts);
+        // the pace the call shows (what is left over the forecast time to fall); the observed one when there is no forecast
+        const rate = ours ? null : r.pw && isFinite(r.eta) && r.eta > 0 ? (1 - level) / r.eta : recentRate(pts);
         let freedAt = null;
         for (let k = 1; k < pts.length; k++) if (pts[k][1] >= 0.999 && pts[k - 1][1] < 0.999) freedAt = pts[k][0];
         let ghost = null, fc, cls = 'ok', fallAt = null, band = null;
@@ -105,7 +106,9 @@
           pace: ours || done ? null : rate == null ? '—' : `${rate >= 0 ? '+' : '−'}${fmt(Math.abs(rate) * 100, 1)}%/h`, paceBad: rate != null && rate <= 0,
           aria: fill(t('pr.aria'), { name, p: pct(level), more: ' · ' + plain(fc) }) });
       } else if (r.counter && !r.simpleCount && r.rates && tk.goal) {
-        const f = counterFacts(entry, r), name = plain(taskText(r)), level = Math.min(1, tk.progress / tk.goal);
+        const f0 = counterFacts(entry, r), name = plain(taskText(r)), level = Math.min(1, tk.progress / tk.goal);
+        // a count is 0 when the order starts (8 Nov 2026: its first day and "at the start" were missing)
+        const f = entry.start && f0.pts.length && f0.pts[0][0] > entry.start ? { ...f0, pts: [[entry.start, 0], ...f0.pts] } : f0;
         const fillC = PR_HEX[tk.faction] || '#e8f1fa';
         let ghost = null, over = null, fc, cls = 'ok', fullAt = null;
         const projEnd = f.avg != null ? tk.progress + f.avg * H : null;
@@ -119,7 +122,8 @@
             if (ghost > 1.05) over = projPct(ghost);
           } else { fc = fill(t('pr.byEndShort'), { p: pct(ghost), v: big(tk.goal - projEnd) }); cls = 'bad'; }
         } else { fc = t('pr.wait'); cls = ''; }
-        const rate = f.recent ?? f.avg;
+        // the pace the forecast and the Objectives use: since the order began
+        const rate = f.avg;
         out.push({ r, kind: 'count', name, fill: fillC, tint: 'rgba(4,8,14,.85)', level, ghost, over, marks: dayMarks(f.pts, tk.goal), fc, cls, f, projEnd, fullAt,
           pace: done ? null : rate == null ? '—' : `${big(rate)}/h`, need: !done && f.needed ? `${big(f.needed)}/h` : null, paceBad: rate != null && f.needed && rate < f.needed,
           aria: fill(t('pr.aria'), { name, p: pct(level), more: ' · ' + plain(fc) }) });
@@ -156,7 +160,7 @@
         }
       }
       if (o.kind === 'count' && o.f.pts.length > 1) {
-        const tk = o.r.task, pts = entry.start ? [[entry.start, 0], ...o.f.pts.filter(q => q[0] > entry.start)] : o.f.pts;
+        const tk = o.r.task, pts = o.f.pts;
         for (const m of [0.25, 0.5, 0.75, 1]) {
           const v = m * tk.goal, k = pts.findIndex(q => q[1] >= v);
           if (k <= 0) continue;
@@ -183,7 +187,8 @@
     const late = objs.filter(o => !o.ours && o.r.verdict !== 'done' && !(o.fallAt || (o.fullAt && o.fullAt < end)));
     const lines = late.map(o => o.ghost != null ? (o.kind === 'count' ? fill(t('pr.endShort'), { name: esc(o.name), p: pct(o.ghost), v: big(Math.max(0, o.r.task.goal - (o.projEnd || 0))) }) : fill(t('pr.endSlow'), { planet: esc(o.name), p: pct(o.ghost) }))
       : fill(t('pr.endStuck'), { name: esc(o.name), p: pct(o.level) }));
-    ev.push({ t: end, c: late.length ? 'end bad' : 'end', fut: true, what: t('pr.end'), why: lines.length ? lines.join(' ') : t('pr.endOk') });
+    const won = objs.length && objs.every(o => o.r.verdict === 'done');
+    ev.push({ t: end, c: late.length ? 'end bad' : 'end', fut: true, what: t('pr.end'), why: lines.length ? lines.join(' ') : t(won ? 'pr.endWon' : 'pr.endOk') });
     return ev.sort((x, y) => x.t - y.t);
   }
   function prEventHTML(e, withDay) {

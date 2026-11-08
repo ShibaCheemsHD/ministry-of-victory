@@ -41,7 +41,8 @@
   // numbers always in English format (36,000), whatever the browser's region
   const fmt = (n, d = 0, min = d) => (n == null || !isFinite(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: min });
   const plainCap = (s) => String(s).replace(/<[^>]+>/g, '');
-  const pct = (x, d = 0) => (x == null || !isFinite(x)) ? '—' : fmt(x * 100, d) + '%';
+  // a value just under 1 never rounds up to "100%" (8 Nov 2026: a planet at 99.6% read 100% before it fell)
+  const pct = (x, d = 0) => (x == null || !isFinite(x)) ? '—' : x < 1 && Math.round(x * 100 * 10 ** d) >= 100 * 10 ** d ? fmt(Math.floor(x * 1000) / 10, 1) + '%' : fmt(x * 100, d) + '%';
   // a projection of the goal: past three times it, the exact figure means nothing
   const projPct = (x) => x > 3 ? '>300%' : pct(x);
   // shares in the plan texts: "83%", or "over 500%" when even 5x the playerbase isn't enough

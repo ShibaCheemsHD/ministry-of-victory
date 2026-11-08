@@ -977,12 +977,18 @@ const ENGINE = (() => {
         // a close call shows how many it takes to be safe (the slow end of the range in time), so the bar never
         // looks full while the verdict says one bad night loses it (critique 7 Nov 2026)
         const safe = variant === 'close' ? safeShare(focus, H, C, ctx.samples || [], ctx.now) : null;
-        const focusShare = safe || (inTime || !fullPossible ? lib.currentShare : lib.seqNeed);
         const planSegs = fullPossible ? lib.plan.segs : (lib.partial.plan ? lib.partial.plan.segs : []);
+        // in time: the fewest Helldivers that still make it (8 Nov 2026: the Plan said "25,900 needed", the
+        // Helldivers already there, while the call said 12,800). The last planet: its own forecast, as the call;
+        // more planets: the least share the whole sequence needs, never more than we have.
+        const minShare = !inTime ? null : planSegs.length <= 1 && focus.pw ? shareForDeadline(focus, H, C, ctx.samples || [], ctx.now)
+          : isFinite(lib.seqNeed) ? Math.min(lib.currentShare, lib.seqNeed) : lib.currentShare;
+        const minOk = minShare != null && isFinite(minShare) && minShare > 0 ? minShare : null;
+        const focusShare = safe || (inTime ? minOk ?? lib.currentShare : !fullPossible ? lib.currentShare : lib.seqNeed);
         recs.push({ kind: 'libFocus', prio: 2, variant, planet: focus.planet, share: focusShare, players: players(focusShare),
           // the last planet left, everyone on the order already on it: the planet's own forecast says when
           // in time at today's pace: the planet's own forecast, the same time its race row shows
-          hours: inTime && isFinite(focus.eta) ? focus.eta : planSegs.length <= 1 && lib.winnableNow && isFinite(focus.eta) ? focus.eta : first ? first.end - first.start : null, safe: !!safe, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
+          hours: inTime && isFinite(focus.eta) ? focus.eta : planSegs.length <= 1 && lib.winnableNow && isFinite(focus.eta) ? focus.eta : first ? first.end - first.start : null, safe: !!safe, minShare: minOk, now: focus.share, nowPlayers: focus.planet.statistics?.playerCount || 0,
           remaining: planSegs.length });
         if (planSegs.length > 1) {
           recs.push({ kind: 'libOrder', prio: 3, partial: !fullPossible, segs: planSegs.map(s => ({ planet: s.target.planet, start: s.start, end: s.end })), H });
@@ -1433,7 +1439,7 @@ const ENGINE = (() => {
     return diff;
   }
 
-  return { hourlyProjection, shareForDeadline, ONLINE_BY_UTC_HOUR, fallChance, chanceOf, useChanceModel, chanceMeta, chanceModel, dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
+  return { hourlyProjection, shareForDeadline, safeShare, ONLINE_BY_UTC_HOUR, fallChance, chanceOf, useChanceModel, chanceMeta, chanceModel, dmg, shareFor, calibrateK, trackPlanets, detectJumps, scanHistory, judgeStretch, taskDiff, orderNeeds, crossOrders, TASK, FACTIONS, DEFAULTS, parseTask, planetWork, sequentialHours, sequentialPlan, bestSubset, recommend, directive, simulate, minShareSequential, parallelShare,
     observedNet, localC, growth, forecastFall, fallBand, FC, defenseInfo, calibrate, counterRates, analyzeAssignment, isEnemy, RANK, splitDispatch, dispatchKind, moOutcome, briefingGoals, briefingDiff };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

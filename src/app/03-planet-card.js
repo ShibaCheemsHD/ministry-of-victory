@@ -302,9 +302,14 @@
     const [hx, hy] = pt(RB + 4, ang(0)), [hx0, hy0] = pt(70, ang(0));
     const frac = Math.max(0, Math.min(1, 1 - pl.health / pl.maxHealth)), fc = FAC_VAR[factionOfPlanet(pl)] || 'var(--fg)';
     const hi = band && band.hi > H ? band.hi : null;
-    const key = !isFinite(proj.need0) ? 'all' : r.eta > H ? 'late' : hi != null || r.close ? 'close' : 'ok';
-    const first = proj.hours[0];
-    const P = { planet: planetName(pl), when: esc(clock(r.eta)), margin: esc(dur(Math.max(0, H - r.eta))), need: people(first.need), more: people(Math.max(0, first.need - first.exp)) };
+    // close only when the verdict says so (8 Nov 2026: with a 95% chance the call said "On track" while the radar
+    // said "Every hour counts... the order fails", because its slow end alone fell after the deadline)
+    const key = !isFinite(proj.need0) ? 'all' : r.eta > H ? 'late' : r.close ? 'close' : 'ok';
+    const P = { planet: planetName(pl), when: esc(clock(r.eta)), margin: esc(dur(Math.max(0, H - r.eta))), safe: '' };
+    // the same figures as the gauge under the forecast
+    const nd = callNeed(res, r, proj), mn = nd.min != null && isFinite(nd.min) ? nd.min : proj.need0;
+    P.need = people(mn * N); P.more = people(Math.max(0, mn - r.share) * N);
+    if (key === 'close' && nd.safe != null && isFinite(nd.safe) && nd.safe > mn + 0.005) P.safe = fill(t('rd.closeSafe'), { s: people(nd.safe * N) });
     const warn = key === 'close' ? `<div class="rd-warn" tabindex="0"><p class="rd-warn-h"><i aria-hidden="true"></i><span>${esc(t('rd.warnT'))}</span><span class="rd-why" aria-hidden="true">${esc(t('rd.why'))} ▾</span></p><div class="rd-more"><div><p>${fill(t('rd.warnB'), { ...P, hi: esc(clock(hi != null ? hi : r.eta)) })}</p></div></div></div>` : '';
     const coming = ev.length ? `<ul class="rd-events">${ev.slice(0, 3).map(x => `<li><b>${esc(hm(at(x.t)))}</b><span>${x.text}</span></li>`).join('')}</ul>` : '';
     const dial = `<div class="cradar" style="--fc:${fc}">
@@ -337,14 +342,36 @@
     return { dial, text };
   }
   // the Helldivers on the planet against the Helldivers it needs, as a gauge of everyone online (the Plan's)
-  function turnoutHTML(res, r, proj) {
-    const N = res.model.N || 0, need = proj.need0;
-    if (!N || !(r.share > 0) || !isFinite(need)) return '';
-    const now = Math.min(1, r.share), nd = Math.min(1, need), there = r.share * N;
-    return `<div class="mv-gauge call-gauge" role="img" aria-label="${esc(fill(t('planVisual.gaugeAria'), { now: people(there), need: people(need * N) }))}">
+  // Helldivers there now against the fewest that still make the deadline and, on a close call, the number that
+  // stays in time even at the slow end of the forecast. One gauge for the call and the Plan (8 Nov 2026: they
+  // said 12,800, 25,900 and 31,500 "needed" for the same planet).
+  function turnoutGauge(key, there, N, minS, safeS, cls = '') {
+    if (!(N > 0) || !(there >= 0)) return '';
+    const mn = minS != null && isFinite(minS) && minS > 0 ? Math.min(1, minS) : null;
+    const sf = safeS != null && isFinite(safeS) && (mn == null || safeS > mn + 0.005) ? Math.min(1, safeS) : null;
+    if (mn == null && sf == null) return '';
+    const now = Math.min(1, there / N), state = mn != null && now < mn ? ' short' : sf != null && now < sf ? ' tight' : '';
+    const aria = fill(t('planVisual.gaugeAria'), { now: people(there), need: mn != null ? people(mn * N) : people(sf * N) }) + (sf != null && mn != null ? fill(t('planVisual.gaugeSafe'), { s: people(sf * N) }) : '');
+    const mark = (v, c) => `<i class="mvg-need${c}" style="left:${(v * 100).toFixed(2)}%"></i>`;
+    const num = (v, k) => `<span><b class="yellow">${people(v * N)}</b> ${esc(fill(t(k), { p: pct(v) }))}</span>`;
+    return `<div class="mv-gauge${cls}" role="img" aria-label="${esc(aria)}">
       <div class="mvg-scale" aria-hidden="true"><span>${esc(t('planVisual.everyone'))}</span><span>100%</span></div>
-      <div class="mvg-bar" aria-hidden="true"><i class="mvg-now${now < nd ? ' short' : ''}" data-w="${(now * 100).toFixed(2)}" data-key="cg:${esc(res.id)}" style="width:${(now * 100).toFixed(2)}%"></i><i class="mvg-need" style="left:${(nd * 100).toFixed(2)}%"></i></div>
-      <div class="mvg-nums" aria-hidden="true"><span><b class="blue">${people(there)}</b> ${esc(fill(t('planVisual.thereNow'), { p: pct(r.share) }))}</span><span><b class="yellow">${people(need * N)}</b> ${esc(fill(t('planVisual.needed'), { p: pct(need) }))}</span></div></div>`;
+      <div class="mvg-bar" aria-hidden="true"><i class="mvg-now${state}" data-w="${(now * 100).toFixed(2)}" data-key="${esc(key)}" style="width:${(now * 100).toFixed(2)}%"></i>${mn != null ? mark(mn, '') : ''}${sf != null ? mark(sf, ' safe') : ''}</div>
+      <div class="mvg-nums" aria-hidden="true"><span><b class="blue">${people(there)}</b> ${esc(fill(t('planVisual.thereNow'), { p: pct(now) }))}</span>${mn != null ? num(mn, 'planVisual.minimum') : ''}${sf != null ? num(sf, 'planVisual.safe') : ''}</div></div>`;
+  }
+  // the share of everyone the call needs on its planet: the fewest that make it, and on a close call the share
+  // that is safe. With more planets after it, the plan's figure (it leaves time for the rest), as the Plan shows.
+  function callNeed(res, r, proj) {
+    const mv = (res.recs || []).find(m => m.kind === 'libFocus' && m.planet === r.planet && (m.remaining || 1) > 1);
+    if (mv) return { min: mv.minShare ?? (mv.safe ? null : mv.share), safe: mv.safe ? mv.share : null };
+    const safe = r.close ? ENGINE.safeShare(r, res.hoursLeft, res.model.C, samples, last.now) : null;
+    return { min: proj.need0, safe };
+  }
+  function turnoutHTML(res, r, proj) {
+    const N = res.model.N || 0;
+    if (!N || !(r.share > 0) || !isFinite(proj.need0)) return '';
+    const nd = callNeed(res, r, proj);
+    return turnoutGauge('cg:' + res.id, r.share * N, N, nd.min, nd.safe, ' call-gauge');
   }
   // the liberation the call points at (its planet among the order's targets)
   function callTarget(res, p) {

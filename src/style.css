@@ -2150,3 +2150,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .pd-mv { flex-wrap: wrap; }
 @media (max-width: 640px) { .pr-key { justify-content: flex-start; } .pd-mv { font-size: 12px; } }
 .pk-rack:focus-visible { outline: 2px solid var(--se); outline-offset: 4px; }
+/* the gauge's second mark: the number that is safe at the slow end of the forecast */
+.mvg-need.safe { background: none; border-left: 2px dashed var(--se); width: 0; }
+.mvg-now.tight { background: linear-gradient(90deg, #8a5a00, #ffb900); box-shadow: 0 0 16px rgba(255, 185, 0, .45); }
+.mvg-nums { flex-wrap: wrap; gap: 4px 16px; }

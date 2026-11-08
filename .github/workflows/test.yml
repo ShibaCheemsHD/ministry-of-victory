@@ -46,6 +46,8 @@ jobs:
           retention-days: 7
       - name: Page in every scenario and with random data
         run: python3 tests/page_test.py 40
+      - name: The same figure agrees across the page
+        run: python3 tests/consistency_test.py 20
       - name: Accessibility (axe-core on every view, dialogs by keyboard)
         run: |
           npm i --no-save axe-core@4.10.2
