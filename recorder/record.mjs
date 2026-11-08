@@ -564,7 +564,7 @@ for (const [id, o] of Object.entries(hist.orders)) {
   progress.orders[id] = { start: o.start, exp: o.exp, title: o.title, pts: thin(pts) };
 }
 for (const i of named) {
-  const pts = hist.samples.filter(sm => sm.pl[i]).map(sm => { const v = sm.pl[i]; return [sm.t, v[3] ? +(1 - v[0] / v[3]).toFixed(5) : 0, v[4] ? 1 : 0, v[1]]; });
+  const pts = hist.samples.filter(sm => sm.pl[i]).map(sm => { const v = sm.pl[i]; return [sm.t, v[3] ? +(1 - v[0] / v[3]).toFixed(5) : 0, v[4] ? 1 : 0, v[1], typeof v[6] === 'string' ? v[6].slice(0, 1) : '']; });
   if (pts.length) progress.planets[i] = thin(pts);
 }
 fs.writeFileSync(path.join(outDir, 'progress.json'), JSON.stringify(progress));

@@ -83,15 +83,17 @@
       const tk = r.task, done = r.verdict === 'done';
       if (r.planet && (r.defense || r.pw || tk.type === 11 || tk.type === 13)) {
         const pl = r.planet, fac = factionOfPlanet(pl), name = plain(planetName(pl));
-        const enemy = fac && fac !== 'Humans' ? fac : r.defense?.faction || null;
+        const enemy = fac && fac !== 'Humans' ? fac : r.defense?.faction || planetFoe(pl.index);
         const tint = enemy && PR_RGB[enemy] ? `rgba(${PR_RGB[enemy]},.2)` : 'rgba(4,8,14,.85)';
-        // a planet already ours (nothing to liberate) is a full tank: the recorder's history reads 0% for it
-        const held = !r.pw && !r.defense;
-        const pts = held ? [] : planetSeries(pl.index);
-        const level = held ? 1 : pts.length ? pts[pts.length - 1][1] : 0;
-        const rate = held ? null : recentRate(pts);
+        // ours now (nothing left to liberate): a full tank, with its history (it may have been liberated during the order)
+        const ours = !r.pw && !r.defense;
+        const pts = planetSeries(pl.index);
+        const level = ours ? 1 : pts.length ? pts[pts.length - 1][1] : 0;
+        const rate = ours ? null : recentRate(pts);
+        let freedAt = null;
+        for (let k = 1; k < pts.length; k++) if (pts[k][1] >= 0.999 && pts[k - 1][1] < 0.999) freedAt = pts[k][0];
         let ghost = null, fc, cls = 'ok', fallAt = null, band = null;
-        if (held) fc = t(r.safe ? 'pr.held' : 'pr.freed');
+        if (ours) fc = freedAt ? fill(t('pr.freedAt'), { when: hhmm(freedAt) }) : t(r.safe ? 'pr.held' : 'pr.freed');
         else if (done) fc = t('pr.freed');
         else if (res.ended) { fc = fill(t('pr.endedAt'), { p: pct(level) }); cls = 'bad'; }
         else if (r.pw && isFinite(r.eta) && r.eta > 0) {
@@ -99,8 +101,8 @@
           if (r.eta <= H) { fc = fill(t('pr.falls'), { when: clock(r.eta) }); cls = 'b'; fallAt = now + r.eta * 3.6e6; band = r.fc?.band || null; }
           else { fc = fill(t('pr.byEnd'), { p: pct(ghost) }); cls = 'bad'; }
         } else { fc = t('pr.stuck'); cls = 'bad'; }
-        out.push({ r, kind: 'planet', held, name, fill: SE_BLUE, tint, enemy, level, ghost, over: null, marks: held ? [] : dayMarks(pts, 1), fc, cls, pts, fallAt, band,
-          pace: held || done ? null : rate == null ? '—' : `${rate >= 0 ? '+' : '−'}${fmt(Math.abs(rate) * 100, 1)}%/h`, paceBad: rate != null && rate <= 0,
+        out.push({ r, kind: 'planet', ours, name, fill: SE_BLUE, tint, enemy, level, ghost, over: null, marks: dayMarks(pts, 1), fc, cls, pts, fallAt, band,
+          pace: ours || done ? null : rate == null ? '—' : `${rate >= 0 ? '+' : '−'}${fmt(Math.abs(rate) * 100, 1)}%/h`, paceBad: rate != null && rate <= 0,
           aria: fill(t('pr.aria'), { name, p: pct(level), more: ' · ' + plain(fc) }) });
       } else if (r.counter && !r.simpleCount && r.rates && tk.goal) {
         const f = counterFacts(entry, r), name = plain(taskText(r)), level = Math.min(1, tk.progress / tk.goal);
@@ -131,23 +133,26 @@
   function prHappened(entry, objs) {
     const { res, a } = entry, end = Date.parse(a.expiration), ev = [];
     if (entry.start && entry.start < last.now) {
-      const held = objs.filter(o => o.held).map(o => esc(o.name));
-      const open = objs.filter(o => !o.held).map(o => { const v = prAt(o, entry.start + 60e3); return v == null ? esc(o.name) : `${esc(o.name)} ${pct(v)}`; });
+      const at0 = (o) => prAt(o, entry.start + 60e3);
+      const held = objs.filter(o => o.kind === 'planet' && (at0(o) ?? (o.ours ? 1 : 0)) >= 0.999).map(o => esc(o.name));
+      const open = objs.filter(o => !held.includes(esc(o.name))).map(o => { const v = at0(o); return v == null ? esc(o.name) : `${esc(o.name)} ${pct(v)}`; });
       ev.push({ t: entry.start, c: 'start', what: t('pr.start'), why: [fill(t(res.tasks.length === 1 ? 'pr.startS1' : 'pr.startS'), { n: res.tasks.length, when: hhmm(end) }),
         open.length ? fill(t('pr.startOpen'), { list: open.join(', ') }) : '', held.length ? fill(t('pr.startHeld'), { list: held.join(', ') }) : ''].filter(Boolean).join(' ') });
     }
     for (const o of objs) {
-      if (o.kind === 'planet' && o.pts.length > 1) {
-        let peak = o.pts[0], zero = o.pts[0][1] < 0.02, freed = o.pts[0][1] >= 0.999;
-        for (const q of o.pts.slice(1)) {
+      const pp = o.kind === 'planet' ? o.pts.filter(q => !entry.start || q[0] >= entry.start - 20 * 60e3) : [];
+      if (pp.length > 1) {
+        let peak = pp[0], zero = pp[0][1] < 0.02, freed = pp[0][1] >= 0.999;
+        for (const q of pp.slice(1)) {
           if (q[1] > peak[1]) peak = q;
           if (!zero && q[1] < 0.02 && peak[1] > 0.1) {
-            ev.push({ t: q[0], c: 'bad', big: true, who: o.fill, what: fill(t('pr.lost'), { planet: esc(o.name) }),
+            const wasOurs = peak[1] >= 0.999;
+            ev.push({ t: q[0], c: 'bad', big: true, who: o.fill, what: fill(t(wasOurs ? 'pr.taken' : 'pr.lost'), { planet: esc(o.name), foe: esc(o.enemy ? t('facPl.' + o.enemy) : '') }),
               why: fill(t(o.enemy ? 'pr.lostS' : 'pr.lostS0'), { p: pct(peak[1]), when: hhmm(peak[0]), d: dur((q[0] - peak[0]) / 3.6e6), foe: esc(o.enemy ? t('facPl.' + o.enemy) : '') }) });
             zero = true; peak = q; continue;
           }
           if (zero && q[1] > 0.05) { ev.push({ t: q[0], c: 'ok', big: true, who: o.fill, what: fill(t('pr.counter'), { planet: esc(o.name) }), why: t('pr.counterS') }); zero = false; }
-          if (!freed && q[1] >= 0.999) { ev.push({ t: q[0], c: 'ok', big: true, who: o.fill, what: fill(t('pr.freedE'), { planet: esc(o.name) }), why: t('pr.freedS') }); freed = true; }
+          if (!freed && q[1] >= 0.999) { ev.push({ t: q[0], c: 'ok', big: true, who: o.fill, what: fill(t('pr.freedE'), { planet: esc(o.name) }), why: entry.start ? fill(t('pr.freedSd'), { d: dur((q[0] - entry.start) / 3.6e6) }) : t('pr.freedS') }); freed = true; }
         }
       }
       if (o.kind === 'count' && o.f.pts.length > 1) {
@@ -162,7 +167,8 @@
         }
       }
     }
-    return ev.sort((x, y) => x.t - y.t);
+    // only what happened while the order ran (its start is told above)
+    return ev.filter(e => e.c === 'start' || !entry.start || e.t >= entry.start).sort((x, y) => x.t - y.t);
   }
   // what comes next, at today's pace
   function prNext(entry, objs) {
@@ -174,7 +180,7 @@
       if (o.fullAt && o.fullAt < end) ev.push({ t: o.fullAt, c: 'ok', big: true, fut: true, who: o.fill, what: fill(t('pr.fullE'), { name: esc(o.name) }), tag: t('pr.forecast'),
         why: fill(t('pr.fullS'), { pace: o.pace || '', d: dur((end - o.fullAt) / 3.6e6) }) });
     }
-    const late = objs.filter(o => !o.held && o.r.verdict !== 'done' && !(o.fallAt || (o.fullAt && o.fullAt < end)));
+    const late = objs.filter(o => !o.ours && o.r.verdict !== 'done' && !(o.fallAt || (o.fullAt && o.fullAt < end)));
     const lines = late.map(o => o.ghost != null ? (o.kind === 'count' ? fill(t('pr.endShort'), { name: esc(o.name), p: pct(o.ghost), v: big(Math.max(0, o.r.task.goal - (o.projEnd || 0))) }) : fill(t('pr.endSlow'), { planet: esc(o.name), p: pct(o.ghost) }))
       : fill(t('pr.endStuck'), { name: esc(o.name), p: pct(o.level) }));
     ev.push({ t: end, c: late.length ? 'end bad' : 'end', fut: true, what: t('pr.end'), why: lines.length ? lines.join(' ') : t('pr.endOk') });
@@ -188,9 +194,9 @@
   }
   // how far each objective moved between two moments, as chips
   function prMoves(objs, t0, t1) {
-    return objs.filter(o => !o.held).map(o => {
+    return objs.map(o => {
       const a = prAt(o, t0), b = prAt(o, t1);
-      if (a == null || b == null) return '';
+      if (a == null || b == null || (a >= 0.999 && b >= 0.999)) return '';
       const d = (b - a) * 100, cls = d > 0.4 ? 'up' : d < -0.4 ? 'down' : 'flat';
       const delta = o.kind === 'count' ? `+${big(Math.max(0, (b - a) * o.r.task.goal))}` : `${d >= 0 ? '+' : '−'}${fmt(Math.abs(d), Math.abs(d) < 10 ? 1 : 0)}`;
       return `<span class="pd-mv ${cls}"><i style="--t:${o.fill}" aria-hidden="true"></i><b>${esc(o.name)}</b><span>${pct(a)} → ${pct(b)}</span><em>${cls === 'up' ? '▲' : cls === 'down' ? '▼' : '■'} ${esc(delta)}</em></span>`;
@@ -228,7 +234,7 @@
     const id = String(res.id).replace(/[^\w-]/g, '');
     const row = (k, v, cls) => v == null ? '' : `<div class="pk-row"><dt>${esc(t(k))}</dt><dd${cls ? ` class="${cls}"` : ''}>${esc(v)}</dd></div>`;
     const rack = objs.map((o, i) => `<figure class="pk-cell">${prTank(id + '-' + i, o, i === 0)}<figcaption class="pk-plate"><b>${esc(o.name)}</b>
-      <dl>${row('pr.rowNow', pct(o.level))}${row('pr.rowPace', o.pace, o.paceBad ? 'bad' : '')}${row('pr.rowNeed', o.need, 'y')}${row(o.held || o.r.verdict === 'done' ? 'pr.rowState' : 'pr.rowFc', plain(o.fc), o.cls)}</dl></figcaption></figure>`).join('');
+      <dl>${row('pr.rowNow', pct(o.level))}${row('pr.rowPace', o.pace, o.paceBad ? 'bad' : '')}${row('pr.rowNeed', o.need, 'y')}${row(o.ours || o.r.verdict === 'done' ? 'pr.rowState' : 'pr.rowFc', plain(o.fc), o.cls)}</dl></figcaption></figure>`).join('');
     const sw = (cls, label) => `<span class="pk-k"><i class="${cls}" aria-hidden="true"></i>${esc(t(label))}</span>`;
     return `<div class="history">
       <section class="pr-card"><h4 class="pr-sec" aria-level="3">${esc(t('pr.rackT'))}</h4><div class="pk-rack" tabindex="0" role="region" aria-label="${esc(t('pr.rackT'))}">${rack}</div>

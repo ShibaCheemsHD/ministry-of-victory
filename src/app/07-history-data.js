@@ -72,12 +72,20 @@
       ponr: tk.goal && HOPELESS.has(r.verdict) ? pointOfNoReturn(start ? [[start, 0], ...pts.filter(q => q[0] > start)] : pts, tk.goal, end, best) : null };
   }
   // liberation of the planets an objective names, over time
+  // the last enemy that held a planet, from the recorded owners (for a planet that is ours now)
+  function planetFoe(idx) {
+    const pts = recordProgress?.planets?.[idx] || [];
+    for (let k = pts.length - 1; k >= 0; k--) { const o = { T: 'Terminids', A: 'Automaton', I: 'Illuminate' }[pts[k][4]]; if (o) return o; }
+    return null;
+  }
   function planetSeries(idx) {
+    // a planet that is ours (no event on it) counts as 100%, not as the 0% its health reads (8 Nov 2026:
+    // three planets liberated during the order looked "already ours" from the start)
     const p = last.planets[idx], raw = [];
-    for (const x of recordProgress?.planets?.[idx] || []) raw.push([x[0], x[1]]);
+    for (const x of recordProgress?.planets?.[idx] || []) raw.push([x[0], x[4] === 'H' && !x[2] ? 1 : x[1]]);
     const m = p ? (p.event ? p.event.maxHealth : p.maxHealth) : null;
-    if (m) for (const sm of samples) { const v = sm.planets && sm.planets[idx]; if (v && v.h != null) raw.push([sm.t, 1 - v.h / m]); }
-    if (p && m) raw.push([last.now, 1 - (p.event ? p.event.health : p.health) / m]);
+    if (m) for (const sm of samples) { const v = sm.planets && sm.planets[idx]; if (v && v.h != null) raw.push([sm.t, v.ours ? 1 : 1 - v.h / m]); }
+    if (p && m) raw.push([last.now, p.currentOwner === 'Humans' && !p.event ? 1 : 1 - (p.event ? p.event.health : p.health) / m]);
     raw.sort((a, b) => a[0] - b[0]);
     return thinPts(raw);
   }
