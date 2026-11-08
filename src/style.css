@@ -2558,3 +2558,10 @@ html.calm .fr-table .dw.in > *,html.calm .fr-table .dw.in .fc-u,html.calm .fr-ta
 .dc.scr { color: var(--se); opacity: .45; } .dlong .dc.scr { opacity: .22; }
 /* the tabs share the bar whatever their number: four in an order, two between orders, no empty space (8 Nov 2026) */
 .tabbar .tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+/* the map melts into the page: no solid ground of its own, the page's grid and glow run through it, and the
+   sky, the board and the scanlines fade out over its top and bottom edges; the HUD and the corners stay sharp (9 Nov 2026) */
+.fr-table { background: transparent; --fr-fade: linear-gradient(180deg, transparent 0, #000 96px, #000 calc(100% - 96px), transparent 100%); }
+.fr-table .fr-bg { position: absolute; inset: 0; pointer-events: none; -webkit-mask-image: var(--fr-fade); mask-image: var(--fr-fade); }
+.fr-table .fr-bg .plane, .fr-table .fr-bg .over .pl, .fr-table .fr-bg .over .qp { pointer-events: auto; }
+.fr-table::before, .fr-table::after { -webkit-mask-image: var(--fr-fade); mask-image: var(--fr-fade); }
+@media (max-width: 700px) { .fr-table { --fr-fade: linear-gradient(180deg, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%); } }

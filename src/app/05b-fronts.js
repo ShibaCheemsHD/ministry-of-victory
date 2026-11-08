@@ -198,9 +198,9 @@
       root = document.createElement('section');
       root.className = 'fr-table'; root.setAttribute('aria-label', L.aria);
       const camBtn = (c) => `<button type="button" class="fr-cam" data-cam="${c}" aria-pressed="${camName === c}">${esc(L.cams[c])}</button>`;
-      root.innerHTML = `<div class="sky"></div><div class="horizon"></div>
+      root.innerHTML = `<div class="fr-bg"><div class="sky"></div><div class="horizon"></div>
         <div class="plane"><svg class="svw"><g class="world"></g></svg></div>
-        <svg class="over" aria-hidden="false"></svg>
+        <svg class="over" aria-hidden="false"></svg></div>
         <div class="edge"></div>
         <div class="corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         <div class="hud h-fronts"></div>
