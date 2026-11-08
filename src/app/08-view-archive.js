@@ -281,6 +281,36 @@
       <p class="foot">${esc(fill(t('ar.foot'), { when: archive.upTo ? day(archive.upTo) : '—' }))}</p>
     </section>`;
   }
+  /* The browser tab as a status light (8 Nov 2026): the call's planet, the verdict and the time left in the
+     title, the verdict's colour on the icon, so the order can be watched from another tab. */
+  const FAV_DOT = { done: '#3fc483', ok: '#2fc6b8', push: '#d6a03c', record: '#f0609e', out: '#a0a9bb' };
+  let favWas = null, tabInfo = null;
+  function setFavicon(level) {
+    const dot = FAV_DOT[level] || '';
+    if (dot === favWas) return;
+    favWas = dot;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="5" fill="#fee700"/><g transform="translate(1 1) scale(.75)"><path d="M20 2 38 20 20 38 2 20Z" fill="none" stroke="#0a0a07" stroke-width="2.8"/><path d="M13 16h14l-2.4 4H22v8h-4v-8h-2.6Z" fill="#0a0a07"/></g>${dot ? `<circle cx="24.5" cy="24.5" r="6.5" fill="${dot}" stroke="#07080b" stroke-width="2.5"/>` : ''}</svg>`;
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.type = 'image/svg+xml'; link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+  function tabStatus() {
+    const i = tabInfo;
+    if (!i) return;
+    if (i.plain) { document.title = i.plain; return; }
+    const h = (i.exp - Date.now()) / 3.6e6;
+    const title = [i.pct, i.word, i.live && h > 0 ? hmLeft(h) : null].filter(Boolean).join(' · ') + ' · Ministry of Victory';
+    if (document.title !== title) document.title = title;
+  }
+  function setTab(entry, plain) {
+    const res = entry && entry.res;
+    setFavicon(res ? lvl(res.verdict) : null);
+    if (plain || !res) { tabInfo = { plain: plain || 'Ministry of Victory' }; tabStatus(); return; }
+    const v = res.verdict, live = !res.ended && v !== 'done', r = callTarget(res, directiveParts(res)), pl = r && r.planet;
+    const fr = live && pl && pl.maxHealth ? Math.max(0, 1 - pl.health / pl.maxHealth) : null;
+    tabInfo = { pct: fr != null ? pct(fr) : null, word: t('v.' + v), live, exp: Date.parse(entry.a.expiration) };
+    tabStatus();
+  }
   function render(opts = {}) {
     if (!last) return;
     document.documentElement.classList.toggle('glance', settings.layout === 'glance');
@@ -291,7 +321,7 @@
     if (ui.view === 'archive') {
       $('ot-nav').hidden = true; $('cross').innerHTML = ''; $('intel').innerHTML = '';
       $('view').innerHTML = archiveHTML();
-      document.title = `${t('ar.title')} · Ministry of Victory`;
+      setTab(last.results.find(x => String(x.a.id) === String(ui.order)), `${t('ar.title')} · Ministry of Victory`);
       return;
     }
     renderOrderTabs();
@@ -304,7 +334,7 @@
           ${betweenCallHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
       syncHash();
-      document.title = 'Ministry of Victory';
+      setTab(null);
       fxAfterRender(view, null);
       return;
     }
@@ -313,8 +343,7 @@
     if (opts.tabEnter && !viaKeys) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
     afterRender(entry, firstTime);
     prev.seen[entry.a.id] = true;
-    const title = directiveParts(entry.res).title;
-    document.title = `${title ? title.charAt(0).toUpperCase() + title.slice(1) + ' · ' : ''}Ministry of Victory`;
+    setTab(entry);
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }
     syncHash();
     if (tabScrollDue) { tabScrollDue = false; requestAnimationFrame(() => { const el = $('tabs-' + entry.a.id); if (el) el.scrollIntoView({ block: 'start' }); }); }

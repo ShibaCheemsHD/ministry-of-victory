@@ -147,6 +147,7 @@
   setInterval(tickCounters, 250);
   function tick() {
     ageForecastEvidence();
+    tabStatus();
     document.querySelectorAll('[data-exp]').forEach(el => {
       const ms = Number(el.dataset.exp) - Date.now();
       rollDigits(el, fmtCountdown(ms));

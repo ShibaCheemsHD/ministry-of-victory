@@ -330,10 +330,11 @@
         </svg>
         <div class="rd-tip" hidden></div>
       </div>
-      <p class="rd-legend" aria-hidden="true"><span><i class="lg-w"></i>${esc(t('rd.lgExp'))}</span><span><i class="lg-n"></i>${esc(t('rd.lgNeed'))}</span><span><i class="lg-b"></i>${esc(t('rd.lgBand'))}</span><span><i class="lg-h"></i>${esc(t('rd.lgNow'))}</span></p>
-      <p class="rd-legend rd-dn" aria-hidden="true"><span class="dn-day">${DN_ICON.day}${esc(t('rd.lgDay'))}</span><span class="dn-night">${DN_ICON.night}${esc(t('rd.lgNight'))}</span></p>
+      <ul class="rd-key" aria-hidden="true"><li><i class="k-w"></i>${esc(t('rd.lgExp'))}</li><li><i class="k-n"></i>${esc(t('rd.lgNeed'))}</li><li><i class="k-f"></i>${esc(t('rd.lgBand'))}</li><li><i class="k-h"></i>${esc(t('rd.lgNow'))}</li></ul>
     </div>`;
-    const text = `<div class="rd-text">
+    // "On course all the way" only said again what the verdict and the time line say (8 Nov 2026): the words
+    // stand under the forecast only when they add something, a close call, a shortfall or an hour to watch
+    const text = key === 'ok' && !warn && !coming ? '' : `<div class="rd-text">
         <span class="rd-k">${esc(t(proj.span < H ? 'rd.k24' : 'rd.k'))}</span>
         <h3 class="rd-h rd-${key}">${esc(t('rd.' + key + 'T'))}</h3>
         <p class="rd-s">${fill(t('rd.' + key + 'S'), P)}</p>
@@ -398,12 +399,52 @@
     const pace = left / eta * 100, need = left / H * 100, N = res.model.N || 0;
     const pp = (x) => fmt(x, x < 10 ? 1 : 0) + '%';
     const tiles = [
-      [t('fcb.pace'), `+${pp(pace)}<small>/h</small>`, 'blue', t('fcb.paceTip')],
+      [t('fcb.pace'), `+${pp(pace)}<small>/h</small>`, 'blue', t('fcb.paceTip'), momentumHTML(pl)],
       [t('fcb.need'), `${pp(need)}<small>/h</small>`, '', t('fcb.needTip')],
       r.chance != null ? [t('fcb.chance'), r.chance >= 0.95 ? '95%+' : r.chance < 0.05 ? '&lt;5%' : Math.round(r.chance * 20) * 5 + '%', '', t('s.chanceTip')] : null,
       N ? [t('fcb.there'), people(r.share * N), '', ''] : null,
     ].filter(Boolean);
-    return head + line + `<div class="fcb-tiles">${tiles.map(([k, val, cls, tip]) => `<div class="fcb-tile ${cls}"${tip ? ` title="${esc(tip)}"` : ''}><span>${esc(k)}</span><b>${val}</b></div>`).join('')}</div>`;
+    return head + line + `<div class="fcb-tiles">${tiles.map(([k, val, cls, tip, mom]) => `<div class="fcb-tile ${cls}"${tip ? ` title="${esc(tip)}"` : ''}><span>${esc(k)}${mom || ''}</span><b>${val}</b></div>`).join('')}</div>`;
+  }
+  /* Momentum (8 Nov 2026): the liberation the planet gained in the last 3 hours against the 6 before, from the
+     recorded series. No day/night correction: a planet's pace follows its share of everyone online, so the night
+     empties it no more than the others (8 Nov: Achernar Secundus held 3.5%/h while its Helldivers fell from 41,000
+     to 24,000 overnight); a change here means Helldivers coming to the planet or leaving it. Within ±10% it is
+     steady; with under 9 hours recorded, a gap, or hardly any pace before, nothing is said. */
+  function momentumOf(pl) {
+    if (!pl || pl.event || (pl.currentOwner === 'Humans')) return null;
+    const s = planetSeries(pl.index), now = last.now, HR = 3.6e6;
+    if (s.length < 6 || s[0][0] > now - 9 * HR + 6e5) return null;
+    const at = (tm) => {
+      let k = s.findIndex(x => x[0] >= tm);
+      if (k < 0) return null;
+      if (k === 0) return s[0][1];
+      const [t0, v0] = s[k - 1], [t1, v1] = s[k];
+      return t1 - t0 > 1.5 * HR ? null : v0 + (v1 - v0) * (tm - t0) / (t1 - t0);
+    };
+    const v = Array.from({ length: 10 }, (_, i) => at(now - (9 - i) * HR));
+    if (v.some(x => x == null)) return null;
+    const before = (v[6] - v[0]) / 6, recent = (v[9] - v[6]) / 3;
+    if (!(before > 0.002)) return null;
+    const ch = recent / before - 1;
+    return { ch, recent, before, hours: v.slice(1).map((x, i) => x - v[i]), dir: ch >= 0.1 ? 'up' : ch <= -0.1 ? 'down' : 'flat' };
+  }
+  const MOM_ICON = {
+    up: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 11l5-6 5 6"/></svg>',
+    down: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5l5 6 5-6"/></svg>',
+    flat: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M10 5l3 3-3 3"/></svg>',
+  };
+  // on the pace's label line (no taller tile); its numbers and the last 9 hours open on hover or focus
+  function momentumHTML(pl) {
+    const m = momentumOf(pl);
+    if (!m) return '';
+    const p1 = (x) => fmt(x * 100, 1) + '%', top = Math.max(...m.hours, 1e-6);
+    const word = t('mom.' + m.dir), ch = (m.ch > 0 ? '+' : '−') + fmt(Math.abs(m.ch) * 100, 0) + '%';
+    const say = fill(t('mom.s' + m.dir), { r: p1(m.recent), b: p1(m.before), ch });
+    return `<span class="mom ${m.dir}" tabindex="0" aria-label="${esc(word + '. ' + say)}">${MOM_ICON[m.dir]}<span class="mom-w" aria-hidden="true">${esc(word)}</span>
+      <span class="mom-pop" role="tooltip" aria-hidden="true"><span class="mp-s"><b>${esc(word)}.</b> ${esc(say)}</span>
+      <span class="mp-bars">${m.hours.map((x, i) => `<i class="${i > 5 ? 'r' : ''}" style="height:${Math.max(4, x / top * 100).toFixed(0)}%"></i>`).join('')}</span>
+      <span class="mp-ax"><span>${esc(t('mom.ago'))}</span><span>${esc(t('fcb.now'))}</span></span></span></span>`;
   }
   // something new in the command log for this order: said beside the call, one click from the log
   // (critique 1 Nov 2026: a hand-made change only showed as a badge on a tab far below)

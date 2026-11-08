@@ -16,6 +16,7 @@ head = '''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Ministry of Victory · Helldivers 2 Major Order decision desk</title>
 <meta name="theme-color" content="#0a1120">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='5' fill='%23fee700'/><g transform='translate(1 1) scale(.75)'><path d='M20 2 38 20 20 38 2 20Z' fill='none' stroke='%230a0a07' stroke-width='2.8'/><path d='M13 16h14l-2.4 4H22v8h-4v-8h-2.6Z' fill='%230a0a07'/></g></svg>">
 <meta name="description" content="Unofficial decision desk for Helldivers 2 Major Orders: can we win it, and where should the community drop right now?">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Ministry of Victory · Can we win this Major Order?">

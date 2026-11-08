@@ -75,6 +75,12 @@
     const d = Math.floor(h / 24), hh = Math.floor(h - d * 24);
     return d ? `${d}${U.d} ${hh}${U.h}` : `${hh}${U.h}`;
   };
+  // time left with minutes under a day ("2h 05m"), as durDown otherwise
+  const hmLeft = (h) => {
+    if (!(h >= 1 && h < 24)) return durDown(h);
+    const U = t('u'), m = Math.floor((h % 1) * 60);
+    return `${Math.floor(h)}${U.h} ${String(m).padStart(2, '0')}${U.m}`;
+  };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clean = (s) => esc(String(s ?? '').replace(/<\/?i(=\d+)?>/g, ''));
   // API texts are requested in English; if an object with every language ever comes back, take English

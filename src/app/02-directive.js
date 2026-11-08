@@ -207,8 +207,23 @@
       const id = String(a.id), sel = id === String(ui.order);
       return `<button type="button" role="tab" class="otab ${fresh.has(id) ? 'is-new' : ''}" id="otab-${esc(id)}" data-otab="${esc(id)}" aria-selected="${sel}" aria-controls="view" tabindex="${sel ? 0 : -1}">
         <span class="ot-top"><span class="ot-k">${fill(t('order'), { n: i + 1 })}</span>${id === bestId ? `<span class="ot-best">${esc(t('xBest'))}</span>` : ''}${fresh.has(id) ? `<span class="new-tag">${t('newTag')}</span>` : ''}</span>
-        <span class="ot-n">${clean(txt(a.title) || 'Major Order')}</span>${pill(res.verdict)}</button>`;
+        <span class="ot-n">${clean(txt(a.title) || 'Major Order')}</span>${pill(res.verdict)}${orderBar(res)}</button>`;
     }).join('');
+  }
+  // how far the order is and the time it has left, on its tab (8 Nov 2026): orders compared without switching.
+  // The share done is the objectives' mean (the option being followed, for an "any one of" order).
+  function orderFrac(res) {
+    const tasks = res.anyOf ? [res.tasks[res.pick]] : res.tasks;
+    const f = (r) => !r ? 0 : r.verdict === 'done' ? 1
+      : r.pw && r.planet && r.planet.maxHealth ? (r.planet.currentOwner === 'Humans' && !r.planet.event ? 1 : 1 - (r.planet.event ? r.planet.event.health / r.planet.event.maxHealth : r.planet.health / r.planet.maxHealth))
+      : r.task && r.task.goal ? Math.min(1, r.task.progress / r.task.goal) : 0;
+    return res.verdict === 'done' ? 1 : tasks.length ? tasks.reduce((sum, r) => sum + f(r), 0) / tasks.length : 0;
+  }
+  function orderBar(res) {
+    const fr = Math.max(0, Math.min(1, orderFrac(res))), h = res.hoursLeft;
+    const left = res.verdict === 'done' ? '' : res.ended || !(h > 0) ? t('cl.ended')
+      : fill(t('leftShort'), { d: hmLeft(h) });
+    return `<span class="ot-prog vl-${lvl(res.verdict)}"><span class="ot-bar"><i style="width:${(fr * 100).toFixed(1)}%"></i></span><span class="ot-left">${Math.floor(fr * 100 + 1e-9)}%${left ? ' · ' + esc(left) : ''}</span></span>`;
   }
 
   // "kills" when every counted objective is a kill count, otherwise the neutral "objectives"

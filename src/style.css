@@ -1696,7 +1696,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .ftl-l-end { transform: translateX(-100%); color: var(--se); }
 .fcb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .fcb-tile { padding: 12px 14px; border: 1px solid var(--edge); background: rgba(255, 255, 255, .02); display: grid; gap: 2px; }
-.fcb-tile span { font: 700 11px/1.2 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.fcb-tile > span { font: 700 11px/1.2 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
 .fcb-tile b { font: 800 26px/1.1 var(--display); font-stretch: 125%; color: var(--fg); }
 .fcb-tile b small { font-size: 14px; }
 .fcb-tile.blue { border-color: rgba(0, 176, 255, .38); background: rgba(0, 176, 255, .07); }
@@ -1898,10 +1898,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .rd-events { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .rd-events li { display: flex; gap: 8px; color: #c9d6e3; }
 .rd-events b { color: var(--se-cyan); white-space: nowrap; }
-.rd-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--dim); }
-.rd-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
-.rd-legend .lg-w { background: rgba(0, 176, 255, .7); } .rd-legend .lg-n { height: 0; width: 12px; border-top: 2.5px solid var(--se); vertical-align: 3px; }
-.rd-legend .lg-b { height: 4px; width: 14px; background: rgba(0, 176, 255, .6); border-radius: 2px; vertical-align: 2px; } .rd-legend .lg-h { width: 12px; height: 2px; background: var(--fg); vertical-align: 3px; }
 @media (prefers-reduced-motion: no-preference) {
   .rd-sweep { transform-box: view-box; transform-origin: 50% 50%; animation: rdSweep 8s cubic-bezier(.45, 0, .55, 1) 1.2s infinite; }
   .order.anim .rd-w { animation: rdIn .6s var(--ease-out) backwards; animation-delay: calc(.3s + var(--i) * 35ms + var(--skip, 0ms)); }
@@ -1919,7 +1915,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .call-main .rd-warn { max-width: 62ch; }
 .call-gauge { gap: 6px; }
 .mvg-now.short { background: linear-gradient(90deg, #a51d28, var(--f-automaton)); box-shadow: 0 0 16px rgba(254, 52, 65, .5); }
-.cradar > .rd-legend { justify-content: center; text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .order.anim :is(.call-gauge, .call-main .rd-text) { animation: rise .5s var(--ease-out) both; animation-delay: calc(.66s + var(--skip, 0ms)); } }
 /* day and night on the wedge's ground only, light and dark; the fill stays one blue (red when behind) so the forecast reads the same all round */
 .rd-track.day { fill: rgba(214, 226, 242, .24); }
@@ -1927,11 +1922,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .rd-fill { fill: rgba(0, 176, 255, .78); }
 .rd-w.low .rd-fill { fill: rgba(254, 52, 65, .78); }
 .rd-w.fell .rd-fill { fill: rgba(87, 252, 255, .45); }
-.rd-legend .lg-w { background: rgba(0, 176, 255, .85); }
-.rd-dn { margin-top: -4px; }
-.rd-dn span { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; }
-.rd-dn .dn-day { background: rgba(214, 226, 242, .24); color: var(--fg); } .rd-dn .dn-day .dn-ico { color: #ffd27a; }
-.rd-dn .dn-night { background: rgba(0, 0, 0, .55); box-shadow: inset 0 0 0 1px rgba(160, 190, 220, .18); color: var(--muted); } .rd-dn .dn-night .dn-ico { color: #b9c6ff; }
 .dn-ico { width: 14px; height: 14px; flex: none; }
 .rt-dn { display: inline-grid; place-items: center; margin-right: 7px; vertical-align: -2px; }
 .rd-tip .rt-h .rt-dn { letter-spacing: 0; } .rd-tip .rt-h .rt-dn.day { color: #ffd27a; } .rd-tip .rt-h .rt-dn.night { color: #b9c6ff; }
@@ -2154,3 +2144,46 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .mvg-need.safe { background: none; border-left: 2px dashed var(--se); width: 0; }
 .mvg-now.tight { background: linear-gradient(90deg, #8a5a00, #ffb900); box-shadow: 0 0 16px rgba(255, 185, 0, .45); }
 .mvg-nums { flex-wrap: wrap; gap: 4px 16px; }
+
+/* the radar's key (8 Nov 2026): four marks in two columns, each drawn as it is on the dial; the sun, the moon
+   and the horizon on the dial say day and night without a key of their own */
+.rd-key { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); justify-content: center; gap: 6px 18px; font-size: 12.5px; line-height: 1.3; color: var(--muted); }
+.rd-key li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rd-key i { flex: none; width: 16px; height: 12px; position: relative; }
+.rd-key .k-w { background: rgba(0, 176, 255, .85); clip-path: polygon(0 100%, 18% 0, 82% 0, 100% 100%); }
+.rd-key .k-n::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 3px; background: var(--se); }
+.rd-key .k-f::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: rgba(0, 176, 255, .6); }
+.rd-key .k-f::after { content: ""; position: absolute; left: 4px; top: 2px; width: 7px; height: 7px; background: var(--se-blue); transform: rotate(45deg); }
+.rd-key .k-h::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--fg); }
+.rd-key .k-h::after { content: ""; position: absolute; left: 5px; top: -1px; width: 6px; height: 6px; border-radius: 50%; background: var(--fg); }
+@media (max-width: 380px) { .rd-key { grid-template-columns: minmax(0, max-content); } }
+
+/* the order tabs: how far each order is and its time left (8 Nov 2026) */
+.ot-prog { display: grid; gap: 6px; width: 100%; margin-top: 4px; }
+.ot-bar { display: block; height: 5px; background: rgba(255, 255, 255, .08); position: relative; overflow: hidden; }
+.ot-bar i { position: absolute; inset: 0 auto 0 0; background: var(--v-wait); }
+.ot-prog.vl-done .ot-bar i { background: var(--v-done); } .ot-prog.vl-ok .ot-bar i { background: var(--v-ok); }
+.ot-prog.vl-push .ot-bar i { background: var(--v-push); } .ot-prog.vl-record .ot-bar i { background: var(--v-record); }
+.ot-left { font: 700 12px/1 var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); font-variant-numeric: tabular-nums; }
+.otab[aria-selected="true"] .ot-bar { background: rgba(0, 0, 0, .16); }
+.otab[aria-selected="true"] .ot-bar i { background: var(--se-ink); }
+.otab[aria-selected="true"] .ot-left { color: var(--se-ink); }
+
+/* momentum on the pace's label line (8 Nov 2026): no taller tile; the word dropped when the tile is narrow */
+.fcb-tile { container-type: inline-size; position: relative; }
+.fcb-tile > span:has(.mom) { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fcb-tile .mom { display: inline-flex; align-items: center; gap: 4px; font: 800 11px/1.2 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); cursor: help; white-space: nowrap; }
+.mom svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.mom.up { color: var(--v-ok); } .mom.down { color: var(--v-push); }
+@container (max-width: 168px) { .mom-w { display: none; } }
+.mom:focus-visible { outline: 2px solid var(--se); outline-offset: 3px; }
+.mom-pop { position: absolute; z-index: 30; left: -1px; top: calc(100% + 6px); text-align: left; width: min(300px, calc(100vw - 48px)); padding: 12px 14px; gap: 8px; background: #0b0d12; border: 1px solid var(--rule-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .6);
+  font: 500 13px/1.45 var(--ui); letter-spacing: 0; text-transform: none; color: var(--muted); white-space: normal; display: none; pointer-events: none; }
+.mom-pop b { font: inherit; font-weight: 700; color: var(--fg); }
+.mom:hover .mom-pop, .mom:focus .mom-pop { display: grid; }
+.mp-bars { display: flex; align-items: flex-end; gap: 3px; height: 38px; }
+.mp-bars i { flex: 1; background: rgba(0, 176, 255, .35); }
+.mp-bars i.r { background: var(--se-sky); }
+.mp-ax { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+/* phone: the fall's label would sit on "Now · …" (8 Nov 2026); the diamond still marks it */
+@media (max-width: 560px) { .ftl-l-fall { display: none; } }
