@@ -63,6 +63,7 @@
   }
   async function fetchRecord(now) {
     loadLearned(now);
+    if (FRONTS) FRONTS.load(false);   // the Fronts map's live state, ready before its tab is opened
     if (now - recordFetched < 5 * 60e3) return false;
     recordFetched = now;
     try {
@@ -628,7 +629,7 @@
       // recorder over its history; and the multiplier's mean over the last day (to say if now is a good hour)
       const dayImp = samples.filter(s => s.imp && now - s.t < 24 * 3600e3).map(s => s.imp);
       const impDay = dayImp.length >= 12 ? dayImp.reduce((a, b) => a + b, 0) / dayImp.length : null;
-      last = { N, planets, dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, infMeasurement: record?.infMeasurement || null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
+      last = { N, planets, camp: new Set((campaigns || []).map(c => c && c.planet && Number(c.planet.index)).filter(i => i != null)), dssIdx, hod, C, K, imp, inf: record && record.inf > 0 ? record.inf : null, infMeasurement: record?.infMeasurement || null, impDay, capSrc, calib, results, now, sectorName, sectorOf, stale: seed ? null : stale, seeded: !!seed };
       if (!seed) freshDone = true;
       lastOk = seed && Number.isFinite(seed.t) ? seed.t : now;
       if (dragging) pendingRender = true; else render();

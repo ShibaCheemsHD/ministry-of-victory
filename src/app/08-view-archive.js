@@ -37,7 +37,10 @@
       </section>
     </div>`;
   }
+  // the Fronts map (05b-fronts.js) once the recorder's galaxy file is in; the small war map until then
   function mapTabHTML(res) {
+    if (FRONTS && FRONTS.ready()) return FRONTS.slotHTML(res);
+    if (FRONTS) FRONTS.load(false);
     return `<div class="map-tab">${mapHTML(res)}<p class="map-help">${esc(t('map.help'))}</p></div>`;
   }
 
@@ -343,6 +346,7 @@
     view.innerHTML = viewHTML(entry);
     if (opts.tabEnter && !viaKeys) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
     afterRender(entry, firstTime);
+    if (FRONTS) FRONTS.mount();
     prev.seen[entry.a.id] = true;
     setTab(entry);
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }

@@ -13,6 +13,7 @@ import path from 'path';
 const require = createRequire(import.meta.url);
 const E = require('./engine.cjs');
 import { loadStatic, mapOfficial } from './official.mjs';
+import { galaxyFile } from './galaxy.mjs';
 import { buildRetro } from './retro.mjs';
 import { loadHs } from './hs.mjs';
 import { buildFeed, notifyDiscord } from './feed.mjs';
@@ -114,13 +115,15 @@ for (let v = hist.v; v <= MIGRATIONS.length; v++) MIGRATIONS[v - 1](hist);
 hist.v = MIGRATIONS.length + 1;
 
 // the community API first; if it's down, the same data built from the game's own API
-let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null, commErr = null;
+let war, assignments, campaigns, stations = [], raw = [], src = 'community', all = null, allList = null, commErr = null;
 try {
   war = await get('/api/v1/war', 3);
   assignments = await get('/api/v1/assignments', 3);
   campaigns = await get('/api/v1/campaigns', 3);
   stations = await get('/api/v2/space-stations', 2).catch(() => []);
   raw = await get('/raw/api/v2/Assignment/War/801', 2).catch(() => []);
+  // every planet, for the page's Fronts map (galaxy.json)
+  allList = await get('/api/v1/planets', 2).catch(() => null);
 } catch (e) {
   commErr = String(e.message || e).slice(0, 300);
   console.log('::warning::community API unreachable, reading the official API instead: ' + String(e.message || e).slice(0, 400));
@@ -132,6 +135,7 @@ try {
   ({ war, assignments, campaigns } = o); raw = asg; all = o.planets; src = 'official';
 }
 const now = Date.now();
+const allPlanets = allList || all;
 
 // Health of every source, for the alarm (.github/workflows/health.yml) and the page: when each one last
 // answered, and the last error
@@ -557,6 +561,8 @@ fs.writeFileSync(path.join(outDir, 'intel.json'), JSON.stringify({ v: 2, updated
 // progress history for the page's charts: every running order since recording began (one point per
 // 20 minutes), and the liberation of the planets the orders name
 const thin = (pts, gap = 20 * 60e3) => { const out = []; for (const x of pts) if (!out.length || x[0] - out[out.length - 1][0] >= gap) out.push(x); if (pts.length && out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]); return out; };
+try { const g = galaxyFile({ all: allPlanets, campaigns, stations: src === 'community' ? stations : [], hist, now }); if (g) fs.writeFileSync(path.join(outDir, 'galaxy.json'), JSON.stringify(g)); }
+catch (e) { console.log('::warning::galaxy: ' + e.message); }
 const progress = { v: 1, updated: now, since: hist.since, orders: {}, planets: {} };
 for (const [id, o] of Object.entries(hist.orders)) {
   const pts = hist.samples.filter(sm => sm.prog && Object.keys(sm.prog).some(k => k.startsWith(id + ':')))
