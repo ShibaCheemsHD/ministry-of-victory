@@ -352,13 +352,15 @@
       setTab(null);
       fxAfterRender(view, null);
       if (FRONTS) FRONTS.mount();
+      if (opts.tabEnter) tabTransition($('tp-between'));
       return;
     }
     const firstTime = !prev.seen[entry.a.id];
     view.innerHTML = viewHTML(entry);
-    if (opts.tabEnter && !viaKeys) { const tp = $('tp-' + entry.a.id); if (tp) tp.classList.add('enter', 'anim'); }
     afterRender(entry, firstTime);
     if (FRONTS) FRONTS.mount();
+    // a tab change: the game's menu transition (09c-tab-transition.js)
+    if (opts.tabEnter) tabTransition($('tp-' + entry.a.id));
     prev.seen[entry.a.id] = true;
     setTab(entry);
     if (keepFocus) { const el = document.querySelector(keepFocus); if (el) el.focus({ preventScroll: true }); }
