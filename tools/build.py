@@ -42,7 +42,10 @@ game = {'icons': json.load(open(S('game', 'icons.json'), encoding='utf-8')), 'en
         # weapons and stratagems named by objectives that the community item list lacks
         'item': {k: v['name'] for k, v in items.items() if not k.startswith('_')},
         # the galaxy's fixed shapes for the Fronts map (tools/galaxy_geo.py)
-        'gal': {k: v for k, v in json.load(open(S('game', 'galaxy.json'), encoding='utf-8')).items() if k in ('p', 's')}}
+        'gal': {k: v for k, v in json.load(open(S('game', 'galaxy.json'), encoding='utf-8')).items() if k in ('p', 's')},
+        # official emblems of the enemy's special forces, SEAF, the DSS and the conditions (planet card); the unit
+        # renders (src/game/units.json, 300 KB) are fetched when a card first opens
+        'emb': {k: v for k, v in json.load(open(S('game', 'emblems.json'), encoding='utf-8')).items() if not k.startswith('_')}}
 out += '<script>\nconst GAME = ' + json.dumps(game, ensure_ascii=False, separators=(',', ':')) + ';\n</script>\n'
 # the page's code lives in src/app/*.js, in order; together they make one closure (shared helpers and state)
 parts = sorted(f for f in os.listdir(S('app')) if f.endswith('.js'))

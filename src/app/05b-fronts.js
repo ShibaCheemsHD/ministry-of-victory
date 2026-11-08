@@ -25,7 +25,6 @@
     const ADJ = new Map(STAT.map(p => [p.i, new Set()]));
     STAT.forEach(p => p.w.forEach(j => { if (ADJ.has(j)) { ADJ.get(p.i).add(j); ADJ.get(j).add(p.i); } }));
     const secName = (s) => s === 'Sol' ? L.sol : s;
-    const big = (n) => n >= 1e9 ? fmt(n / 1e9, 1) + 'B' : n >= 1e6 ? fmt(n / 1e6, 1) + 'M' : n >= 1e4 ? fmt(n / 1e3) + 'k' : fmt(n);
     const left = (end) => hmLeft(Math.max(0, (end - Date.now()) / 3.6e6));
     const when = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
@@ -45,7 +44,7 @@
     const ready = () => !!live;
 
     // the planets: the fixed map, the recorder's state, then the page's own campaigns (fresher) on top
-    let P = [], byI = new Map(), war = [], top = [], F = [], N = 1, MO = new Set(), MOT = '', MOW = new Map(), ROUTES = [], STEP = new Map(), DSS = null, stamp = null, curRes = null;
+    let P = [], byI = new Map(), war = [], top = [], F = [], N = 1, PICK = null, MO = new Set(), MOT = '', MOW = new Map(), ROUTES = [], STEP = new Map(), DSS = null, stamp = null, curRes = null;
     function fxOf() {
       const out = new Map();
       for (const x of (record && record.effects) || []) {
@@ -54,7 +53,8 @@
         const pctv = valOf(x.v, 2);
         const kind = seaf || x.type === 32 || (x.type === 1 && pctv > 0) ? 'good' : x.type === 40 || (x.type === 72 && pctv > 100) || x.type === 49 ? 'foe' : 'mod';
         const name = plain(effectLabel(x.type, x.v, id)), desc = plain(effectExplanation({ ...x, kind: 'active' })) || plain(clean(GAME.fx?.[String(id)]?.d || ''));
-        for (const i of x.planets) (out.get(i) || out.set(i, []).get(i)).push([name.charAt(0).toUpperCase() + name.slice(1), desc, kind]);
+        const f = { id: Number(id), type: x.type, v: x.v, n: name.charAt(0).toUpperCase() + name.slice(1), d: desc, k: kind };
+        for (const i of x.planets) (out.get(i) || out.set(i, []).get(i)).push(f);
       }
       return out;
     }
@@ -80,6 +80,9 @@
             p.lib = p.o !== 'Humans' && a.maxHealth ? 1 - a.health / a.maxHealth : null;
           }
           p.rg = !ev && p.o !== 'Humans' && a.maxHealth ? +(a.regenPerSecond * 3600 / a.maxHealth * 100).toFixed(2) : null;
+          p.rps = !ev && p.o !== 'Humans' ? a.regenPerSecond : null;
+          // no pace from the recorder yet: the page's own samples of this campaign, over the last 3 hours
+          if (p.gr == null) { try { const se = planetSeries(s.i).filter(x => x[0] >= (last.now || Date.now()) - 3.3 * 3600e3); if (se.length > 2 && se[se.length - 1][0] - se[0][0] > 1.5 * 3600e3) p.gr = +((se[se.length - 1][1] - se[0][1]) / ((se[se.length - 1][0] - se[0][0]) / 3.6e6) * 100).toFixed(2); } catch { p.gr = null; } }
           if (Array.isArray(a.hazards)) p.hz = a.hazards.filter(h => h && h.name && h.name !== 'None').map(h => [h.name, h.description || ENV[h.name] || '']);
           if (a.biome && a.biome.description) p.bd = String(a.biome.description).replace(/\s*\(UNOFFICIAL\)/i, '');
           const st = a.statistics;
@@ -111,6 +114,9 @@
         if (!MO.size) { const cp = cardPlanets({ res }); (cp ? cp.list || [cp.planet] : []).forEach(p => { if (p && byI.has(Number(p.index))) MO.add(Number(p.index)); }); }
         if (open.length > 1) MOT += ' ' + fill(L.moMore, { n: open.length - 1 });
       }
+      // between orders the Ministry's pick takes the order's place on the map (8 Nov 2026: not an order, a pointer)
+      PICK = null;
+      if (!res && !MO.size) { try { const m = meanwhilePick(); if (m && byI.has(Number(m.p.index))) PICK = Number(m.p.index); } catch { PICK = null; } }
       ROUTES = [...MO].map(i => byI.get(i)).filter(p => p && p.o !== 'Humans').map(p => ({ t: p, path: routeTo(p.i) }));
       STEP = new Map();
       ROUTES.forEach(r => { if (!r.path) return; const en = r.path.filter(p => p.o !== 'Humans'); en.forEach((p, k) => { if (!STEP.has(p.i)) STEP.set(p.i, { k: k + 1, n: en.length, t: r.t }); }); });
@@ -314,7 +320,7 @@
         if (p.def && p.ev) {   // under attack: the world pulses, a striped halo in the attacker's colour
           g += `<g transform="translate(0 ${h > 2 ? (-h).toFixed(1) : 0})"><circle class="atkp" r="${r + 3}" stroke="${c}" stroke-width="2"/><circle r="${r + 7}" fill="none" stroke="url(#frha-${p.ev.f})" stroke-width="5"/></g>`;
         }
-        s += `<g class="pl${MO.has(p.i) ? ' mo' : ''}${dimp ? ' dim' : ''}" data-i="${p.i}" tabindex="0" role="button" aria-label="${esc(fill(L.openAria, { p: p.n }))}" transform="translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})">${g}<rect x="${-r - 4}" y="${(-h - r - 4).toFixed(1)}" width="${2 * r + 8}" height="${(h + 2 * r + 8).toFixed(1)}" fill="transparent"/></g>`;
+        s += `<g class="pl${MO.has(p.i) || p.i === PICK ? ' mo' : ''}${dimp ? ' dim' : ''}" data-i="${p.i}" tabindex="0" role="button" aria-label="${esc(fill(L.openAria, { p: p.n }))}" transform="translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})">${g}<rect x="${-r - 4}" y="${(-h - r - 4).toFixed(1)}" width="${2 * r + 8}" height="${(h + 2 * r + 8).toFixed(1)}" fill="transparent"/></g>`;
         const pad = p.def ? 9 : 4;
         boxes.push({ x0: b.x - r - pad, x1: b.x + r + pad, y0: ty2 - r - pad, y1: ty2 + r + pad, p: p.i });
         if (h > 2) boxes.push({ x0: b.x - R * 1.5, x1: b.x + R * 1.5, y0: b.y - R * 1.5 * ca, y1: b.y + R * 1.5 * ca, p: p.i, g: 1 });
@@ -341,7 +347,7 @@
         if (!p._top) p._rt = { x: b.x, y: b.y, r: 6 };
       });
       // the order's worlds that nobody can drop on yet, outside the route: the yellow sights on the dot
-      MO.forEach(i => { const p = byI.get(i); if (!p || war.includes(p) || STEP.has(i)) return; const b = S(p); if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) return; s += `<path class="tgt on" transform="translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})" d="${tg(9)}" style="opacity:1"/>`; if (!p._top) p._rt = { x: b.x, y: b.y, r: 8 }; });
+      [...MO, ...(PICK != null ? [PICK] : [])].forEach(i => { const p = byI.get(i); if (!p || war.includes(p) || STEP.has(i)) return; const b = S(p); if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) return; s += `<path class="tgt on" transform="translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})" d="${tg(9)}" style="opacity:1"/>`; if (!p._top) p._rt = { x: b.x, y: b.y, r: 8 }; });
       // Super Earth stands on the table too
       if (se.x > -60 && se.x < W + 60 && se.y > -60 && se.y < H + 60) {
         const hS = sa * 60 * se.f, fS = Math.max(.6, Math.min(1.2, se.f));
@@ -350,10 +356,10 @@
         boxes.push({ x0: se.x - 60, x1: se.x + 60, y0: se.y - hS - 34, y1: Math.max(se.y + 20, se.y - hS + 56) });
       }
       // names: the fights at the top of their beams, then (closer) the enemy's worlds and sectors on the ground
-      const must = new Set([top[0], ...F.map(x => x.ps[0]), ...war.filter(p => MO.has(p.i) || p.def), ...[...STEP.keys(), ...MO].map(i => byI.get(i))].filter(Boolean).map(p => p.i));
+      const must = new Set([top[0], ...F.map(x => x.ps[0]), ...war.filter(p => MO.has(p.i) || p.def), ...[...STEP.keys(), ...MO, ...(PICK != null ? [PICK] : [])].map(i => byI.get(i))].filter(Boolean).map(p => p.i));
       const lines = (p, f) => {
         const out = [], st = STEP.get(p.i), num = st && !MO.has(p.i) ? String(st.k) : null;
-        if (MO.has(p.i)) out.push(['mo', '◆ ' + L.moTag, f * .75]);
+        if (MO.has(p.i)) out.push(['mo', '◆ ' + L.moTag, f * .75]); else if (p.i === PICK) out.push(['mo', '◆ ' + L.pickTag, f * .75]);
         out.push(['', num ? num + '  ' + p.n : p.n, f, num]);
         if (shown(p)) out.push(['n', fmt(p.pl), f * .85]);
         if (p.def && p.ev && p.ev.end) out.push(['cd', '⚠ ' + fill(L.left, { t: left(p.ev.end) }), f * .85]);
@@ -376,7 +382,7 @@
         }
         if (!b) return;
         boxes.push(b);
-        const x = b.sx > 0 ? b.x0 : b.sx < 0 ? b.x1 : (b.x0 + b.x1) / 2, an = b.sx > 0 ? 'start' : b.sx < 0 ? 'end' : 'middle', lc = MO.has(p.i) ? SE_Y : col;
+        const x = b.sx > 0 ? b.x0 : b.sx < 0 ? b.x1 : (b.x0 + b.x1) / 2, an = b.sx > 0 ? 'start' : b.sx < 0 ? 'end' : 'middle', lc = MO.has(p.i) || p.i === PICK ? SE_Y : col;
         if (lead) Lb += `<line x1="${tt.x.toFixed(1)}" y1="${tt.y.toFixed(1)}" x2="${lead[0].toFixed(1)}" y2="${lead[1].toFixed(1)}" stroke="${lc}" stroke-opacity=".8" stroke-width="1"/><circle cx="${lead[0].toFixed(1)}" cy="${lead[1].toFixed(1)}" r="2" fill="${lc}"/>`;
         Lb += lab(ls, lead && b.sx > 0 ? x + 5 : lead && b.sx < 0 ? x - 5 : x, b.y0, an, col);
       });
@@ -519,13 +525,15 @@
       tb.addEventListener('pointerleave', () => { curS = curP = null; mark(); read(); tipOff(); });
       tb.addEventListener('keydown', e => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
-        const pl = e.target.closest && e.target.closest('.over .pl'), hf = e.target.closest && e.target.closest('.hf[data-f]');
+        const pl = e.target.closest && e.target.closest('.over .pl'), hf = e.target.closest && e.target.closest('.hf[data-f]'), mr = e.target.closest && e.target.closest('[data-more]');
+        if (mr) { e.preventDefault(); mr.classList.toggle('open'); return; }
         if (pl) { e.preventDefault(); openCard(byI.get(Number(pl.dataset.i)), true); } else if (hf) { e.preventDefault(); hf.click(); }
       });
       dr.addEventListener('pointerdown', e => e.stopPropagation());
       dr.addEventListener('click', e => {
         e.stopPropagation();
         if (e.target.closest('[data-close]')) { closeCard(); return; }
+        const mr = e.target.closest('[data-more]'); if (mr) { mr.classList.toggle('open'); return; }
         const o = e.target.closest('[data-open]'); if (o) openCard(byI.get(Number(o.dataset.open)), true);
       });
       tb.addEventListener('click', e => {
@@ -535,6 +543,7 @@
         if (e.target.closest('[data-fg]')) { FIL.gain = !FIL.gain; hud(); apply(); return; }
         const cm = e.target.closest('[data-cam]'); if (cm) { setCam(cm.dataset.cam); return; }
         if (e.target.closest('[data-mo]')) { frame([...MO].map(i => byI.get(i)).concat(ROUTES.flatMap(r => r.path || [])).filter(Boolean), .58, 120, 4); return; }
+        if (e.target.closest('[data-pick]')) { if (PICK != null) openCard(byI.get(PICK), true); return; }
         if (e.target.closest('[data-dss]')) { if (DSS) openCard(byI.get(DSS.at), true); return; }
         const c = e.target.closest('[data-go]'); if (c) { flyTo(byI.get(Number(c.dataset.go))); return; }
         const zb = e.target.closest('[data-z]'); if (zb) { const d = zb.dataset.z; if (d === 'home') home(true); else zoomTo(d === 'in' ? 1.6 : 1 / 1.6, W / 2, H * cam.oy); return; }
@@ -564,10 +573,10 @@
       const r = tb.getBoundingClientRect(); tipEl.style.setProperty('--c', COL[ownerOf(p)]);
       const lib = p.lib != null ? `<span class="row"><span class="lb"><i style="width:${(p.lib * 100).toFixed(1)}%"></i></span>${esc(p.def ? L.defended : L.liberated)} <b>${Math.round(p.lib * 100)}%</b></span>` : '';
       const st0 = STEP.get(p.i);
-      const items = [...(MO.has(p.i) ? [`<li class="y">◆ <b>${esc(L.moObj)}</b></li>`] : st0 ? [`<li class="y">◆ <b>${esc(fill(L.stepOf, { k: st0.k, n: st0.n, p: st0.t.n }))}</b></li>`] : []),
+      const items = [...(MO.has(p.i) ? [`<li class="y">◆ <b>${esc(L.moObj)}</b></li>`] : p.i === PICK ? [`<li class="y">◆ <b>${esc(L.pickObj)}</b></li>`] : st0 ? [`<li class="y">◆ <b>${esc(fill(L.stepOf, { k: st0.k, n: st0.n, p: st0.t.n }))}</b></li>`] : []),
         ...(p.def && p.ev && p.ev.end ? [`<li style="color:${COL[p.ev.f]}">⚠ <b>${esc(fill(L.attLeft, { t: left(p.ev.end) }))}</b></li>`] : []),
         ...p.hz.map(([n]) => `<li class="hz">${hzIcon(n)}<span>${esc(n)}</span></li>`),
-        ...p.fx.slice(0, 4).map(([n, , kd]) => `<li><i class="dot ${kd}"></i>${esc(n)}</li>`)];
+        ...p.fx.slice(0, 4).map(f => `<li><i class="dot ${f.k}"></i>${esc(SUB[f.id] ? SUB[f.id].name : f.n)}</li>`)];
       const pace = p.gr != null && p.acc ? `<span class="row">${gaining(p) ? `<b style="color:${GAIN_C}">▲ +${fmt(p.gr, 2)}%</b> ${esc(L.anHour3)}` : esc(L.notGaining)}</span>` : '';
       tipEl.innerHTML = `<span class="k">${esc(secName(p.s))} · ${esc(p.b)}</span><h4>${esc(p.n)}</h4><span class="row">${esc(statusTxt(p))}${shown(p) ? ` · <b>${fmt(p.pl)}</b> ${esc(L.hd)}` : p.acc ? '' : ' · ' + esc(L.closed)}</span>${lib}${pace}
         ${items.length ? `<ul>${items.join('')}</ul>` : `<span class="row">${esc(L.nothing)}</span>`}<span class="more">${esc(L.clickCard)}</span>`;
@@ -597,67 +606,170 @@
         + (onF ? '' : `<span class="t">${esc(L.noFights)}</span>`)
         + (F.length ? `<div class="flt" role="group" aria-label="${esc(L.filters)}">${F.map(x => `<button type="button" class="fb" data-ff="${x.f}" style="--c:${COL[x.f]}" aria-pressed="${!FIL.off.has(x.f)}"><i></i>${esc(FN[x.f])}</button>`).join('')}${war.some(p => p.gr != null) ? `<button type="button" class="fb gain" data-fg aria-pressed="${FIL.gain}"><i></i>${esc(L.gaining)}</button>` : ''}</div>` : '')
         + (MO.size ? `<button type="button" class="hl" data-mo style="--c:${SE_Y}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 2h4M2 2v4M14 2h-4M14 2v4M2 14h4M2 14v-4M14 14h-4M14 14v-4"/></svg><b>${esc(L.mo)}</b><span>${esc(MOT || fill(MO.size === 1 ? L.moWorlds1 : L.moWorlds, { n: MO.size }))}${ROUTES.some(r => r.path && r.path.length > 2) ? ' · ' + esc(fill(L.routeOf, { n: Math.max(...ROUTES.map(r => r.path ? r.path.filter(p => p.o !== 'Humans').length : 0)) })) : ''}</span></button>` : '')
+        + (PICK != null ? `<button type="button" class="hl" data-pick style="--c:${SE_Y}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 2h4M2 2v4M14 2h-4M14 2v4M2 14h4M2 14v-4M14 14h-4M14 14v-4"/></svg><b>${esc(L.pick)}</b><span>${esc(byI.get(PICK).n)}</span></button>` : '')
         + (DSS ? `<button type="button" class="hl" data-dss style="--c:${DSS_C}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10l3 4-3 4H3L0 8Z" fill="currentColor"/></svg><b>DSS</b><span>${esc(fill(L.dssOver, { p: byI.get(DSS.at).n }))}</span></button>` : '');
     }
 
     /* ---------- the planet card ---------- */
     let openP = null;
-    function cardHTML(p) {
-      const own = ownerOf(p), fac = own !== 'Humans' ? own : null, nb = [...(ADJ.get(p.i) || [])].map(i => byI.get(i)).filter(q => q && q.i !== 0), st = p.st;
-      const sec = (title, body) => `<section class="ds"><h5>${esc(title)}</h5>${body}</section>`;
-      const lft = p.def && p.ev && p.ev.end ? left(p.ev.end) : null;
-      return `<div class="dh"><svg class="ball" viewBox="-40 -40 80 80" aria-hidden="true"><defs>${bioDefs}</defs>${ballSVG(p, 30, COL[own])}</svg><span class="k">${esc(secName(p.s))}${p.s === 'Sol' ? '' : ' ' + esc(L.sector)} · ${esc(p.b)}</span><button type="button" class="dx" data-close aria-label="${esc(L.close)}">✕</button>
-          <h3>${esc(p.n)}</h3><span class="own"><img src="${IC(own) || IC('Humans')}" alt="">${esc(statusTxt(p))}</span></div>
-        <div class="dstat"><div><span>${esc(L.hd)}</span><b>${shown(p) ? fmt(p.pl) : p.acc ? esc(L.under20) : '—'}</b><small>${esc(shown(p) ? fill(L.ofOnline, { x: fmt(p.pl / N * 100, 1) }) : p.acc ? L.hardly : L.noMissions)}</small></div>
-          <div><span>${esc(p.def ? L.defended : L.liberated)}</span><b>${p.lib != null ? fmt(p.lib * 100, 1) + '%' : '—'}</b><small>${esc(p.lib != null ? (p.def ? L.beforeEnd : L.ofPlanet) : L.notContested)}</small></div>
-          <div><span>${esc(p.def ? L.attEnds : L.resist)}</span><b>${lft || (p.rg != null ? '−' + fmt(p.rg, 2) + '%' : '—')}</b><small>${esc(lft ? L.timeLeft : p.rg != null ? L.lostH : L.heldSE)}</small></div></div>
-        ${p.lib != null ? `<div class="dbar"><i style="width:${(p.lib * 100).toFixed(1)}%"></i></div>` : ''}
-        ${MO.has(p.i) || STEP.has(p.i) ? routeHTML(p) : ''}
-        ${p.def && p.ev ? sec(L.underAttH, `<p class="bdesc">${fill(esc(L.attTxt), { f: `<b style="color:${COL[p.ev.f]}">${esc(FN[p.ev.f])}</b>`, from: `<b>${esc(byI.get(p.ev.from)?.n || L.neighbour)}</b>`, d: `<b>${p.lib != null ? Math.round(p.lib * 100) : 0}%</b>`, t: `<b>${lft || '—'}</b>` })}</p>`) : ''}
-        ${p.gr != null && p.acc ? sec(L.momentum, `<p class="bdesc">${gaining(p) ? `<b style="color:${GAIN_C}">▲ +${fmt(p.gr, 2)}%</b> ${esc(L.momUp)}` : esc(L.momFlat)}</p>`) : ''}
-        ${DSS && p.i === DSS.at ? dssHTML() : ''}
-        ${sec(L.conditions, p.hz.length ? `<ul>${p.hz.map(([n, d]) => `<li>${hzIcon(n)}<b>${esc(n)}</b><p>${esc(plain(d))}</p>${hzTip(n) ? `<p class="tipx">${esc(hzTip(n))}</p>` : ''}</li>`).join('')}</ul>` : `<p class="none">${esc(L.noHz)}</p>`)}
-        ${sec(L.effects, p.fx.length ? `<ul>${p.fx.map(([n, d, kd]) => `<li><i class="dot ${kd}"></i><b>${esc(n)}</b><p>${esc(d || '')}</p></li>`).join('')}</ul>` : `<p class="none">${esc(L.noFx)}</p>`)}
-        ${fac && tHas('tips.fac.' + fac) ? sec(fill(L.enemyH, { f: FN[fac] }), `<ul><li><img src="${IC(fac)}" alt="" class="fico"><b>${esc(L.howFight)}</b><p class="tipx">${esc(t('tips.fac.' + fac))}</p></li></ul>`) : ''}
-        ${p.reg.length ? sec(fill(L.regions, { n: p.reg.length }), `<div class="regs">${p.reg.map(([n, sz, fr, av, pl]) => `<div class="reg"><span><b>${esc(n)}</b><small>${esc(sz)}</small></span><span class="lb"><i style="width:${((fr || 0) * 100).toFixed(1)}%"></i></span><span>${esc(av ? (p.acc && pl >= 20 ? fmt(pl) + ' ' + L.hd : L.open) : L.shut)}</span></div>`).join('')}</div>`) : ''}
-        ${nb.length ? sec(L.supply, `<div class="nbr">${nb.map(q => `<button type="button" data-open="${q.i}"><i style="background:${COL[ownerOf(q)]}"></i>${esc(q.n)}${shown(q) ? ` · ${fmt(q.pl)}` : ''}</button>`).join('')}</div>`) : ''}
-        ${st ? sec(L.record, `<div class="rec"><div><span>${esc(L.won)}</span><b>${big(st[0])}</b></div><div><span>${esc(L.lost)}</span><b>${big(st[1])}</b></div><div><span>${esc(L.rate)}</span><b>${fmt(st[2])}%</b></div><div><span>${esc(L.fallen)}</span><b>${big(st[3])}</b></div><div><span>${esc(L.kills)}</span><b>${big(st[4])}</b></div></div>`) : ''}
-        ${p.bd ? sec(L.world, `<p class="bdesc">${esc(plain(p.bd))}</p>`) : ''}`;
+    /* The card reads in order of importance, with no boxes (8 Nov 2026): the order or the pick, who holds the
+       world, one number with the word for it, the bar with its ends and one sentence on how it goes; then what you
+       will meet (the enemy's special forces, each with its official emblem, the game's words and the units it
+       fields), the conditions, the active effects, what is on your side; regions and neighbours last, quietly.
+       The unit renders (src/game/units.json) are fetched when a card first opens. */
+    const SUB = {
+      1202: { e: 'Jet Brigade', n: 'Jet Brigade', u: ['Jet Brigade Trooper', 'Jet Brigade Commissar', 'Assault Raider', 'Jet Brigade MG Raider', 'Jet Brigade Devastator', 'Jet Brigade Hulk Bruiser', 'Jet Brigade Hulk Scorcher'], pre: 'Jet Brigade ' },
+      1248: { e: 'Incineration Corps', n: 'Incineration Corps', u: ['Pyro Trooper', 'Incendiary Rocket Raider', 'Incendiary MG Devastator', 'Conflagration Devastator', 'Hulk Firebomber'] },
+      1360: { e: 'Cyborgs', n: 'Cyborg Legion', u: ['Radical', 'Agitator', 'Vox Engine'] },
+      1243: { e: 'Predator Strain', n: 'Predator Strain', u: ['Predator Hunter', 'Predator Stalker'], pre: 'Predator ' },
+      1244: { e: 'Spore Burst Strain', n: 'Spore Burst Strain', u: ['Spore Burst Scavenger', 'Spore Burst Hunter', 'Spore Burst Warrior', 'Spore Burst Bile Titan'], pre: 'Spore Burst ' },
+      1303: { e: 'Rupture Strain', n: 'Rupture Strain', u: ['Rupture Warrior', 'Rupture Spewer', 'Rupture Charger'], pre: 'Rupture ' },
+      1430: { e: 'Caustic Strain', n: 'Caustic Strain', u: ['Caustic Spitter', 'Caustic Warrior', 'Caustic Spewer', 'Caustic Charger'], pre: 'Caustic ' },
+      1377: { e: 'Mindless Masses', n: 'Mindless Masses', u: ['Voteless', 'Fleshmob'] },
+      1402: { e: 'Vote Snatchers', n: 'Vote Snatchers', u: ['Wretch', 'Crusher'] },
+      1413: { e: 'Invasion Fleet', n: 'Invasion Fleet', u: ['Overseer', 'Elevated Overseer', 'Crescent Overseer', 'Watcher', 'Harvester', 'Fleshmob', 'Stingray', 'Warp Ship'] },
+      1380: { e: 'Appropriators', n: 'Appropriators', u: ['Gatekeeper', 'Obtruder', 'Veracitor'] },
+      1306: { e: 'Dragonroach', n: 'Dragonroaches', u: ['Dragonroach'] },
+      1307: { e: 'Hive Lord', n: 'Hive Lords', u: ['Hive Lord'] },
+      1400: { e: 'Heavy SEAF Presence', n: 'Heavy SEAF presence', help: true },
+      1401: { e: 'Heavy SEAF Presence', n: 'Heavy SEAF presence', help: true },
+    };
+    const EMB = GAME.emb || {};
+    let UNITS = null, unitsBusy = false;
+    function loadUnits() {
+      if (UNITS || unitsBusy) return;
+      unitsBusy = true;
+      ghFetch('https://raw.githubusercontent.com/ShibaCheemsHD/ministry-of-victory/main/src/game/units.json').then(r => r.ok ? r.json() : null).catch(() => null)
+        .then(j => { unitsBusy = false; if (!j || typeof j !== 'object') return; UNITS = j; if (openP && root && root.isConnected) dw.querySelectorAll('.fc-u[data-u]').forEach(e => { const a = UNITS[e.dataset.u]; if (a && !e.querySelector('img')) { const im = new Image(); im.alt = ''; im.src = a[0]; e.classList.toggle('op', !!a[1]); e.querySelector('.fc-t').append(im); } }); });
     }
-    function routeHTML(p) {
-      const st = STEP.get(p.i), r = st ? ROUTES.find(x => x.t === st.t) : ROUTES.find(x => x.t === p), tgt = r ? r.t : p;
-      const head = MO.has(p.i) ? `<b class="y">◆ ${esc(MOW.get(p.i) || MOT || L.mo)}</b>: ${esc(MO.size > 1 ? fill(L.oneOf, { n: MO.size }) : L.itsObj)}` : `<b class="y">◆ ${esc(fill(L.routeTo, { p: tgt.n }))}</b>: ${esc(fill(L.isStep, { k: st.k, n: st.n }))}`;
-      let body = '';
-      if (r && !r.path) body = ' ' + esc(L.noLine);
-      else if (r && r.path.length > 2) {
-        const en = r.path.filter(q => q.o !== 'Humans');
-        body = ` ${esc(L.inOrder)}</p><ol class="steps">${en.map((q, j) => `<li${q === p ? ' class="me"' : ''}><button type="button" data-open="${q.i}"><b>${j + 1}</b>${esc(q.n)}</button><span>${esc(q === tgt ? L.theObj : q.acc ? L.openNow : L.opensAfter)}</span></li>`).join('')}</ol><p class="bdesc">${fill(esc(L.startFrom), { p: `<b>${esc(r.path[0].n)}</b>` })}`;
+    const logo = (key) => EMB[key] ? `<i class="fc-logo" style="--m:url('${EMB[key]}')"></i>` : `<i class="fc-logo none"></i>`;
+    const GL = {
+      clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>', cool: '<path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 4v4h4M12 8v4l2.5 2"/>',
+      lock: '<rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', shield: '<path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>',
+      up: '<path d="M12 20V5M6 11l6-6 6 6"/>', pod: '<path d="M12 2v6M8 8h8l-1 10H9z"/><path d="M6 22h12"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+      q: '<path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>' };
+    const gl = (k) => `<i class="fc-gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GL[k] || GL.gear}</svg></i>`;
+    const GLOF = { 21: 'clock', 36: 'cool', 92: 'lock', 74: 'shield', 77: 'shield', 49: 'shield', 48: 'lock', 89: 'lock', 47: 'lock', 88: 'clock', 90: 'shield', 1: 'up', 32: 'pod', 72: 'q' };
+    // the sentence under the bar: how it is going, and when it ends
+    function sayOf(p) {
+      const left0 = (1 - (p.lib || 0)) * 100;
+      if (p.def && p.ev) {
+        const h = p.ev.end ? Math.max(0, (p.ev.end - Date.now()) / 3.6e6) : null;
+        if (h == null || p.gr == null) return null;
+        const need = left0 / Math.max(h, .01), eta = p.gr > 0 ? left0 / p.gr : Infinity;
+        return eta <= h ? { c: 'var(--v-done)', s: fill(L.fc.holds, { t: dur(h - eta) }) } : { c: 'var(--fr-nil)', s: fill(L.fc.falls, { t: dur(h), need: fmt(need, 1), make: fmt(Math.max(0, p.gr), 1) }) };
       }
-      return `<section class="ds"><h5>${esc(L.mo)}</h5><p class="bdesc">${head}.${body}</p></section>`;
+      if (p.o === 'Humans') return { c: 'var(--se-blue)', s: L.fc.ours };
+      if (!p.acc) return { c: 'var(--dim)', s: L.fc.closed };
+      if (p.lib != null && p.lib < .002 && p.rg > 0) {
+        const per = last && last.C && last.N ? last.C / last.N : null, need = per && p.rps ? p.rps * 3600 / per : null;
+        return { c: 'var(--dim)', s: fill(L.fc.stuck, { f: FN[p.o], r: fmt(p.rg, 1), n: fmt(p.pl) }) + (need && need > p.pl ? ' ' + fill(L.fc.stuckNeed, { n: fmt(Math.ceil(need / 1000) * 1000) }) : '') };
+      }
+      if (p.gr == null) return null;
+      if (p.gr < .05) return { c: 'var(--dim)', s: L.fc.flat };
+      const eta = left0 / p.gr;
+      const at = Date.now() + eta * 3.6e6;
+      return { c: 'var(--v-done)', s: fill(L.fc.eta, { t: dur(eta), when: eta > 120 ? new Date(at).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' }) : when(at) }) };
     }
-    function dssHTML() {
-      const st = { 1: L.dssSt.fund, 2: L.dssSt.on, 3: L.dssSt.cool }, rt = DSS.route.map(([i, tt]) => ({ p: byI.get(i), t: tt })).filter(x => x.p);
-      return `<section class="ds"><h5>${esc(L.dssH)}</h5><div class="dsl">${DSS.acts.map(([n, ds, s2, ex]) => { const on = s2 === 2 && ex > Date.now(); return `<div><b>${esc(titleCase(n))}</b><span class="${on ? 'on' : ''}">${esc(on ? L.dssSt.on : st[s2] || L.dssSt.idle)}${on ? ' · ' + esc(fill(L.until, { t: when(ex) })) : ''}</span>${ds ? `<p class="bdesc">${esc(ds)}</p>` : ''}</div>`; }).join('')}</div>
-        <p class="bdesc dss-rt">${rt.length > 1 ? `<span class="route">${rt.map((x, j) => `${j ? '<i>→</i>' : ''}<b>${esc(x.p.n)}</b> <i>${esc(when(x.t))}</i>`).join(' ')}</span>` : ''}${DSS.vote && DSS.vote > Date.now() ? `<span>${fill(esc(L.vote), { t: `<b>${esc(when(DSS.vote))}</b>` })}</span>` : ''}</p></section>`;
+    const dur = (h) => { const m = Math.round(h * 60); return m < 60 ? fill(L.fc.min, { n: m }) : h < 48 ? Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm' : fill(L.fc.days, { n: fmt(h / 24) }); };
+    function orbSVG(p) {
+      const r = 100, c = COL[ownerOf(p)], [l, m, d, ty0] = bio(p), i = p.i; let art = '';
+      for (let rep = 0; rep < 2; rep++) {
+        const o = rep * 2 * r;
+        if (ty0 === 'bands' || ty0 === 'cloud') for (let k2 = 0; k2 < 5; k2++) { const y = (-.8 + k2 * .4 + rnd(i, k2) * .18) * r; art += `<path d="M${o - r} ${y.toFixed(1)}Q${o} ${(y + r * (rnd(i, k2 + 3) - .5) * .5).toFixed(1)} ${o + r} ${y.toFixed(1)}" stroke="${k2 % 2 ? d : l}" stroke-opacity="${ty0 === 'cloud' ? .45 : .5}" stroke-width="${(r * (.08 + rnd(i, k2 + 6) * .12)).toFixed(1)}" fill="none" stroke-linecap="round"/>`; }
+        if (ty0 === 'ice') art += `<ellipse cx="${o - 10}" cy="${-r * .86}" rx="${r * .9}" ry="${r * .4}" fill="#fff" fill-opacity=".8"/>`;
+        if (ty0 === 'craters' || ty0 === 'cracks' || ty0 === 'grid') for (let k2 = 0; k2 < 7; k2++) { const x = o + (rnd(i, k2) - .5) * 1.6 * r, y = (rnd(i, k2 + 5) - .5) * 1.5 * r, cr = r * (.06 + rnd(i, k2 + 9) * .12); art += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${cr.toFixed(1)}" fill="${d}" fill-opacity=".42" stroke="${ty0 === 'cracks' ? '#ffb340' : l}" stroke-opacity=".35" stroke-width="${(cr * .22).toFixed(1)}"/>`; }
+      }
+      // the surface turns slowly under the night side (not with reduced motion)
+      const spin = motion() ? `<animateTransform attributeName="transform" type="translate" from="0 0" to="${-2 * r} 0" dur="80s" repeatCount="indefinite"/>` : '';
+      const atk = p.def && p.ev ? `<circle r="${r + 12}" fill="none" stroke="url(#frha-${p.ev.f})" stroke-width="9" opacity=".9"/>` : '';
+      return `<svg viewBox="-125 -125 250 250" aria-hidden="true"><defs><radialGradient id="fcg" cx="34%" cy="30%" r="75%"><stop offset="0" stop-color="${l}"/><stop offset=".55" stop-color="${m}"/><stop offset="1" stop-color="${d}"/></radialGradient><radialGradient id="fcs" cx="28%" cy="26%" r="90%"><stop offset=".4" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient><clipPath id="fcc"><circle r="${r}"/></clipPath></defs>
+        ${atk}<circle r="${r + 3}" fill="none" stroke="${c}" stroke-width="2.5"/><circle r="${r}" fill="url(#fcg)"/><g clip-path="url(#fcc)"><g>${art}${spin}</g><circle r="${r}" fill="url(#fcs)"/></g><circle r="${r * .22}" cx="${-r * .42}" cy="${-r * .44}" fill="#fff" fill-opacity=".16"/></svg>`;
+    }
+    function cardHTML(p) {
+      const own = ownerOf(p), C = L.fc, sy = sayOf(p), st = STEP.get(p.i), pct = p.def || p.o !== 'Humans' ? (p.lib || 0) * 100 : 100;
+      const nb = [...(ADJ.get(p.i) || [])].map(i => byI.get(i)).filter(q => q && q.i !== 0);
+      const nil = (b, rest) => `<p class="fc-nil"><i></i><span><b>${esc(b)}</b>${esc(rest)}</span></p>`;
+      // the order, or between orders the Ministry's pick, before everything
+      const tag = MO.has(p.i) ? `<div class="fc-tag"><span>◆ ${esc(L.mo)}</span>${esc(MOW.get(p.i) || MOT || '')}</div>`
+        : st ? `<div class="fc-tag"><span>◆ ${esc(L.mo)}</span>${esc(fill(L.stepOf, { k: st.k, n: st.n, p: st.t.n }))}</div>`
+        : p.i === PICK ? `<div class="fc-tag"><span>◆ ${esc(L.pick)}</span>${esc(C.pickTxt)}</div>` : '';
+      const lft = p.def && p.ev && p.ev.end ? p.ev.end : null;
+      const side = lft ? `<div class="fc-side" style="color:${COL[p.ev.f]}"><small>${esc(L.attEnds)}</small><span data-clock="${lft}">${esc(left(lft))}</span></div>`
+        : p.acc && p.gr != null && !(p.lib < .002 && p.rg > 0) && p.o !== 'Humans' ? `<div class="fc-side" style="color:${gaining(p) ? 'var(--v-done)' : 'var(--dim)'}"><small>${esc(C.last3)}</small>${gaining(p) ? '▲ +' : ''}${fmt(p.gr, 2)}%/h</div>` : '';
+      const proj = p.gr > 0 && (p.def || p.o !== 'Humans') ? Math.min(100 - pct, p.gr * (lft ? Math.max(0, (lft - Date.now()) / 3.6e6) : 6)) : 0;
+      const here = [shown(p) ? `<span>${C.icPeople}<b>${fmt(p.pl)}</b> ${esc(fill(C.here, { x: p.pl / N < .01 ? C.under1 : fmt(p.pl / N * 100) + '%' }))}</span>` : '',
+        p.acc && p.rg != null && !p.def && !(p.lib < .002 && p.rg > 0) ? `<span>${C.icRes}${esc(fill(C.resist, { x: fmt(p.rg, 2) }))}</span>` : ''].join('');
+      // what you will meet: the enemy's special forces, with the units they field
+      const subs = p.fx.filter(f => SUB[f.id] && !SUB[f.id].help), unk = p.fx.filter(f => f.type === 40 && !SUB[f.id] && !isSeafEffect({ type: 40, eid: f.id }));
+      const forces = subs.map(f => { const S0 = SUB[f.id]; return `<div class="fc-sf">${logo(S0.e)}<div><h4>${esc(S0.n)}</h4><p data-more tabindex="0">${esc(f.d)}</p></div>
+          <div class="fc-units">${S0.u.map((u, j) => { const a = UNITS && UNITS[u]; return `<span class="fc-u${a && a[1] ? ' op' : ''}" data-u="${esc(u)}" style="--j:${j}" title="${esc(u)}"><span class="fc-t">${a ? `<img src="${a[0]}" alt="">` : ''}</span><span class="fc-n">${esc(S0.pre && u.startsWith(S0.pre) ? u.slice(S0.pre.length) : u)}</span></span>`; }).join('')}</div></div>`; }).join('')
+        + unk.map(() => `<div class="fc-row">${gl('q')}<div><b>${esc(C.unkDep)}</b><p>${esc(C.unkDepT)}</p></div></div>`).join('');
+      const ground = p.hz.length ? p.hz.map(([n, d]) => `<div class="fc-row hz">${EMB[n] ? logo(n) : `<i class="fc-gl">${hzIcon(n)}</i>`}<div><b>${esc(n)}</b><p>${esc(hzTip(n) || plain(d))}</p></div></div>`).join('') : nil(C.noHz, C.noHzT);
+      const mods = p.fx.filter(f => !SUB[f.id] && f.type !== 40 && f.k !== 'good');
+      const modRows = mods.length ? mods.map(f => `<div class="fc-row mod">${gl(GLOF[f.type])}<div><b>${esc(f.n)}</b>${f.d ? `<p>${esc(f.d)}</p>` : ''}</div></div>`).join('') : nil(C.noFx, C.noFxT);
+      // on your side: SEAF, free stratagems, boosts, the DSS and what it is doing
+      const dssAct = DSS && p.i === DSS.at ? (DSS.acts || []).filter(([, , s2, ex]) => s2 === 2 && ex > Date.now()) : [];
+      const help = [...p.fx.filter(f => SUB[f.id] && SUB[f.id].help || isSeafEffect({ type: f.type, eid: f.id })).map(f => `<div class="fc-row ally">${logo('Heavy SEAF Presence')}<div><b>${esc(L.fc.seaf)}</b><p>${esc(f.d)}</p></div></div>`),
+        ...p.fx.filter(f => f.k === 'good' && !SUB[f.id] && !isSeafEffect({ type: f.type, eid: f.id })).map(f => `<div class="fc-row ally">${gl(GLOF[f.type])}<div><b>${esc(f.n)}</b>${f.d ? `<p>${esc(f.d)}</p>` : ''}</div></div>`),
+        ...(DSS && p.i === DSS.at ? [`<div class="fc-row ally dss">${logo('DSS')}<div><b>${esc(L.dssH)}</b><p>${dssAct.length ? dssAct.map(([n, , , ex]) => `<b>${esc(titleCase(n))}</b> ${esc(fill(L.until, { t: when(ex) }))}`).join(' · ') : esc(C.dssHere)}${DSS.vote && DSS.vote > Date.now() ? ' · ' + fill(esc(L.vote), { t: `<b>${esc(when(DSS.vote))}</b>` }) : ''}</p></div></div>`] : [])].join('');
+      const route = (() => {
+        const r = st ? ROUTES.find(x => x.t === st.t) : MO.has(p.i) ? ROUTES.find(x => x.t === p) : null;
+        if (!r) return '';
+        if (!r.path) return `<div class="fc-ln"><span>${esc(C.route)}</span><span>${esc(L.noLine)}</span></div>`;
+        const en = r.path.filter(q => q.o !== 'Humans');
+        return en.length > 1 ? `<div class="fc-ln"><span>${esc(C.route)}</span><span>${esc(r.path[0].n)} ${en.map((q, j) => `→ <button type="button" data-open="${q.i}" class="lk${q === p ? ' me' : ''}"><b>${j + 1}</b> ${esc(q.n)}</button>`).join(' ')}</span></div>` : '';
+      })();
+      const open = p.reg.filter(r => r[3]);
+      const regs = p.reg.length ? `<div class="fc-ln"><span>${esc(C.regions)}</span><span><b>${esc(fill(C.regOpen, { a: open.length, b: p.reg.length }))}</b>${open.length ? ': ' + open.map(([n, , fr, , pl]) => `${esc(n)}${fr ? ' ' + fmt(fr * 100) + '%' : ''}${p.acc && pl >= 20 ? ' · ' + fmt(pl) + ' ' + esc(C.inR) : ''}`).join(', ') : ''}</span></div>` : '';
+      return `<button type="button" class="dx" data-close aria-label="${esc(L.close)}">✕</button>
+        <div class="fc-orb" style="--c:${COL[own]}">${orbSVG(p)}</div>
+        ${tag}<div class="fc-where">${esc(secName(p.s))}${p.s === 'Sol' ? '' : ' ' + esc(L.sector)} · ${esc(p.b)}</div>
+        <h3 class="fc-name">${esc(p.n)}</h3>
+        <div class="fc-who" style="--c:${COL[own]}"><img src="${IC(own) || IC('Humans')}" alt="">${esc(p.def && p.ev ? fill(L.underAtt, { f: C.one[p.ev.f] }) : p.o === 'Humans' ? C.seWorld : fill(C.world, { f: C.one[p.o] }))}</div>
+        <section class="fc-state" style="--vc:${sy ? sy.c : 'var(--fg)'}">
+          <div class="fc-top"><div class="fc-big"><b data-count="${pct.toFixed(2)}">${fmt(motion() ? 0 : pct, pct > 0 && pct < 10 ? 1 : 0)}%</b><span>${esc(p.def ? L.defended : p.o === 'Humans' ? C.ours0 : L.liberated)}</span></div>${side}</div>
+          <div class="fc-bar"><i class="f${p.gr > .05 && motion() ? ' move' : ''}" data-w="${pct.toFixed(2)}"></i>${proj > .2 ? `<i class="pj" style="left:${pct.toFixed(2)}%;width:${proj.toFixed(2)}%"></i>` : ''}<i class="goal"></i></div>
+          <div class="fc-scale"><span>${esc(p.def ? C.falls : '0')}</span><span>${esc(p.def ? C.held : L.liberated)} · 100%</span></div>
+          ${sy ? `<p class="fc-say">${sy.s}</p>` : ''}${here ? `<div class="fc-here">${here}</div>` : ''}
+        </section>
+        ${own !== 'Humans' ? `<section class="fc-sec"><h5>${esc(C.forces)}</h5>${forces || nil(C.noSub, fill(C.noSubT, { f: C.one[own] }))}</section>` : ''}
+        <section class="fc-sec"><h5>${esc(L.conditions)}</h5>${ground}</section>
+        <section class="fc-sec"><h5>${esc(L.effects)}</h5>${modRows}</section>
+        ${help ? `<section class="fc-sec"><h5>${esc(C.side)}</h5>${help}</section>` : ''}
+        <section class="fc-more">${route}${regs}${nb.length ? `<div class="fc-ln"><span>${esc(C.next)}</span><span>${nb.map(q => `<button type="button" class="lk" data-open="${q.i}" style="--c:${COL[ownerOf(q)]}"><i></i>${esc(q.n)}${p.ev && p.ev.from === q.i ? ` <em>${esc(C.attacking)}</em>` : ''}</button>`).join(' ')}</span></div>` : ''}</section>`;
+    }
+    // the card arrives: the number counts up while the bar fills; an attack's clock runs every second
+    let clockT = 0;
+    function liven(anim = true) {
+      window.clearInterval(clockT);
+      if (!motion()) anim = false;
+      const b = dw.querySelector('[data-count]'), f = dw.querySelector('.fc-bar .f'), to = b ? Number(b.dataset.count) : 0, d = to > 0 && to < 10 ? 1 : 0;
+      if (f) { if (anim) requestAnimationFrame(() => requestAnimationFrame(() => { f.style.width = f.dataset.w + '%'; })); else f.style.width = f.dataset.w + '%'; }
+      if (b && !anim) b.textContent = fmt(to, d) + '%';
+      if (b && anim) { const t0 = performance.now(); (function st(t) { const q = Math.min(1, (t - t0) / 900), v = 1 - Math.pow(1 - q, 3); b.textContent = fmt(to * v, d) + '%'; if (q < 1 && b.isConnected) requestAnimationFrame(st); })(t0); }
+      const cl = dw.querySelector('[data-clock]');
+      if (cl) { const end = Number(cl.dataset.clock), tick = () => { const s2 = Math.max(0, (end - Date.now()) / 1e3); cl.textContent = [s2 / 3600, s2 % 3600 / 60, s2 % 60].map(x => String(Math.floor(x)).padStart(2, '0')).join(':'); }; tick(); clockT = setInterval(() => { if (!cl.isConnected) { window.clearInterval(clockT); return; } tick(); }, 1000); }
     }
     function openCard(p, fly) {
       if (!p) return;
       tipOff();
       const first = !openP; openP = p; dr.style.setProperty('--c', COL[ownerOf(p)]);
-      const paint = () => { dw.innerHTML = cardHTML(p); dw.classList.remove('fade'); dr.scrollTop = 0; };
+      loadUnits();
+      const paint = () => { dw.innerHTML = cardHTML(p); dw.classList.remove('fade'); dr.scrollTop = 0; dw.classList.remove('in'); void dw.offsetWidth; dw.classList.add('in'); liven(); };
       if (first || !motion()) paint(); else { dw.classList.add('fade'); setTimeout(paint, 120); }
       dr.classList.add('on'); dr.setAttribute('aria-hidden', 'false'); dr.removeAttribute('inert'); mark();
       // the world goes to the middle of what the card leaves free
       if (fly) { const dwid = W < 700 ? 0 : dr.offsetWidth, nk = Math.max(k, kFit * 2.6), sy = W < 700 ? H * .24 : camName === 'top' ? H / 2 : H * .6; animate(aim(p.x, p.y, (W - dwid) / 2, sy, nk), true); }
     }
-    function closeCard() { if (!openP) return; openP = null; dr.classList.remove('on'); dr.setAttribute('aria-hidden', 'true'); dr.setAttribute('inert', ''); mark(); }
+    function closeCard() { if (!openP) return; openP = null; window.clearInterval(clockT); dr.classList.remove('on'); dr.setAttribute('aria-hidden', 'true'); dr.setAttribute('inert', ''); mark(); }
 
     /* ---------- in the page ---------- */
     function update() {
       const key = [last && last.now, live && live.t, record && record.t, curRes && curRes.verdict, curRes && (curRes.tasks || []).length].join('|');
       if (key !== stamp) {
         stamp = key; model(curRes); drawWorld(); hud(); read();
-        if (openP) { const sc = dr.scrollTop; dw.innerHTML = cardHTML(openP); dr.scrollTop = sc; }
+        if (openP) { const sc = dr.scrollTop; dw.innerHTML = cardHTML(openP); dr.scrollTop = sc; liven(false); }
       }
       apply();
     }

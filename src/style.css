@@ -2450,3 +2450,87 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 @media (max-width:700px){.fr-table .h-cam{top:auto;right:auto;left:22px;bottom:22px}.fr-table .h-read{bottom:66px;left:22px;right:22px}.fr-table .hl[data-dss]{display:none}.fr-table .h-zoom{right:22px;bottom:22px}}
 @media (prefers-reduced-motion:reduce){.fr-table *{transition:none!important}}
 html.calm .fr-table .atkp{animation:none}html.calm .fr-table *{transition:none!important}
+
+/* ---------- the planet card (8 Nov 2026): in order of importance, no boxes ---------- */
+.fr-table{--fr-nil:#ff4f5e}
+.fr-table .dw{position:relative;display:block;padding:22px 24px 34px;min-height:100%;overflow:hidden}
+.fr-table .dw > *{position:relative;z-index:1}
+.fr-table .dw > .fc-orb{position:absolute;z-index:0;top:-62px;right:-88px;width:236px;height:236px;pointer-events:none}
+.fr-table .fc-orb::before{content:"";position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 30%,transparent),transparent 72%)}
+.fr-table .fc-orb svg{position:relative;display:block;width:100%;height:100%}
+.fr-table .dw > .dx{position:absolute;z-index:3;top:12px;right:12px;width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--rule-2);background:rgba(7,8,11,.6);color:var(--fg);cursor:pointer}
+.fr-table .dw > .dx:hover{border-color:var(--fg)}
+.fr-table .fc-tag{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;max-width:calc(100% - 150px);margin:0 0 10px;font:600 13px/1.3 var(--ui);color:var(--se)}
+.fr-table .fc-tag span{font:800 11px var(--display);font-stretch:112%;letter-spacing:.16em;text-transform:uppercase;background:var(--se);color:var(--se-ink);padding:3px 8px}
+.fr-table .fc-where{max-width:calc(100% - 150px);font:800 11px var(--ui);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.fr-table .fc-name{margin:6px 0 4px;max-width:66%;font:800 32px/1 var(--display);font-stretch:125%;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance;text-shadow:0 2px 14px var(--ink)}
+.fr-table .fc-who{max-width:calc(100% - 150px);display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font:800 12px var(--ui);letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
+.fr-table .fc-who img{width:20px;height:20px}
+.fr-table .fc-state{margin-top:44px}
+.fr-table .fc-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.fr-table .fc-big{display:flex;align-items:baseline;gap:10px;line-height:.9}
+.fr-table .fc-big b{font:800 54px var(--display);font-stretch:118%;font-variant-numeric:tabular-nums}
+.fr-table .fc-big span{font:800 12.5px var(--ui);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.fr-table .fc-side{text-align:right;font:800 15px var(--display);font-stretch:112%;line-height:1.15;font-variant-numeric:tabular-nums}
+.fr-table .fc-side small{display:block;font:800 10px var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.fr-table .fc-bar{position:relative;height:6px;margin:14px 0 6px;background:rgba(255,255,255,.08)}
+.fr-table .fc-bar .f{position:absolute;inset:0 auto 0 0;width:0;background:var(--se-blue);transition:width 1s var(--ease-out)}
+.fr-table .fc-bar .f.move::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent) no-repeat;background-size:40px 100%;animation:fc-sweep 2.4s var(--ease-out) infinite}
+@keyframes fc-sweep{from{background-position:-40px 0}to{background-position:calc(100% + 40px) 0}}
+.fr-table .fc-bar .pj{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(0,176,255,.6) 0 2px,transparent 2px 5px)}
+.fr-table .fc-bar .goal{position:absolute;right:0;top:-5px;bottom:-5px;width:2px;background:var(--fg)}
+.fr-table .fc-scale{display:flex;justify-content:space-between;font:800 10px var(--ui);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.fr-table .fc-say{margin:12px 0 0;font-size:15.5px;line-height:1.42;color:var(--muted);text-wrap:pretty}
+.fr-table .fc-say b{color:var(--vc)}
+.fr-table .fc-here{margin-top:9px;display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--muted)}
+.fr-table .fc-here b{color:var(--fg);font-variant-numeric:tabular-nums}
+.fr-table .fc-here svg{width:15px;height:15px;vertical-align:-2px;margin-right:5px;color:var(--dim)}
+.fr-table .fc-sec{margin-top:28px}
+.fr-table .fc-sec h5{margin:0 0 14px;display:block;font:800 11px var(--ui);letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.fr-table .fc-sec h5::after{display:none}
+/* the official emblems, coloured by what they are: the enemy's, the ground's (yellow), ours (blue) */
+.fr-table .fc-logo{display:block;flex:none;width:40px;height:40px;background:var(--lc,var(--c));-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.fr-table .fc-logo.none{-webkit-mask:none;mask:none;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);opacity:.35}
+.fr-table .fc-sf{display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 14px;margin-bottom:22px}
+.fr-table .fc-sf h4{margin:1px 0 2px;font:800 15px var(--display);font-stretch:118%;letter-spacing:.05em;text-transform:uppercase;color:var(--c)}
+.fr-table .fc-sf p{margin:0;font-size:13.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.fr-table .fc-sf p.open{-webkit-line-clamp:unset;display:block}
+.fr-table .fc-units{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 4px;margin-top:10px}
+.fr-table .fc-u{width:52px;display:grid;justify-items:center;gap:4px}
+.fr-table .fc-t{width:50px;height:50px;display:grid;place-items:center;overflow:hidden;background:radial-gradient(closest-side at 50% 62%,color-mix(in srgb,var(--c) 22%,transparent),transparent),#0b0c10;border-bottom:2px solid color-mix(in srgb,var(--c) 55%,transparent)}
+.fr-table .fc-t img{max-width:47px;max-height:47px;object-fit:contain;transition:transform .25s var(--ease-out)}
+.fr-table .fc-u.op img{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover}
+.fr-table .fc-u:hover img{transform:scale(1.12)}
+.fr-table .fc-n{font:700 9.5px/1.15 var(--ui);color:var(--muted);text-align:center;max-width:56px}
+.fr-table .fc-row{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;margin-bottom:12px;--lc:var(--fg)}
+.fr-table .fc-row .fc-logo{width:30px;height:30px}
+.fr-table .fc-row.hz{--lc:var(--se)}.fr-table .fc-row.hz .fc-logo{-webkit-mask-mode:luminance;mask-mode:luminance}
+.fr-table .fc-row.ally{--lc:var(--se-blue);color:var(--se-blue)}.fr-table .fc-row.dss{--lc:var(--se-sky);color:var(--se-sky)}
+.fr-table .fc-row b{font-size:14.5px;color:var(--fg)}.fr-table .fc-row p{margin:1px 0 0;font-size:13.5px;color:var(--muted)}.fr-table .fc-row p b{font-size:inherit}
+.fr-table .fc-gl{display:grid;place-items:center;width:30px;height:30px}.fr-table .fc-gl svg{width:24px;height:24px}
+.fr-table .fc-row.hz .fc-gl{color:var(--se)}
+/* nothing special here: said plainly, in red, so it is not taken for missing data */
+.fr-table .fc-nil{margin:0;display:flex;gap:10px;align-items:center;padding:9px 12px;border-left:3px solid var(--fr-nil);background:linear-gradient(90deg,color-mix(in srgb,var(--fr-nil) 13%,transparent),transparent);color:var(--fr-nil);font-size:14px}
+.fr-table .fc-nil b{font-weight:800;letter-spacing:.04em;text-transform:uppercase;font-size:13px}
+.fr-table .fc-nil i{flex:none;width:16px;height:16px;border:2px solid currentColor;border-radius:50%;position:relative}
+.fr-table .fc-nil i::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:currentColor;transform:rotate(45deg)}
+.fr-table .fc-more{margin-top:28px;display:grid;gap:10px;font-size:13.5px;color:var(--muted)}
+.fr-table .fc-ln{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:baseline}
+.fr-table .fc-ln > span:first-child{font:800 10.5px var(--ui);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.fr-table .fc-ln b{color:var(--fg);font-weight:600}
+.fr-table .fc-ln .lk{white-space:nowrap;margin:0 12px 0 0;padding:0;background:none;border:0;border-bottom:1px solid transparent;font:inherit;color:var(--fg);cursor:pointer}
+.fr-table .fc-ln .lk:hover{border-color:var(--c,var(--se))}
+.fr-table .fc-ln .lk i{display:inline-block;width:7px;height:7px;background:var(--c);margin-right:6px;vertical-align:1px}
+.fr-table .fc-ln .lk em{font-style:normal;color:var(--fr-nil);font-size:12px}
+.fr-table .fc-ln .lk.me{color:var(--se)}.fr-table .fc-ln .lk b{color:var(--se)}
+/* the card arrives: the world turns in, then the rest, one after the other */
+.fr-table .dw.in > .fc-orb{animation:fc-orb .7s var(--ease-out) both}
+@keyframes fc-orb{from{opacity:0;transform:translateX(30px) scale(.94)}}
+.fr-table .dw.in > :not(.fc-orb):not(.dx){animation:fc-rise .5s var(--ease-out) both}
+.fr-table .dw.in > :nth-child(3){animation-delay:.06s}.fr-table .dw.in > :nth-child(4){animation-delay:.1s}.fr-table .dw.in > :nth-child(5){animation-delay:.14s}.fr-table .dw.in > :nth-child(6){animation-delay:.18s}.fr-table .dw.in > :nth-child(7){animation-delay:.24s}.fr-table .dw.in > :nth-child(8){animation-delay:.3s}.fr-table .dw.in > :nth-child(n+9){animation-delay:.36s}
+@keyframes fc-rise{from{opacity:0;transform:translateY(8px)}}
+.fr-table .dw.in .fc-u{animation:fc-rise .45s var(--ease-out) both;animation-delay:calc(.45s + var(--j) * 45ms)}
+@media (max-width:430px){.fr-table .dw{padding:20px 18px 30px}.fr-table .dw > .fc-orb{width:190px;height:190px;right:-70px;top:-50px}.fr-table .fc-tag,.fr-table .fc-where,.fr-table .fc-who{max-width:calc(100% - 110px)}.fr-table .fc-name{font-size:27px}.fr-table .fc-big b{font-size:46px}}
+@media (prefers-reduced-motion:reduce){.fr-table .dw.in > *,.fr-table .dw.in .fc-u,.fr-table .fc-bar .f.move::after{animation:none}.fr-table .fc-bar .f{transition:none}}
+html.calm .fr-table .dw.in > *,html.calm .fr-table .dw.in .fc-u,html.calm .fr-table .fc-bar .f.move::after{animation:none}
+.fr-table .fc-t:empty{background:none;border-bottom-style:dashed;height:20px}
