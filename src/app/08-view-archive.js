@@ -37,6 +37,16 @@
       </section>
     </div>`;
   }
+  // between orders the page has two tabs: what to do meanwhile, and the Fronts map (8 Nov 2026: with no order
+  // the map had no way in)
+  function betweenTabsHTML(home) {
+    const bt = ui.btab === 'map' ? 'map' : 'now';
+    const ico = { now: TAB_ICON.races, map: TAB_ICON.map }, nm = { now: t('tBetween'), map: t('tMap') }, sub = { now: t('tabSub.between'), map: t('tabSub.map') };
+    return `<section class="area-tabs between-tabs" id="tabs-between" aria-label="${esc(t('tabsAria'))}">
+        <div class="tabbar"><div class="tabs" role="tablist" aria-label="${esc(t('tabsAria'))}">${['now', 'map'].map(k => `<button type="button" role="tab" class="tab" id="tab-between-${k}" data-btab="${k}" aria-selected="${bt === k}" aria-controls="tp-between" tabindex="${bt === k ? 0 : -1}"><span class="tab-ico" aria-hidden="true">${ico[k]}</span><span class="tab-txt"><span class="tab-name">${esc(nm[k])}</span><span class="tab-sub">${esc(sub[k])}</span></span></button>`).join('')}</div></div>
+        <div class="tabpanel" id="tp-between" role="tabpanel" aria-labelledby="tab-between-${bt}" tabindex="0">${bt === 'map' ? mapTabHTML(null) : home}</div>
+      </section>`;
+  }
   // the Fronts map (05b-fronts.js) once the recorder's galaxy file is in; the small war map until then
   function mapTabHTML(res) {
     if (FRONTS && FRONTS.ready()) return FRONTS.slotHTML(res);
@@ -334,12 +344,14 @@
     $('intel').innerHTML = '';
     const view = $('view');
     if (!entry) {
-      view.innerHTML = `${emptySlotHTML()}<div class="empty-wrap"><div class="empty-main">
+      const home = `<div class="empty-wrap"><div class="empty-main">
           ${betweenCallHTML()}${recapHTML()}${newsHomeHTML()}${frontsHTML()}</div>
         <div class="empty-side">${mapHTML(null)}${joelRecap()}</div></div>`;
+      view.innerHTML = emptySlotHTML() + (FRONTS ? betweenTabsHTML(home) : home);
       syncHash();
       setTab(null);
       fxAfterRender(view, null);
+      if (FRONTS) FRONTS.mount();
       return;
     }
     const firstTime = !prev.seen[entry.a.id];

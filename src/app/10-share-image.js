@@ -216,7 +216,7 @@
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-glance]')) { setGlance(false); return; }
     if (e.target.closest('[data-glance-on]')) { setGlance(true); window.scrollTo({ top: 0 }); return; }
-    const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-igroup],[data-intelfilter],[data-iclear]');
+    const el = e.target.closest('[data-retry],[data-follow],[data-otab],[data-tab],[data-btab],[data-goto],[data-toggle-nums],[data-preset],[data-close],[data-copy],[data-shareimg],[data-cycle],[data-hint-close],[data-legend],[data-hmode],[data-igroup],[data-intelfilter],[data-iclear]');
     if (!el) return;
     if (el.dataset.legend) {   // show / hide one line of a chart
       const id = el.dataset.legend, k = el.dataset.s, off = (ui.chartOff[id] ||= {});
@@ -239,6 +239,7 @@
     if (el.hasAttribute('data-follow')) { ui.orderManual = false; saveUi(); render(); return; }
     if (el.dataset.otab) { ui.order = el.dataset.otab; ui.orderManual = true; saveUi(); render(); if (el.hasAttribute('data-pick')) window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); return; }
     if (el.dataset.tab) { selectTab(el.dataset.tab); return; }
+    if (el.dataset.btab) { ui.btab = el.dataset.btab === 'map' ? 'map' : 'now'; saveUi(); render({ tabEnter: true }); return; }
     if (el.dataset.cycle) { cycleTab(Number(el.dataset.cycle)); return; }
     if (el.dataset.shareimg) {
       const entry = last && last.results.find(x => String(x.a.id) === String(el.dataset.shareimg));
