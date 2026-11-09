@@ -213,7 +213,7 @@
         <aside class="drawer" aria-label="${esc(L.cardAria)}" aria-hidden="true" inert><div class="dw"></div></aside>
         <div class="hud h-cam" role="group" aria-label="${esc(L.camAria)}">${Object.keys(CAMS).map(camBtn).join('')}</div>
         <div class="hud h-zoom"><span>${esc(L.dragHelp)}</span><button class="zb" type="button" data-z="out" aria-label="${esc(L.zOut)}">−</button><button class="zb" type="button" data-z="in" aria-label="${esc(L.zIn)}">+</button><button class="zb" type="button" data-z="home" aria-label="${esc(L.zHome)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5"/><path d="M8 0v4M8 12v4M0 8h4M12 8h4"/></svg></button></div>`;
-      tb = root; plane = q$('.plane'); plane.style.setProperty('--ss', SS); plane.style.width = plane.style.height = SS * 100 + '%'; svw = q$('.svw'); world = q$('.world'); ov = q$('.over'); edge = q$('.edge'); hr = q$('.h-read'); tipEl = q$('.fr-tip'); dr = q$('.drawer'); dw = q$('.dw'); hfEl = q$('.h-fronts');
+      tb = root; skyEl = q$('.sky'); hzEl = q$('.horizon'); plane = q$('.plane'); plane.style.setProperty('--ss', SS); plane.style.width = plane.style.height = SS * 100 + '%'; svw = q$('.svw'); world = q$('.world'); ov = q$('.over'); edge = q$('.edge'); hr = q$('.h-read'); tipEl = q$('.fr-tip'); dr = q$('.drawer'); dw = q$('.dw'); hfEl = q$('.h-fronts');
       bind();
       try { new ResizeObserver(() => { if (root.isConnected) resized(); }).observe(root); } catch { /* old browsers: the window's resize event */ }
       window.addEventListener('resize', () => { if (root.isConnected) resized(); });
@@ -234,6 +234,7 @@
       if (!W || !H) return;
       if (!homed) { homed = true; home(false); return; }
       if (g && (w0 !== W || h0 !== H)) { const a = aim(g.x, g.y, W / 2, H * cam.oy, k * Math.min(W, H) / Math.max(1, Math.min(w0, h0))); k = a.k; tx = a.tx; ty = a.ty; }
+      hudBoxes = null; wk = 0; edT = 0;
       apply();
     }
 
@@ -285,7 +286,7 @@
     function drawOver() {
       const a = cam.a * Math.PI / 180, sa = Math.sin(a), ca = Math.cos(a), phone = W < 700, z = k / kFit, topPl = Math.max(1, top[0]?.pl || 1);
       let s = `<defs>${bioDefs}</defs>`, Lb = '';
-      const tr = tb.getBoundingClientRect(), boxes = [...tb.querySelectorAll('.hud')].map(e => { const r = e.getBoundingClientRect(); return { x0: r.left - tr.left - 8, x1: r.right - tr.left + 8, y0: r.top - tr.top - 8, y1: r.bottom - tr.top + 8, hud: 1 }; });
+      const boxes = hudRects().map(r => ({ x0: r.l - 8, x1: r.r + 8, y0: r.t - 8, y1: r.b + 8, hud: 1 }));
       const items = [...war].sort((p, q) => S(p).y - S(q).y);   // far first
       const se = S({ x: 0, y: 0 });
       // the quiet worlds: small dots in their biome's colour, ringed in the enemy's colour where he holds them
@@ -401,15 +402,39 @@
     function apply() {
       if (!W) return;
       const a = cam.a;
-      world.setAttribute('transform', `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${k.toFixed(5)})`);
+      // the board: while it moves, the picture already drawn slides and scales on the graphics card (no redraw);
+      // when it settles, or has scaled too far to stay sharp, it is redrawn at the new zoom, crisp (9 Nov 2026)
+      const r = k / wk;
+      if (!wk || r > 1.35 || r < .74) commit();
+      else svw.style.transform = `translate(${(SS * (tx - r * wtx)).toFixed(2)}px, ${(SS * (ty - r * wty)).toFixed(2)}px) scale(${r.toFixed(5)})`;
+      clearTimeout(wT); wT = setTimeout(settle, 140);
       // the same turn about the same point as before, applied to a board SS times larger and scaled back down
       const ox = W / 2, oy = H * cam.oy;
       plane.style.transform = a ? `translate(${ox}px, ${oy}px) perspective(${PP}px) rotateX(${a}deg) translate(${-ox}px, ${-oy}px) scale(${1 / SS})` : `scale(${1 / SS})`;
-      q$('.sky').style.transform = `translate(${((tx * .04) % 620).toFixed(1)}px, ${((ty * .04) % 520).toFixed(1)}px)`;
+      skyEl.style.transform = `translate(${((tx * .04) % 620).toFixed(1)}px, ${((ty * .04) % 520).toFixed(1)}px)`;
       // the glow lies on the table around Super Earth, the middle of the map, flattened by the camera's angle
-      const mid = S({ x: 0, y: 0 }), hz = q$('.horizon').style, rw = 330 * k * mid.f;
-      hz.setProperty('--hx', mid.x.toFixed(0) + 'px'); hz.setProperty('--hy', mid.y.toFixed(0) + 'px'); hz.setProperty('--hw', rw.toFixed(0) + 'px'); hz.setProperty('--hh', (rw * Math.cos(a * Math.PI / 180)).toFixed(0) + 'px');
-      drawOver(); edges();
+      // (a fixed soft disc moved and stretched by transform: no gradient repainted every frame)
+      const mid = S({ x: 0, y: 0 }), rw = 330 * k * mid.f;
+      hzEl.style.transform = `translate(${(mid.x - 200).toFixed(1)}px, ${(mid.y - 200).toFixed(1)}px) scale(${(rw / 200).toFixed(4)}, ${(rw * Math.cos(a * Math.PI / 180) / 200).toFixed(4)})`;
+      drawOver();
+      // the chips at the edges measure themselves: at most every 120 ms while moving, and once it settles
+      const now = performance.now(); if (now - edT > 120) { edT = now; edges(); }
+    }
+    let wk = 0, wtx = 0, wty = 0, wT = 0, edT = 0, hudBoxes = null, hudT = 0, skyEl = null, hzEl = null;
+    function commit() {
+      clearTimeout(wT); wk = k; wtx = tx; wty = ty;
+      world.setAttribute('transform', `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${k.toFixed(5)})`);
+      svw.style.transform = '';
+    }
+    function settle() { commit(); hudBoxes = null; edT = performance.now(); edges(); }
+    // where the HUD panels are, for the labels to keep clear of: measured at most every 400 ms, never every frame
+    function hudRects() {
+      const now = performance.now();
+      if (!hudBoxes || now - hudT > 400) {
+        const tr = tb.getBoundingClientRect(); hudT = now;
+        hudBoxes = [...tb.querySelectorAll('.hud')].map(e => { const r = e.getBoundingClientRect(); return { l: r.left - tr.left, r: r.right - tr.left, t: r.top - tr.top, b: r.bottom - tr.top }; });
+      }
+      return hudBoxes;
     }
     // one redraw a frame, however many moves the pointer sends
     let rq = 0;
@@ -429,11 +454,13 @@
       });
       edge.innerHTML = h;
       if (!h) return;
-      const er = edge.getBoundingClientRect(), hit = (a, b) => a.l < b.r + 6 && b.l < a.r + 6 && a.t < b.b + 6 && b.t < a.b + 6;
-      const placed = [...tb.querySelectorAll('.hud')].map(e => { const r = e.getBoundingClientRect(); return { l: r.left - er.left, r: r.right - er.left, t: r.top - er.top, b: r.bottom - er.top }; }), names = lastBoxes.map(q => ({ l: q.x0, r: q.x1, t: q.y0, b: q.y1 }));
-      edge.querySelectorAll('.fr-chip').forEach(c => {
+      const hit = (a, b) => a.l < b.r + 6 && b.l < a.r + 6 && a.t < b.b + 6 && b.t < a.b + 6;
+      const placed = hudRects().map(r => ({ ...r })), names = lastBoxes.map(q => ({ l: q.x0, r: q.x1, t: q.y0, b: q.y1 }));
+      // every chip's size read in one pass before any is moved: one layout, not one per chip
+      const chips = [...edge.querySelectorAll('.fr-chip')], dims = chips.map(c => [c.offsetWidth, c.offsetHeight]);
+      chips.forEach((c, ci) => {
         let x = parseFloat(c.style.left), y = parseFloat(c.style.top), ok = false;
-        const w = c.offsetWidth, hh = c.offsetHeight, side = (y <= 30 || y >= H - 30) ? 'h' : 'v';
+        const [w, hh] = dims[ci], side = (y <= 30 || y >= H - 30) ? 'h' : 'v';
         for (let it = 0; it < 14; it++) {
           const r = { l: x - w / 2, r: x + w / 2, t: y - hh / 2, b: y + hh / 2 }, q = placed.find(o => hit(r, o)) || names.find(o => hit(r, o));
           if (!q) { ok = true; break; }
@@ -563,7 +590,7 @@
     function mark() {
       const op = openP ? openP.i : null;
       world.querySelectorAll('.sec').forEach(e => e.classList.toggle('on', e.dataset.s === curS));
-      const on = world.querySelector('.sec.on'), lane = world.querySelector('.lane'); if (on && lane) on.parentNode.insertBefore(on, lane);
+      const on = world.querySelector('.sec.on'), lane = world.querySelector('.lane'); if (on && lane && on.nextSibling !== lane) on.parentNode.insertBefore(on, lane);
       ov.querySelectorAll('.pl').forEach(e => e.classList.toggle('on', e.dataset.i === String(curP) || e.dataset.i === String(op)));
       ov.querySelectorAll('.lbl.s').forEach(e => e.classList.toggle('on', e.dataset.s === curS));
     }

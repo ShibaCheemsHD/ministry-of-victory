@@ -2571,3 +2571,7 @@ html.calm .fr-table .dw.in > *,html.calm .fr-table .dw.in .fc-u,html.calm .fr-ta
 .fr-table .plane .sec.on { stroke-width: calc(1.8px * var(--ss)); }
 .fr-table .plane .lane { stroke-width: calc(1px * var(--ss)); }
 .fr-table .plane .rim { stroke-width: calc(1.3px * var(--ss)); }
+/* the map moves on the graphics card: the board, the sky and the glow are their own layers, moved by transform (9 Nov 2026) */
+.fr-table .plane svg { transform-origin: 0 0; will-change: transform; }
+.fr-table .sky { will-change: transform; }
+.fr-table .horizon { inset: auto; left: 0; top: 0; width: 400px; height: 400px; transform-origin: 50% 50%; will-change: transform; background: radial-gradient(closest-side, rgba(0,150,230,.22), rgba(0,150,230,.07) 50%, transparent 100%); }
