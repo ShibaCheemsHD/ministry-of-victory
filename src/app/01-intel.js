@@ -223,7 +223,7 @@
   }
   function planetList(list, rel) {
     if (list.includes(-1)) return t('in.fx.galaxy');
-    const all = list.filter(i => rel.has(i)).map(i => last.planets[i] ? '<b>' + planetName(last.planets[i]) + '</b>' : '#' + i);
+    const all = list.filter(i => rel.has(i)).map(i => '<b>' + planetName(last.planets[i] || { index: i }) + '</b>');
     const mine = all.slice(0, 3), others = list.length - mine.length;
     if (others > 0) mine.push(fill(t(others === 1 ? 'in.fx.other1' : 'in.fx.others'), { n: others }));
     return listJoin(mine);
@@ -261,7 +261,7 @@
       return /^[a-z]/.test(out) ? out.charAt(0).toUpperCase() + out.slice(1) : out;
     }
     const p = last.planets[x.idx];
-    const planet = p ? planetName(p) : esc(x.name || '#' + x.idx);
+    const planet = p ? planetName(p) : esc(x.name || galName(x.idx) || '#' + x.idx);
     const k = x.kind === 'regen' ? (x.to > x.from ? 'regenUp' : 'regenDown') : x.kind === 'jump' && x.attack ? 'jumpDef' : x.kind;
     const params = { planet, pct: pct(x.pct, 0), dur: dur((x.mins || 0) / 60), players: people(x.players || 0),
       from: pct(x.from, 1), to: pct(x.to, 1), faction: facName(x.faction), when: x.end ? clock((x.end - last.now) / 3.6e6) : '—' };

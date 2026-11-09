@@ -128,7 +128,7 @@
       const w = ts.some(tk => tk.itemId) ? ' ' + t('ar.withW') : '';
       return `${t('kill')} ${ts.map(tk => `${big(tk.goal)} ${tk.enemyId ? enemyName(tk.enemyId, tk.faction) : tk.faction && tk.faction !== 'Humans' ? plain(facPlural(tk.faction)) : t('enemies')}`).join(' · ')}${w}`;
     }
-    if (ts.length) return noItem(ts.map(tk => plain(taskText({ task: tk, planet: tk.planetIndex != null ? { index: tk.planetIndex, name: (last && last.planets[tk.planetIndex] || {}).name || '#' + tk.planetIndex } : null }))).join(' · '));
+    if (ts.length) return noItem(ts.map(tk => plain(taskText({ task: tk, planet: tk.planetIndex != null ? { index: tk.planetIndex, name: (last && last.planets[tk.planetIndex] || {}).name || galName(tk.planetIndex) || '#' + tk.planetIndex } : null }))).join(' · '));
     const b = plain(String(o.brief || '')).split(/(?<=[.!?])\s/)[0];
     return b && b.length > 12 ? (b.length > 90 ? b.slice(0, 88).replace(/\s\S*$/, '') + '…' : b.replace(/[.!]$/, '')) : t('ar.unnamed');
   }
