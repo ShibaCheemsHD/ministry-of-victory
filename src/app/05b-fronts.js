@@ -193,6 +193,10 @@
     const q$ = (s) => root.querySelector(s);
     const CAMS = { top: { a: 0, oy: .5 }, table: { a: 52, oy: .6 }, orbit: { a: 70, oy: .72 } };
     let camName = CAMS[store.get('frCam', 'table')] ? store.get('frCam', 'table') : 'table';
+    // the tilted board is drawn larger than it shows and scaled down: a browser rasterises a 3D-turned layer at
+    // its own size, so drawn at 1:1 the near half of the table, magnified by the perspective, came out soft and
+    // pixelated. Strokes that keep their width on screen are drawn SS times as wide to come out the same (9 Nov 2026)
+    const SS = (window.devicePixelRatio || 1) >= 2 ? 1.5 : 2, sw = (n) => +(n * SS).toFixed(2), da = (a, b) => `${sw(a)} ${sw(b)}`;
     let cam = { ...CAMS[camName] }, PP = 1400, W = 0, H = 0, k = 1, tx = 0, ty = 0, kFit = 1, homed = false;
     function build() {
       root = document.createElement('section');
@@ -209,7 +213,7 @@
         <aside class="drawer" aria-label="${esc(L.cardAria)}" aria-hidden="true" inert><div class="dw"></div></aside>
         <div class="hud h-cam" role="group" aria-label="${esc(L.camAria)}">${Object.keys(CAMS).map(camBtn).join('')}</div>
         <div class="hud h-zoom"><span>${esc(L.dragHelp)}</span><button class="zb" type="button" data-z="out" aria-label="${esc(L.zOut)}">−</button><button class="zb" type="button" data-z="in" aria-label="${esc(L.zIn)}">+</button><button class="zb" type="button" data-z="home" aria-label="${esc(L.zHome)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5"/><path d="M8 0v4M8 12v4M0 8h4M12 8h4"/></svg></button></div>`;
-      tb = root; plane = q$('.plane'); svw = q$('.svw'); world = q$('.world'); ov = q$('.over'); edge = q$('.edge'); hr = q$('.h-read'); tipEl = q$('.fr-tip'); dr = q$('.drawer'); dw = q$('.dw'); hfEl = q$('.h-fronts');
+      tb = root; plane = q$('.plane'); plane.style.setProperty('--ss', SS); plane.style.width = plane.style.height = SS * 100 + '%'; svw = q$('.svw'); world = q$('.world'); ov = q$('.over'); edge = q$('.edge'); hr = q$('.h-read'); tipEl = q$('.fr-tip'); dr = q$('.drawer'); dw = q$('.dw'); hfEl = q$('.h-fronts');
       bind();
       try { new ResizeObserver(() => { if (root.isConnected) resized(); }).observe(root); } catch { /* old browsers: the window's resize event */ }
       window.addEventListener('resize', () => { if (root.isConnected) resized(); });
@@ -236,13 +240,13 @@
     /* ---------- the flat world: drawn again when the war changes ---------- */
     function drawWorld() {
       let s = '<circle class="rim" r="503"/>', defs = '';
-      for (let d = 0; d < 360; d += 2) { const a = d * Math.PI / 180, l = d % 30 === 0 ? 14 : d % 10 === 0 ? 8 : 4; s += `<line class="rtick" x1="${(Math.cos(a) * 506).toFixed(1)}" y1="${(Math.sin(a) * 506).toFixed(1)}" x2="${(Math.cos(a) * (506 + l)).toFixed(1)}" y2="${(Math.sin(a) * (506 + l)).toFixed(1)}" stroke-width="${d % 30 === 0 ? 1.3 : .8}"/>`; }
+      for (let d = 0; d < 360; d += 2) { const a = d * Math.PI / 180, l = d % 30 === 0 ? 14 : d % 10 === 0 ? 8 : 4; s += `<line class="rtick" x1="${(Math.cos(a) * 506).toFixed(1)}" y1="${(Math.sin(a) * 506).toFixed(1)}" x2="${(Math.cos(a) * (506 + l)).toFixed(1)}" y2="${(Math.sin(a) * (506 + l)).toFixed(1)}" stroke-width="${sw(d % 30 === 0 ? 1.3 : .8)}"/>`; }
       // the enemy's territory: each world's ground merged into one shape per faction, outlined only on its edge
       ENEMIES.forEach(f => {
         const d = P.filter(p => p.o === f && p.blob).map(p => p.blob).join('');
         if (!d) return;
         defs += `<mask id="frtm-${f}" maskUnits="userSpaceOnUse" x="-620" y="-620" width="1240" height="1240"><rect x="-620" y="-620" width="1240" height="1240" fill="#fff"/><path d="${d}" fill="#000"/></mask>`;
-        s += `<g class="terr" data-f="${f}"><path d="${d}" fill="${COL[f]}" fill-opacity=".16"/><path d="${d}" fill="none" stroke="${COL[f]}" stroke-opacity=".8" stroke-width="2.8" mask="url(#frtm-${f})" style="vector-effect:non-scaling-stroke"/></g>`;
+        s += `<g class="terr" data-f="${f}"><path d="${d}" fill="${COL[f]}" fill-opacity=".16"/><path d="${d}" fill="none" stroke="${COL[f]}" stroke-opacity=".8" stroke-width="${sw(2.8)}" mask="url(#frtm-${f})" style="vector-effect:non-scaling-stroke"/></g>`;
       });
       s += Object.entries(SEC).map(([n, q]) => `<path class="sec" data-s="${esc(n)}" d="${q[0]}"/>`).join('');
       const seen = new Set();
@@ -256,17 +260,17 @@
       P.filter(p => p.def && p.ev).forEach(p => {
         const c = COL[p.ev.f], id = 'frhw' + p.i, q = byI.get(p.ev.from);
         defs += `<pattern id="${id}" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="3" height="7" fill="${c}" fill-opacity=".55"/></pattern>`;
-        s += `<circle class="atkg" data-f="${p.f}" cx="${p.x}" cy="${p.y}" r="30" fill="url(#${id})" stroke="${c}" stroke-width="1.4" stroke-dasharray="4 3" style="vector-effect:non-scaling-stroke"/>`;
+        s += `<circle class="atkg" data-f="${p.f}" cx="${p.x}" cy="${p.y}" r="30" fill="url(#${id})" stroke="${c}" stroke-width="${sw(1.4)}" stroke-dasharray="${da(4, 3)}" style="vector-effect:non-scaling-stroke"/>`;
         if (q) {
           const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, x1 = q.x + ux * 14, y1 = q.y + uy * 14, x2 = p.x - ux * 34, y2 = p.y - uy * 34;
-          if (d > 50) s += `<g class="atkg" data-f="${p.f}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="2.2" stroke-dasharray="6 4" style="vector-effect:non-scaling-stroke"/><path d="M${x2 + ux * 9} ${y2 + uy * 9}L${x2 - uy * 6} ${y2 + ux * 6}L${x2 + uy * 6} ${y2 - ux * 6}Z" fill="${c}"/></g>`;
+          if (d > 50) s += `<g class="atkg" data-f="${p.f}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${sw(2.2)}" stroke-dasharray="${da(6, 4)}" style="vector-effect:non-scaling-stroke"/><path d="M${x2 + ux * 9} ${y2 + uy * 9}L${x2 - uy * 6} ${y2 + ux * 6}L${x2 + uy * 6} ${y2 - ux * 6}Z" fill="${c}"/></g>`;
         }
       });
       // the DSS's road: where it has been, to where it is now
       const rt = (DSS ? DSS.route : []).map(([i]) => byI.get(i)).filter(Boolean);
       if (rt.length > 1) {
-        s += `<polyline points="${rt.map(p => p.x + ',' + p.y).join(' ')}" fill="none" stroke="${DSS_C}" stroke-opacity=".75" stroke-width="1.6" stroke-dasharray="2 5" stroke-linecap="round" style="vector-effect:non-scaling-stroke"/>`;
-        rt.slice(0, -1).forEach(p => { s += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="none" stroke="${DSS_C}" stroke-opacity=".7" stroke-width="1.2" style="vector-effect:non-scaling-stroke"/>`; });
+        s += `<polyline points="${rt.map(p => p.x + ',' + p.y).join(' ')}" fill="none" stroke="${DSS_C}" stroke-opacity=".75" stroke-width="${sw(1.6)}" stroke-dasharray="${da(2, 5)}" stroke-linecap="round" style="vector-effect:non-scaling-stroke"/>`;
+        rt.slice(0, -1).forEach(p => { s += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="none" stroke="${DSS_C}" stroke-opacity=".7" stroke-width="${sw(1.2)}" style="vector-effect:non-scaling-stroke"/>`; });
       }
       world.innerHTML = `<defs>${defs}</defs>` + s;
     }
@@ -398,7 +402,9 @@
       if (!W) return;
       const a = cam.a;
       world.setAttribute('transform', `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${k.toFixed(5)})`);
-      plane.style.transformOrigin = `50% ${cam.oy * 100}%`; plane.style.transform = a ? `perspective(${PP}px) rotateX(${a}deg)` : 'none';
+      // the same turn about the same point as before, applied to a board SS times larger and scaled back down
+      const ox = W / 2, oy = H * cam.oy;
+      plane.style.transform = a ? `translate(${ox}px, ${oy}px) perspective(${PP}px) rotateX(${a}deg) translate(${-ox}px, ${-oy}px) scale(${1 / SS})` : `scale(${1 / SS})`;
       q$('.sky').style.transform = `translate(${((tx * .04) % 620).toFixed(1)}px, ${((ty * .04) % 520).toFixed(1)}px)`;
       // the glow lies on the table around Super Earth, the middle of the map, flattened by the camera's angle
       const mid = S({ x: 0, y: 0 }), hz = q$('.horizon').style, rw = 330 * k * mid.f;

@@ -2565,3 +2565,9 @@ html.calm .fr-table .dw.in > *,html.calm .fr-table .dw.in .fc-u,html.calm .fr-ta
 .fr-table .fr-bg .plane, .fr-table .fr-bg .over .pl, .fr-table .fr-bg .over .qp { pointer-events: auto; }
 .fr-table::before, .fr-table::after { -webkit-mask-image: var(--fr-fade); mask-image: var(--fr-fade); }
 @media (max-width: 700px) { .fr-table { --fr-fade: linear-gradient(180deg, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%); } }
+/* the board is drawn SS times larger and scaled down for a sharp tilt: its screen-width strokes follow (9 Nov 2026) */
+.fr-table .plane { inset: auto; left: 0; top: 0; transform-origin: 0 0; --ss: 1; }
+.fr-table .plane .sec { stroke-width: calc(1px * var(--ss)); }
+.fr-table .plane .sec.on { stroke-width: calc(1.8px * var(--ss)); }
+.fr-table .plane .lane { stroke-width: calc(1px * var(--ss)); }
+.fr-table .plane .rim { stroke-width: calc(1.3px * var(--ss)); }
