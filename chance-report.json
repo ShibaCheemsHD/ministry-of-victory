@@ -1,0 +1,13 @@
+{
+ "ran": "2026-11-08T11:29:45Z",
+ "adopted": false,
+ "rows": 9252,
+ "pairs": 82879,
+ "dataEnd": 1794103260000.0,
+ "planets": 131,
+ "current": {
+  "trained": "2026-11-07",
+  "dataEnd": 1794038760000.0
+ },
+ "reason": "not enough new data: 0.7 days since the model in use (needs 7)"
+}
